@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LCARS 4.7 // PROMPT SYNTHESIZER</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --text: #d8e8ff;
+      --text-dim: #7a8aa0;
+      --text-data: #88bbff;
+      --yellow: #f0b800;
+      --gold: #ffcc66;
+      --orange: #ff9900;
+      --orange-dark: #cc7700;
+      --blue: #4499ff;
+      --blue-bright: #66bbff;
+      --cyan: #00ccff;
+      --purple: #8866cc;
+      --purple-light: #aa88ee;
+      --magenta: #ff6699;
+      --beige: #ccaa77;
+      --beige-light: #ddbb99;
+      --panel-dark: #05080f;
+      --bar-dark: #0a0f1a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      line-height: 1.35;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 8px 12px 20px;
+    }
+
+    /* === TOP ENGINEERING BAR (like the image) === */
+    .top-bar {
+      height: 42px;
+      background: linear-gradient(180deg, #f8d050 0%, var(--yellow) 45%, #d89800 100%);
+      border-radius: 0 0 22px 22px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      margin-bottom: 6px;
+      box-shadow: 0 3px 0 #000;
+      position: relative;
+      z-index: 10;
+    }
+    .top-bar::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0;
+      height: 100%; width: 38%;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.15));
+      border-radius: 0 0 22px 22px;
+    }
+    .top-bar-left {
+      font-weight: 900;
+      font-size: 17px;
+      letter-spacing: 3px;
+      color: #000;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .top-bar-title {
+      margin-left: 22px;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 2.5px;
+      color: #000;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .top-bar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #000;
+      letter-spacing: 1.5px;
+    }
+    .top-status {
+      background: #000;
+      color: var(--yellow);
+      padding: 1px 9px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    /* === CONSOLE FRAME === */
+    .console {
+      max-width: 1420px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* === BUSY LCARS BACKGROUND LITTER (the key request) === */
+    .bg-litter {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .data-column {
+      position: absolute;
+      top: 0;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 9px;
+      line-height: 11px;
+      color: #2a4a7a;
+      letter-spacing: 0.5px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      white-space: nowrap;
+      opacity: 0.65;
+      user-select: none;
+    }
+    .data-column.left { left: 4px; top: 60px; height: 62%; }
+    .data-column.right { right: 4px; top: 70px; height: 58%; }
+
+    .data-strip {
+      position: absolute;
+      height: 13px;
+      background: linear-gradient(90deg, transparent, rgba(68,153,255,0.12), transparent);
+      border-top: 1px solid rgba(68,153,255,0.15);
+      border-bottom: 1px solid rgba(68,153,255,0.08);
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8.5px;
+      color: #2a4a7a;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      white-space: nowrap;
+      opacity: 0.7;
+      user-select: none;
+    }
+    .data-strip.s1 { top: 58px; left: 120px; right: 180px; }
+    .data-strip.s2 { top: 142px; left: 80px; right: 260px; }
+    .data-strip.s3 { bottom: 118px; left: 140px; right: 95px; }
+
+    .hex-row {
+      position: absolute;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8.5px;
+      color: #1f3a60;
+      letter-spacing: 0.8px;
+      opacity: 0.55;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .hex-row.r1 { top: 210px; left: 26px; }
+    .hex-row.r2 { top: 312px; right: 32px; }
+    .hex-row.r3 { bottom: 168px; left: 32px; }
+
+    /* Small pill buttons scattered like the image */
+    .bg-pill {
+      position: absolute;
+      height: 15px;
+      padding: 0 7px;
+      border-radius: 999px;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      user-select: none;
+      opacity: 0.75;
+      box-shadow: 0 0 0 1px #000;
+    }
+    .bg-pill.p1 { top: 72px; left: 18px; background: #8866cc; width: 38px; }
+    .bg-pill.p2 { top: 91px; left: 18px; background: #4499ff; width: 32px; }
+    .bg-pill.p3 { top: 110px; left: 18px; background: #ff9900; width: 41px; }
+    .bg-pill.p4 { top: 72px; right: 18px; background: #ccaa77; width: 29px; }
+    .bg-pill.p5 { top: 91px; right: 18px; background: #66bbff; width: 35px; }
+    .bg-pill.p6 { top: 110px; right: 18px; background: #ff6699; width: 26px; }
+    .bg-pill.p7 { bottom: 142px; left: 22px; background: #4499ff; width: 44px; }
+    .bg-pill.p8 { bottom: 123px; left: 22px; background: #8866cc; width: 31px; }
+
+    /* === MAIN LAYOUT === */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 148px 1fr 162px;
+      gap: 10px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Left decorative sidebar (dense LCARS buttons like image) */
+    .left-sidebar {
+      background: var(--bar-dark);
+      border: 1px solid #1a2a44;
+      border-radius: 6px 0 0 6px;
+      padding: 8px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: center;
+    }
+    .left-sidebar .pill {
+      width: 100%;
+      height: 17px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 7px;
+      color: #000;
+      margin-bottom: 1px;
+      box-shadow: 0 0 0 1px #000;
+    }
+    .left-sidebar .pill span { font-size: 8.5px; opacity: 0.9; }
+    .left-sidebar .pill.b1 { background: #8866cc; }
+    .left-sidebar .pill.b2 { background: #4499ff; }
+    .left-sidebar .pill.b3 { background: #ff9900; }
+    .left-sidebar .pill.b4 { background: #ccaa77; }
+    .left-sidebar .pill.b5 { background: #66bbff; }
+    .left-sidebar .pill.b6 { background: #ff6699; }
+    .left-sidebar .pill.b7 { background: #4499ff; }
+    .left-sidebar .pill.b8 { background: #8866cc; }
+    .left-sidebar .pill.b9 { background: #ffaa44; }
+
+    .left-sidebar .label {
+      font-size: 8px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 4px 0 2px;
+      text-align: center;
+    }
+
+    /* === CENTER WORK AREA === */
+    .work-area {
+      background: #02050c;
+      border: 2px solid #1a2a44;
+      border-radius: 4px;
+      padding: 10px 12px 14px;
+      position: relative;
+    }
+    .work-area::before {
+      content: "";
+      position: absolute;
+      top: -2px; left: -2px; right: -2px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue), var(--purple));
+      border-radius: 4px 4px 0 0;
+      opacity: 0.6;
+    }
+
+    .work-title {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+
+    /* The actual input panels - made more LCARS-like */
+    .input-panel {
+      margin-bottom: 7px;
+      background: var(--panel-dark);
+      border: 1px solid #1f2f4a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .input-header {
+      height: 19px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #000;
+      position: relative;
+    }
+    .input-header.role     { background: var(--orange); }
+    .input-header.objective { background: var(--blue); }
+    .input-header.context   { background: var(--purple); }
+    .input-header.constraints { background: var(--magenta); }
+    .input-header.output    { background: var(--cyan); }
+    .input-header.stop      { background: var(--gold); }
+
+    .input-header .extra {
+      margin-left: auto;
+      font-size: 8.5px;
+      opacity: 0.85;
+      font-family: "Consolas", "Courier New", monospace;
+    }
+
+    textarea {
+      width: 100%;
+      background: #000000;
+      color: #c8d8ff;
+      border: none;
+      resize: none;
+      padding: 7px 9px;
+      font-size: 13.5px;
+      line-height: 1.38;
+      font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+      outline: none;
+    }
+    textarea:focus {
+      box-shadow: inset 0 0 0 1px rgba(102, 187, 255, 0.25);
+    }
+    textarea::placeholder {
+      color: #334455;
+      font-style: italic;
+    }
+
+    /* Size variations */
+    #role { height: 58px; }
+    #objective { height: 82px; }
+    #context { height: 196px; }
+    #constraints { height: 196px; }
+    #output { height: 96px; }
+    #stop { height: 68px; }
+
+    /* === PROMINENT COPY BUTTON (very LCARS) === */
+    .copy-section {
+      margin: 8px 0 4px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .lcars-copy {
+      flex: 1;
+      height: 46px;
+      background: linear-gradient(180deg, #ffbb33 0%, var(--orange) 42%, var(--orange-dark) 100%);
+      color: #000;
+      border: none;
+      border-radius: 0 24px 24px 0;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 3.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 0 0 2px #000, 0 0 0 5px var(--orange);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      position: relative;
+    }
+    .lcars-copy:hover {
+      box-shadow: 0 0 0 2px #000, 0 0 0 5px #ffcc66, 0 3px 10px rgba(255,153,0,0.6);
+      transform: translateY(-1px);
+    }
+    .lcars-copy:active {
+      transform: scale(0.985);
+      box-shadow: 0 0 0 2px #000, 0 0 0 4px #cc7700;
+    }
+    .lcars-copy::before {
+      content: "▶";
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 17px;
+    }
+    .lcars-copy span { padding-left: 28px; }
+
+    .lcars-clear {
+      height: 46px;
+      padding: 0 16px;
+      background: #111a2a;
+      color: var(--magenta);
+      border: 2px solid var(--magenta);
+      border-radius: 18px 0 0 18px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      line-height: 1.1;
+    }
+    .lcars-clear:hover {
+      background: #1f1122;
+      color: #ff88aa;
+      border-color: #ff88aa;
+    }
+
+    .buffer {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-align: right;
+      min-width: 92px;
+      font-family: "Consolas", "Courier New", monospace;
+    }
+    .buffer .num { color: var(--gold); font-weight: 700; }
+
+    /* === RIGHT SIDEBAR (data readouts like image) === */
+    .right-sidebar {
+      background: var(--bar-dark);
+      border: 1px solid #1a2a44;
+      border-radius: 0 6px 6px 0;
+      padding: 8px 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 9px;
+    }
+    .right-sidebar .section-title {
+      font-size: 8.5px;
+      color: var(--blue-bright);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 2px;
+      padding-left: 2px;
+    }
+    .data-readout {
+      background: #000;
+      padding: 3px 5px;
+      border-radius: 2px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8.5px;
+      color: var(--text-data);
+      line-height: 1.25;
+      margin-bottom: 2px;
+    }
+    .data-readout .label {
+      color: #446688;
+      font-size: 7.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .scan-label {
+      font-size: 9.5px;
+      color: #66bbff;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin: 4px 0 2px;
+    }
+    .big-num {
+      font-size: 17px;
+      font-weight: 800;
+      color: #66bbff;
+      line-height: 1;
+      font-family: "Consolas", "Courier New", monospace;
+    }
+
+    /* === BOTTOM DECOR (scan grid + circular control) === */
+    .bottom-bar {
+      margin-top: 6px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .scan-grid {
+      flex: 1;
+      background: #000;
+      border: 1px solid #1a2a44;
+      border-radius: 3px;
+      padding: 4px 6px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8px;
+      color: #1f3a60;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 2px 1px;
+      opacity: 0.6;
+      user-select: none;
+    }
+    .scan-grid div {
+      height: 7px;
+      background: currentColor;
+      opacity: 0.25;
+    }
+    .scan-grid .active { opacity: 0.85; background: #4499ff; }
+
+    /* Decorative circular LCARS control (inspired by the image) */
+    .circular-control {
+      width: 92px;
+      height: 92px;
+      position: relative;
+      flex-shrink: 0;
+      background: #000;
+      border: 2px solid #1a2a44;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+    .circular-control .pie {
+      position: absolute;
+      inset: 0;
+      background: conic-gradient(
+        #8866cc 0deg 48deg,
+        #4499ff 48deg 96deg,
+        #ff9900 96deg 144deg,
+        #ccaa77 144deg 192deg,
+        #66bbff 192deg 240deg,
+        #ff6699 240deg 288deg,
+        #4499ff 288deg 336deg,
+        #8866cc 336deg 360deg
+      );
+      mask: radial-gradient(circle at center, transparent 34%, black 36%);
+    }
+    .circular-control .center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 34px;
+      height: 34px;
+      background: #000;
+      border: 2px solid #1a2a44;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 800;
+      color: #66bbff;
+      letter-spacing: 0.5px;
+    }
+    .circular-control .arrow {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 9px solid #fff;
+      transform: translate(-50%, -50%) rotate(0deg);
+      opacity: 0.7;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111a2a;
+      color: var(--orange);
+      border: 2px solid var(--orange);
+      padding: 6px 22px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 1000;
+    }
+    .toast.show { opacity: 1; }
+
+    .lcars-footer {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 8px;
+      color: #223344;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <!-- TOP ENGINEERING BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">LCARS 4.7</div>
+    <div class="top-bar-title">PROMPT SYNTHESIZER • DECK 09</div>
+    <div class="top-bar-right">
+      <div>INTERFACE ACTIVE</div>
+      <div class="top-status" id="stardate">45221.7</div>
+    </div>
+  </div>
+
+  <div class="console">
+    <!-- DENSE LCARS BACKGROUND LITTER -->
+    <div class="bg-litter">
+      <!-- Vertical data columns -->
+      <div class="data-column left">
+        1209 0809 0716 1701746560000 2 9840 1701 1701 9840 6607 8235 7233 7233 258 2 2 7240746561701710580102 158 158 985
+      </div>
+      <div class="data-column right">
+        23 548 2453 265485486543 23 23 2310 1234 23 45623 23 78 105 7-4856 18-5245 7-4205 1-701E 18-5245
+      </div>
+
+      <!-- Horizontal data strips -->
+      <div class="data-strip s1">1701 9840 6607 8235 7233 258 2 2 1701746560000 546615216 2 9840 1701</div>
+      <div class="data-strip s2">2345 0809 34 484 2 9840 1701 1701 234 43 8452 7233 7233 258 2 2 986747875 158 258 789</div>
+      <div class="data-strip s3">235 235 54452515 541 15555 25 235 23 124545 12288 45 213 5 55654841518 785 135 1245871222122235</div>
+
+      <!-- Hex-style rows -->
+      <div class="hex-row r1">546615216  2 9840 1701 1701 9840 6607 78 7233 7233 258 2 2 87847485487464757689568353524345</div>
+      <div class="hex-row r2">23 548 2453 265485486543 23 23 2310 1234 23 45623 23 78 105 7-4856 18-5245 7-4205 1-701E</div>
+      <div class="hex-row r3">235 235 54452515 541 15555 25 235 23 124545 12288 45 213 5 55654841518 785 135 1245871222122235</div>
+
+      <!-- Scattered small pills -->
+      <div class="bg-pill p1">2.258</div>
+      <div class="bg-pill p2">38</div>
+      <div class="bg-pill p3">44</div>
+      <div class="bg-pill p4">17</div>
+      <div class="bg-pill p5">9</div>
+      <div class="bg-pill p6">16</div>
+      <div class="bg-pill p7">36</div>
+      <div class="bg-pill p8">6</div>
+    </div>
+
+    <!-- MAIN THREE-COLUMN LAYOUT -->
+    <div class="main-grid">
+      <!-- LEFT SIDEBAR - dense button stack like the image -->
+      <div class="left-sidebar">
+        <div class="pill b1"><span>2.258</span><span>38</span></div>
+        <div class="pill b2"><span>2.258</span><span>44</span></div>
+        <div class="pill b3"><span>2.258</span><span>6</span></div>
+        <div class="pill b4"><span>2.258</span><span>17</span></div>
+        <div class="pill b5"><span>2.258</span><span>9</span></div>
+        <div class="pill b6"><span>2.258</span><span>16</span></div>
+        <div class="pill b7"><span>2.258</span><span>36</span></div>
+        <div class="pill b8"><span>2.258</span><span>44</span></div>
+        <div class="pill b9"><span>2.258</span><span>6</span></div>
+
+        <div class="label">CALIBRATE</div>
+        <div style="display:flex; gap:3px; width:100%; margin-top:2px;">
+          <div style="flex:1; height:14px; background:#ff9900; border-radius:999px; font-size:8px; color:#000; display:flex; align-items:center; justify-content:center;">1908</div>
+          <div style="flex:1; height:14px; background:#ffcc66; border-radius:999px; font-size:8px; color:#000; display:flex; align-items:center; justify-content:center;">1002</div>
+        </div>
+        <div class="label">MODE SELECT</div>
+      </div>
+
+      <!-- CENTER - THE ACTUAL PROMPT BUILDER -->
+      <div class="work-area">
+        <div class="work-title">PROMPT CONSTRUCTION MATRIX • INPUT CHANNELS</div>
+
+        <div class="copy-section">
+          <button id="copy-btn" class="lcars-copy"><span>COPY PROMPT TO DATABANK</span></button>
+          <button id="clear-btn" class="lcars-clear">CLEAR<br>ALL</button>
+        </div>
+        <div class="buffer">BUFFER: <span id="char-count" class="num">0</span> CHARS</div>
+
+        <!-- INPUT PANELS -->
+        <div class="input-panel">
+          <div class="input-header role">ROLE <span class="extra">CH-01  2.258</span></div>
+          <textarea id="role" placeholder="Describe the persona the AI should adopt..."></textarea>
+        </div>
+        <div class="input-panel">
+          <div class="input-header objective">OBJECTIVE <span class="extra">CH-02  1701</span></div>
+          <textarea id="objective" placeholder="What the prompt should accomplish..."></textarea>
+        </div>
+        <div class="input-panel">
+          <div class="input-header context">CONTEXT <span class="extra">CH-03  9840</span></div>
+          <textarea id="context" placeholder="Relevant background, facts, or situation..."></textarea>
+        </div>
+        <div class="input-panel">
+          <div class="input-header constraints">CONSTRAINTS <span class="extra">CH-04  7233</span></div>
+          <textarea id="constraints" placeholder="Rules, limitations, tone, forbidden topics..."></textarea>
+        </div>
+        <div class="input-panel">
+          <div class="input-header output">OUTPUT <span class="extra">CH-05  258</span></div>
+          <textarea id="output" placeholder="Desired format, structure, length, style..."></textarea>
+        </div>
+        <div class="input-panel">
+          <div class="input-header stop">STOP <span class="extra">CH-06  2</span></div>
+          <textarea id="stop" placeholder="When to stop or final instructions..."></textarea>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDEBAR - data readouts like the image -->
+      <div class="right-sidebar">
+        <div class="section-title">LONG RANGE SCAN</div>
+        <div class="big-num">28741</div>
+        <div class="scan-label">SCAN PARAMETERS</div>
+        <div style="font-size:8px; color:#446688;">581257-365</div>
+
+        <div class="data-readout">
+          <div class="label">PROMPT INTEGRITY</div>
+          <div style="color:#66bbff;">100%</div>
+        </div>
+        <div class="data-readout">
+          <div class="label">SECTIONS ACTIVE</div>
+          <div id="sections-active">0 / 6</div>
+        </div>
+        <div class="data-readout">
+          <div class="label">EST. TOKENS</div>
+          <div id="token-est">0</div>
+        </div>
+
+        <div style="margin-top:6px; font-size:8px; color:#446688;">STATUS</div>
+        <div style="background:#000; padding:2px 4px; font-family:monospace; font-size:8px; color:#4499ff;">
+          READY<br>
+          18-5245 18-5245<br>
+          23-854  4-2584
+        </div>
+
+        <div style="margin-top:auto; font-size:7.5px; color:#334455; text-align:center; padding-top:4px;">
+          U.S.S. ENTERPRISE<br>
+          NCC-1701-D
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR with scan grid + circular control -->
+    <div class="bottom-bar">
+      <div class="circular-control" title="LCARS Mode Selector (decorative)">
+        <div class="pie"></div>
+        <div class="center">MODE</div>
+        <div class="arrow"></div>
+      </div>
+
+      <div class="scan-grid" title="System activity grid">
+        <div></div><div class="active"></div><div></div><div></div><div class="active"></div><div></div>
+        <div class="active"></div><div></div><div></div><div></div><div></div><div class="active"></div>
+        <div></div><div></div><div class="active"></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div class="active"></div><div></div><div></div>
+      </div>
+    </div>
+
+    <div class="lcars-footer">
+      LCARS • PROMPT MATRIX 4.7 • ACCESS LEVEL: COMMANDER • ALL SECTIONS SECURE
+    </div>
+  </div>
+
+  <div id="toast" class="toast">PROMPT COPIED TO DATABANK</div>
+
+  <script>
+    const ids = ['role', 'objective', 'context', 'constraints', 'output', 'stop'];
+
+    function getValue(id) {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+
+    function buildPrompt() {
+      const parts = [];
+      const role = getValue('role');
+      if (role) parts.push(`ROLE:\n${role}`);
+      const objective = getValue('objective');
+      if (objective) parts.push(`OBJECTIVE:\n${objective}`);
+      const context = getValue('context');
+      if (context) parts.push(`CONTEXT:\n${context}`);
+      const constraints = getValue('constraints');
+      if (constraints) parts.push(`CONSTRAINTS:\n${constraints}`);
+      const output = getValue('output');
+      if (output) parts.push(`OUTPUT FORMAT:\n${output}`);
+      const stop = getValue('stop');
+      if (stop) parts.push(`STOP CONDITIONS:\n${stop}`);
+      return parts.join('\n\n');
+    }
+
+    function updateLiveStats() {
+      const prompt = buildPrompt();
+      const countEl = document.getElementById('char-count');
+      countEl.textContent = prompt.length.toLocaleString();
+
+      // Count non-empty sections
+      let active = 0;
+      ids.forEach(id => { if (getValue(id)) active++; });
+      const activeEl = document.getElementById('sections-active');
+      if (activeEl) activeEl.textContent = `${active} / 6`;
+
+      // Rough token estimate (very approximate)
+      const tokenEl = document.getElementById('token-est');
+      if (tokenEl) tokenEl.textContent = Math.round(prompt.length / 3.8);
+    }
+
+    function saveToStorage() {
+      const data = {};
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) data[id] = el.value;
+      });
+      try { localStorage.setItem('lcarsPromptData', JSON.stringify(data)); } catch(e){}
+    }
+
+    function loadFromStorage() {
+      try {
+        const raw = localStorage.getItem('lcarsPromptData');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        ids.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && data[id] !== undefined) el.value = data[id];
+        });
+      } catch(e){}
+    }
+
+    function clearAll() {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      updateLiveStats();
+      saveToStorage();
+    }
+
+    async function copyPrompt() {
+      const promptText = buildPrompt();
+      const copyBtn = document.getElementById('copy-btn');
+      const toast = document.getElementById('toast');
+
+      try {
+        await navigator.clipboard.writeText(promptText);
+        const original = copyBtn.innerHTML;
+        copyBtn.style.background = '#22aa00';
+        copyBtn.style.color = '#000';
+        copyBtn.innerHTML = '<span>PROMPT TRANSFERRED</span>';
+
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 1400);
+
+        setTimeout(() => {
+          copyBtn.style.background = '';
+          copyBtn.style.color = '';
+          copyBtn.innerHTML = original;
+        }, 1200);
+      } catch (err) {
+        const ta = document.createElement('textarea');
+        ta.value = promptText;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          toast.textContent = 'PROMPT COPIED (FALLBACK)';
+          toast.classList.add('show');
+          setTimeout(() => {
+            toast.classList.remove('show');
+            toast.textContent = 'PROMPT COPIED TO DATABANK';
+          }, 1400);
+        } catch(e) {
+          alert('Copy failed. Please select and copy manually:\n\n' + promptText);
+        }
+        document.body.removeChild(ta);
+      }
+    }
+
+    function updateStardate() {
+      const el = document.getElementById('stardate');
+      const base = 45221.7;
+      const offset = (Date.now() / 86400000) % 1 * 0.9;
+      el.textContent = (base + offset).toFixed(1);
+    }
+
+    function attachListeners() {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+          updateLiveStats();
+          saveToStorage();
+        });
+        el.addEventListener('keydown', (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            copyPrompt();
+          }
+        });
+      });
+
+      document.getElementById('copy-btn').addEventListener('click', copyPrompt);
+      document.getElementById('clear-btn').addEventListener('click', () => {
+        if (confirm('Clear all input fields?')) clearAll();
+      });
+    }
+
+    function init() {
+      loadFromStorage();
+      updateLiveStats();
+      updateStardate();
+      setInterval(updateStardate, 38000);
+      attachListeners();
+      setTimeout(saveToStorage, 60);
+
+      // Keyboard hint
+      console.log('%c[LCARS] Ctrl/Cmd + Enter in any field copies the compiled prompt.', 'color:#334455');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
