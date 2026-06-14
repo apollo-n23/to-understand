@@ -175,6 +175,10 @@
     // Note: endBoss / bossDefeated removed - end of level now functions like levels 1-3 (direct ladder+portal spawn)
     let friendlyNPC = null;
 
+    // Octopopp NPCs (start of level + halfway) - two separate instances for dialogues, same bubble mechanic as level2
+    let octopoppStart = null;
+    let octopoppMid = null;
+
     const keys = {};
 
     // === NEON DASH DREAMY SFX ENGINE (shared across all levels) ===
@@ -395,6 +399,8 @@
       frame = 0;
       // boss state removed for L5 (no active boss mechanic)
       friendlyNPC = null;
+      octopoppStart = null;
+      octopoppMid = null;
       // baseScore is NOT reset here - it carries from previous levels via localStorage
       // seed a couple early obstacles
       obstacles.push({ wx: 340, h: 26 });
@@ -411,7 +417,7 @@
     }
 
     function initBackgroundElements() {
-      // Distant rocky volcanoes with lava rivers + midground crags (lava theme)
+      // Distant alien floral blooms + midground vine stalks (botanical biosphere; pink/purple/green palette)
       backgroundElements = [];
       const spread = 12500;
       const startX = -600;
@@ -421,9 +427,9 @@
         const r = Math.random();
 
         if (r < 0.72) {
-          // Large rocky volcano cone with lava (reduced count + tighter culling for perf; density preserved via parallax)
+          // Large alien floral bloom stem with layered petals + glowing center (reduced polys; parallax + phase sway preserved)
           backgroundElements.push({
-            type: 'volcano',
+            type: 'largeBloom',
             wx: wx,
             y: GROUND_Y - 8 - Math.random() * 32,
             scale: 0.9 + Math.random() * 1.25,
@@ -431,9 +437,9 @@
             phase: Math.random() * Math.PI * 2
           });
         } else {
-          // Closer jagged rock crag / small vent
+          // Closer midground vine stalk cluster with small blooms / leaves
           backgroundElements.push({
-            type: 'crag',
+            type: 'midStalk',
             wx: wx + (Math.random() - 0.5) * 120,
             y: GROUND_Y - 22 - Math.random() * 18,
             scale: 0.6 + Math.random() * 0.9,
@@ -1693,6 +1699,24 @@
         }
       }
 
+      // Octopopp update for bounce (happy idle) + approach detection (duplicated for start/mid)
+      if (octopoppStart) {
+        octopoppStart.bouncePhase = frame * 0.15;
+        const dx = Math.abs((player.wx + player.w * 0.5) - octopoppStart.wx);
+        const dy = Math.abs((player.y + player.h * 0.5) - (octopoppStart.y - 17));
+        if (dx < 80 && dy < 60) {
+          octopoppStart.approached = true;
+        }
+      }
+      if (octopoppMid) {
+        octopoppMid.bouncePhase = frame * 0.15;
+        const dx = Math.abs((player.wx + player.w * 0.5) - octopoppMid.wx);
+        const dy = Math.abs((player.y + player.h * 0.5) - (octopoppMid.y - 17));
+        if (dx < 80 && dy < 60) {
+          octopoppMid.approached = true;
+        }
+      }
+
       // === BOSS FIREBALLS (large polygonal monster beyond the invisible barrier spits these)
       // Speed reduced 15%, boss is positioned further back
       if (levelExit && gameState === 'playing') {
@@ -1804,6 +1828,27 @@
         };
       }
 
+      // Spawn Octopopp at the VERY START of level 5 (early, fixed position ahead of player)
+      if (!octopoppStart && player.wx > 100) {
+        octopoppStart = {
+          wx: 175,
+          y: GROUND_Y - 50,
+          bouncePhase: 0,
+          approached: false
+        };
+      }
+
+      // Spawn Octopopp HALFWAY through level 5 (around 3200-3500 for ~6740 length)
+      if (!octopoppMid && player.wx > 3200 && player.wx < 3600) {
+        const rand = Math.random();
+        octopoppMid = {
+          wx: player.wx + 120 + rand * 40,
+          y: GROUND_Y - 50,
+          bouncePhase: 0,
+          approached: false
+        };
+      }
+
       // Shield power-up: 3 evenly spaced spawns across the (10% longer) level
       const endDist = 6740;
       const shieldTargets = [endDist * 0.22, endDist * 0.48, endDist * 0.74];
@@ -1898,9 +1943,9 @@
         ctx.fill();
       }
 
-      // === DISTANT BACKGROUND SCENERY: ROCKY VOLCANOES + LAVA RIVERS (parallax) ===
-      // Drawn far back with strong parallax; animated lava flows & pools
-      // Perf: alpha hoisted once (batch), reduced paths/quads/ellipses/strata/smoke, lines for rivers, lavaPulse reuse
+      // === DISTANT BACKGROUND SCENERY: ALIEN FLORAL BLOOMS + VINE STALKS (parallax) ===
+      // Drawn far back with strong parallax; animated petal/leaf sway + glow pulse (pink alien botanical biosphere)
+      // Perf: alpha hoisted once (batch), reduced paths (stems via rects + few leaf triangles + petal ellipses), sway via phase
       ctx.globalAlpha = 0.82;
       for (let b of backgroundElements) {
         const sx = b.wx - scrollX * b.parallax;
@@ -1909,87 +1954,88 @@
         const s = b.scale || 1;
         const baseY = b.y;
         const phase = (b.phase || 0) + frame * 0.031;
-        const lavaPulse = Math.sin(phase * 1.3); // reuse sin for rivers/pool instead of repeated calls
+        const floralPulse = Math.sin(phase * 1.3); // reuse sin for petal sway + bloom glow pulse (was lavaPulse)
 
-        if (b.type === 'volcano') {
-          // Rocky volcano: simplified (fewer beginPath/polys vs original multi-slope; still reads as cone + crater + flows)
-          ctx.fillStyle = '#2a2521';
+        if (b.type === 'largeBloom') {
+          // Large alien floral bloom: tall green stem, swaying pink/magenta petals, soft green leaves, glowing purple center (phase sway preserved)
+          const stemH = 56 * s;
+          const stemX = sx - 1.8 * s;
+          ctx.fillStyle = '#44aa66';
+          ctx.fillRect(stemX, baseY - stemH, 3.6 * s, stemH);
+          // Sway offset for animated petals/leaves (uses existing phase hook)
+          const sway = Math.sin(phase) * 3.2 * s;
+          const p = 1.0 + floralPulse * 0.12; // light petal pulse
+          // Leaves (alternating sides, simple triangle-ish paths, low count for perf)
+          ctx.fillStyle = '#3a8a55';
+          // leaf 1 lower left
           ctx.beginPath();
-          ctx.moveTo(sx - 26 * s, baseY + 52 * s);
-          ctx.lineTo(sx, baseY - 44 * s);
-          ctx.lineTo(sx + 32 * s, baseY + 54 * s);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = '#3a312b';
+          ctx.moveTo(stemX + 1.5*s, baseY - 18*s);
+          ctx.lineTo(stemX - 13*s + sway*0.4, baseY - 24*s);
+          ctx.lineTo(stemX + 1.5*s, baseY - 30*s);
+          ctx.closePath(); ctx.fill();
+          // leaf 2 right
           ctx.beginPath();
-          ctx.moveTo(sx - 18 * s, baseY + 50 * s);
-          ctx.lineTo(sx, baseY - 40 * s);
-          ctx.lineTo(sx + 22 * s, baseY + 52 * s);
-          ctx.closePath();
-          ctx.fill();
-          // Reduced strata
-          ctx.fillStyle = 'rgba(24, 21, 18, 0.6)';
-          ctx.fillRect(sx - 20 * s, baseY + 10 * s, 40 * s, 2 * s);
-          ctx.fillRect(sx - 16 * s, baseY + 28 * s, 32 * s, 2 * s);
-
-          // Crater
-          ctx.fillStyle = '#1f1a17';
+          ctx.moveTo(stemX + 2*s, baseY - 32*s);
+          ctx.lineTo(stemX + 15*s + sway*0.5, baseY - 28*s);
+          ctx.lineTo(stemX + 2*s, baseY - 40*s);
+          ctx.closePath(); ctx.fill();
+          // leaf 3 left higher
           ctx.beginPath();
-          ctx.ellipse(sx, baseY - 42 * s, 9 * s, 4.5 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = `rgba(210, 85, 28, ${0.45 + 0.3 * lavaPulse})`;
+          ctx.moveTo(stemX + 1.2*s, baseY - 42*s);
+          ctx.lineTo(stemX - 11*s + sway*0.6, baseY - 46*s);
+          ctx.lineTo(stemX + 1.2*s, baseY - 50*s);
+          ctx.closePath(); ctx.fill();
+          // Flower head position (gentle sway)
+          const hx = sx + sway * 0.7;
+          const hy = baseY - 58 * s;
+          // Outer soft pink petal glow layer
+          ctx.fillStyle = 'rgba(255, 136, 204, 0.55)';
+          ctx.beginPath(); ctx.ellipse(hx, hy, 14 * s * p, 8 * s * p, 0, 0, Math.PI * 2); ctx.fill();
+          // Layered petals (pinks/magentas, offset for bloom shape)
+          ctx.fillStyle = '#ff88cc';
+          ctx.beginPath(); ctx.ellipse(hx - 4*s, hy - 1*s, 8*s*p, 5*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(hx + 4.5*s, hy + 1.5*s, 7.5*s*p, 4.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ff66aa';
+          ctx.beginPath(); ctx.ellipse(hx + 2*s, hy - 5*s, 7*s*p, 4.2*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(hx - 5*s, hy + 3*s, 6.5*s*p, 5*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#cc4499';
+          ctx.beginPath(); ctx.ellipse(hx, hy + 1*s, 6*s*p, 3.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          // Glowing center bloom (purple accent + pulse)
+          ctx.fillStyle = `rgba(102, 34, 170, ${0.75 + 0.25 * floralPulse})`;
+          ctx.beginPath(); ctx.ellipse(hx, hy, 4.5 * s * p, 3.2 * s * p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ffccdd';
+          ctx.beginPath(); ctx.ellipse(hx - 1*s, hy - 0.8*s, 1.8 * s, 1.2 * s, 0, 0, Math.PI * 2); ctx.fill();
+        } else if (b.type === 'midStalk') {
+          // Midground vine stalk cluster: compact stems, small leaves + pink/purple glowing mini-blooms (sway anim)
+          const stemH = 36 * s;
+          ctx.fillStyle = '#3a8a55';
+          ctx.fillRect(sx - 1.2 * s, baseY - stemH, 2.4 * s, stemH);
+          const sway = Math.sin(phase * 0.95) * 2.1 * s;
+          const p = 1.0 + floralPulse * 0.15;
+          // Small side leaves
+          ctx.fillStyle = '#44aa66';
           ctx.beginPath();
-          ctx.ellipse(sx, baseY - 43 * s, 5.5 * s, 2.8 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Lava rivers (cheaper line segments instead of quads; animated)
-          ctx.strokeStyle = `rgba(245, 115, 35, ${0.55 + 0.3 * lavaPulse})`;
-          ctx.lineWidth = 1.6 * s;
+          ctx.moveTo(sx, baseY - 12*s);
+          ctx.lineTo(sx - 8*s + sway*0.5, baseY - 15*s);
+          ctx.lineTo(sx, baseY - 20*s);
+          ctx.closePath(); ctx.fill();
           ctx.beginPath();
-          ctx.moveTo(sx - 3 * s, baseY - 38 * s);
-          ctx.lineTo(sx - 18 * s, baseY - 6 * s);
-          ctx.lineTo(sx - 27 * s, baseY + 46 * s);
-          ctx.stroke();
-          ctx.strokeStyle = `rgba(255, 140, 45, ${0.48 + 0.25 * Math.sin(phase * 1.65 + 1.8)})`;
-          ctx.beginPath();
-          ctx.moveTo(sx + 5 * s, baseY - 37 * s);
-          ctx.lineTo(sx + 20 * s, baseY + 2 * s);
-          ctx.lineTo(sx + 33 * s, baseY + 50 * s);
-          ctx.stroke();
-          ctx.lineWidth = 1;
-
-          // Base pool
-          ctx.fillStyle = 'rgba(175, 55, 18, 0.65)';
-          ctx.beginPath();
-          ctx.ellipse(sx + 4 * s, baseY + 55 * s, 15 * s, 4 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = `rgba(240, 110, 30, ${0.4 + 0.25 * lavaPulse})`;
-          ctx.beginPath();
-          ctx.ellipse(sx + 4 * s, baseY + 54 * s, 9 * s, 2.2 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (b.type === 'crag') {
-          // Jagged midground rock crag / lava vent outcrop (lightly reduced)
-          ctx.fillStyle = '#2c2723';
-          ctx.fillRect(sx - 6 * s, baseY, 13 * s, 38 * s);
-          ctx.fillStyle = '#342d27';
-          ctx.beginPath();
-          ctx.moveTo(sx - 8 * s, baseY + 6);
-          ctx.lineTo(sx - 1 * s, baseY - 22 * s);
-          ctx.lineTo(sx + 11 * s, baseY + 4 * s);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = '#251f1b';
-          ctx.fillRect(sx - 10 * s, baseY + 15 * s, 5 * s, 3 * s);
-
-          const ventOn = Math.sin(phase * 1.4) > -0.1;
-          ctx.fillStyle = ventOn ? 'rgba(235, 95, 30, 0.65)' : 'rgba(235, 95, 30, 0.12)';
-          ctx.fillRect(sx - 2 * s, baseY + 6 * s, 4.5 * s, 2 * s);
-          ctx.fillRect(sx + 1 * s, baseY + 19 * s, 2.5 * s, 1.8 * s);
-
-          ctx.fillStyle = 'rgba(160, 48, 15, 0.55)';
-          ctx.beginPath();
-          ctx.ellipse(sx + 2 * s, baseY + 40 * s, 8 * s, 2.5 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(sx + 0.5*s, baseY - 25*s);
+          ctx.lineTo(sx + 9*s + sway*0.6, baseY - 23*s);
+          ctx.lineTo(sx + 0.5*s, baseY - 30*s);
+          ctx.closePath(); ctx.fill();
+          // Mini blooms / glowing petals clusters (2-3)
+          ctx.fillStyle = 'rgba(255, 136, 204, 0.5)';
+          ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 5.5*s*p, 3.5*s*p, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#ff88cc';
+          ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 3*s*p, 2.2*s*p, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#6622aa';
+          ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 1.6*s, 1.1*s, 0, 0, Math.PI*2); ctx.fill();
+          // Second small bloom higher/side
+          ctx.fillStyle = 'rgba(255, 102, 170, 0.45)';
+          ctx.beginPath(); ctx.ellipse(sx - 5*s + sway*0.6, baseY - 29*s, 4.2*s*p, 2.8*s*p, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#ee77bb';
+          ctx.beginPath(); ctx.ellipse(sx - 5*s + sway*0.6, baseY - 29*s, 2.3*s, 1.6*s, 0, 0, Math.PI*2); ctx.fill();
         }
       }
       ctx.globalAlpha = 1;
@@ -2599,6 +2645,123 @@
         }
       }
 
+      // === OCTOPOPP NPCs (pink octagon with blue eyes; start + halfway dialogues; same bubble mechanic)
+      // Start NPC (very beginning of level 5)
+      if (octopoppStart) {
+        const bob = Math.sin(octopoppStart.bouncePhase || 0) * 5;
+        const npcX = octopoppStart.wx - scrollX;
+        const npcBaseY = octopoppStart.y;
+        const drawY = npcBaseY - bob;
+        const size = 34;
+        const r = size / 2;
+        const isOnScreen = npcX >= -50 && npcX <= W + 50;
+        if (isOnScreen) {
+          // Pink octagon
+          ctx.fillStyle = '#ff88dd';
+          ctx.strokeStyle = '#cc5599';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < 8; i++) {
+            const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
+            const x = npcX + Math.cos(ang) * r;
+            const y = drawY + Math.sin(ang) * r;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // Blue eyes
+          ctx.fillStyle = '#4488ff';
+          ctx.beginPath();
+          ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          // Speech bubble if approached (exact text)
+          // Disappears when NPC off screen (npcX check)
+          if (octopoppStart.approached && npcX > -50 && npcX < W + 50) {
+            const boxW = 240;
+            const boxH = 42;
+            const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
+            const boxY = Math.max(12, drawY - 58);
+            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
+            ctx.fillRect(boxX, boxY, boxW, boxH);
+            ctx.strokeStyle = '#aaddff';
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
+            ctx.fillStyle = '#ccddff';
+            ctx.font = '11px Segoe UI, Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('There\'s a great mystery.', boxX + boxW / 2, boxY + 14);
+            ctx.fillText('Why is all the neon floating away?', boxX + boxW / 2, boxY + 30);
+            ctx.strokeStyle = '#88bbdd';
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxW / 2, boxY + boxH);
+            ctx.lineTo(npcX, drawY - 2);
+            ctx.stroke();
+          }
+        }
+      }
+      // Mid NPC (halfway through level 5)
+      if (octopoppMid) {
+        const bob = Math.sin(octopoppMid.bouncePhase || 0) * 5;
+        const npcX = octopoppMid.wx - scrollX;
+        const npcBaseY = octopoppMid.y;
+        const drawY = npcBaseY - bob;
+        const size = 34;
+        const r = size / 2;
+        const isOnScreen = npcX >= -50 && npcX <= W + 50;
+        if (isOnScreen) {
+          // Pink octagon
+          ctx.fillStyle = '#ff88dd';
+          ctx.strokeStyle = '#cc5599';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < 8; i++) {
+            const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
+            const x = npcX + Math.cos(ang) * r;
+            const y = drawY + Math.sin(ang) * r;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // Blue eyes
+          ctx.fillStyle = '#4488ff';
+          ctx.beginPath();
+          ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          // Speech bubble if approached (exact text)
+          // Disappears when NPC off screen (npcX check)
+          if (octopoppMid.approached && npcX > -50 && npcX < W + 50) {
+            const boxW = 230;
+            const boxH = 38;
+            const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
+            const boxY = Math.max(12, drawY - 55);
+            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
+            ctx.fillRect(boxX, boxY, boxW, boxH);
+            ctx.strokeStyle = '#aaddff';
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
+            ctx.fillStyle = '#ccddff';
+            ctx.font = '11px Segoe UI, Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('The only way to save us is to stop the neon leak!', boxX + boxW / 2, boxY + 22);
+            ctx.strokeStyle = '#88bbdd';
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxW / 2, boxY + boxH);
+            ctx.lineTo(npcX, drawY - 2);
+            ctx.stroke();
+          }
+        }
+      }
+
       // draw obstacles (triangles) - lava themed living hazards that wiggle L/R as if alive
       for (let o of obstacles) {
         const sx = o.wx - scrollX;
@@ -2911,37 +3074,43 @@
         const pulse = Math.sin(frame * 0.12 + orb.phase) * (isGreen ? 1.5 : 1.2);
 
         if (isGreen) {
-          // Green glowing orb (faster, worth 5)
-          ctx.fillStyle = 'rgba(60, 220, 120, 0.35)';
-          ctx.beginPath();
-          ctx.arc(sx + 3, sy, 10 + pulse * 0.5, 0, Math.PI * 2);
-          ctx.fill();
-
+          // Green glowing tall neon bar (faster, worth 5; thin vertical rect + inner glow + top highlight; pulse on height)
+          const barW = 3.2;
+          const baseH = 15;
+          const barH = baseH + pulse * 0.7;
+          const bx = sx + 1.5;
+          const by = sy - barH / 2;
+          // Soft outer glow (wider low-alpha rect for neon effect)
+          ctx.fillStyle = 'rgba(60, 220, 120, 0.30)';
+          ctx.fillRect(bx - 2.5, by - 1, barW + 5, barH + 2);
+          // Main tall vertical bar
           ctx.fillStyle = '#33dd88';
-          ctx.beginPath();
-          ctx.arc(sx + 3, sy, 6, 0, Math.PI * 2);
-          ctx.fill();
-
+          ctx.fillRect(bx, by, barW, barH);
+          // Inner bright core highlight (thinner vertical)
           ctx.fillStyle = '#aaffcc';
-          ctx.beginPath();
-          ctx.arc(sx + 1.5, sy - 1.5, 2.5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillRect(bx + 0.6, by + 1, barW * 0.35, barH - 3);
+          // Small top cap highlight for glow
+          ctx.fillStyle = 'rgba(220, 255, 235, 0.95)';
+          ctx.fillRect(bx, by - 1.2, barW, 2.8);
         } else {
-          // Standard dark blue orb (worth 1)
-          ctx.fillStyle = 'rgba(40, 70, 160, 0.32)';
-          ctx.beginPath();
-          ctx.arc(sx + 3, sy, 9 + pulse * 0.4, 0, Math.PI * 2);
-          ctx.fill();
-
+          // Standard dark blue tall neon bar (worth 1; thin vertical rect + inner glow + top highlight; pulse on height)
+          const barW = 3.0;
+          const baseH = 14;
+          const barH = baseH + pulse * 0.55;
+          const bx = sx + 1.5;
+          const by = sy - barH / 2;
+          // Soft outer glow (wider low-alpha rect for neon effect)
+          ctx.fillStyle = 'rgba(40, 70, 160, 0.28)';
+          ctx.fillRect(bx - 2.2, by - 1, barW + 4.4, barH + 2);
+          // Main tall vertical bar
           ctx.fillStyle = '#2244aa';
-          ctx.beginPath();
-          ctx.arc(sx + 3, sy, 5.5, 0, Math.PI * 2);
-          ctx.fill();
-
+          ctx.fillRect(bx, by, barW, barH);
+          // Inner bright core highlight (thinner vertical)
           ctx.fillStyle = '#5588ff';
-          ctx.beginPath();
-          ctx.arc(sx + 1.5, sy - 1.5, 2.2, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillRect(bx + 0.5, by + 1, barW * 0.35, barH - 3);
+          // Small top cap highlight for glow
+          ctx.fillStyle = 'rgba(180, 210, 255, 0.95)';
+          ctx.fillRect(bx, by - 1.2, barW, 2.6);
         }
       }
 
