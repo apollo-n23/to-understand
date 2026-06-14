@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NEON DASH - LEVEL 3 // LCARS 4.7</title>
+  <title>NEON DASH // LCARS 4.7</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #0c0e12;
-      color: #aabbcc;
+      background: #01060c;
+      color: #aaccdd;
       font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
@@ -22,39 +22,39 @@
       gap: 14px;
     }
     .back-link {
-      color: #8899aa;
+      color: #66bbff;
       text-decoration: none;
       font-size: 11px;
       letter-spacing: 1.5px;
       padding: 5px 13px;
-      border: 1px solid #3a424f;
+      border: 1px solid #2a4a66;
       border-radius: 2px;
       transition: all 0.1s ease;
       white-space: nowrap;
     }
     .back-link:hover {
-      background: #1a1f28;
-      border-color: #8899aa;
-      color: #aabbcc;
+      background: #0a1f33;
+      border-color: #66bbff;
+      color: #99ddff;
     }
     .page-title {
       flex: 1;
       text-align: center;
       font-size: 11px;
       letter-spacing: 4px;
-      color: #556677;
+      color: #4477aa;
       font-weight: 700;
       text-transform: uppercase;
     }
     .page-title span {
-      color: #778899;
+      color: #6699cc;
       font-weight: 400;
     }
     canvas {
       display: block;
       margin: 0 auto;
-      border: 1px solid #2a2f38;
-      box-shadow: 0 0 40px rgba(20, 25, 35, 0.6);
+      border: 1px solid #112233;
+      box-shadow: 0 0 40px rgba(10, 30, 60, 0.5);
       background: #000;
       image-rendering: pixelated;
     }
@@ -63,22 +63,22 @@
       margin: 8px auto 18px;
       text-align: center;
       font-size: 10px;
-      color: #445566;
+      color: #334455;
       letter-spacing: 1px;
     }
     .info kbd {
       font-family: "Consolas", monospace;
-      background: #1a1f28;
+      background: #0a1624;
       padding: 1px 5px;
       border-radius: 2px;
-      color: #778899;
-      border: 1px solid #3a424f;
+      color: #5588aa;
+      border: 1px solid #223344;
     }
 
-    #level3-link:hover {
-      background: rgba(45, 50, 60, 0.85);
-      border-color: #88aabb;
-      color: #ccddee;
+    #level2-link:hover {
+      background: rgba(20, 50, 80, 0.8);
+      border-color: #66ddff;
+      color: #aaddff;
       transform: translateY(-1px);
     }
   </style>
@@ -86,36 +86,18 @@
 <body>
   <div class="header">
     <a href="prompt-builder.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
-    <div class="page-title">NEON DASH LEVEL 3 <span>INDUSTRIAL WAREHOUSE • SIDE-SCROLL SIM</span></div>
+    <div class="page-title">NEON DASH PROTOCOL <span>774 • SIDE-SCROLL SIM</span></div>
   </div>
 
   <canvas id="game" width="960" height="520"></canvas>
 
   <div class="info">
-    <kbd>←</kbd> <kbd>→</kbd> MOVE CUBE &nbsp;&nbsp; <kbd>SPACE</kbd> JUMP HAZARDS + ACID VATS &nbsp;&nbsp; <kbd>R</kbd> RESTART
+    <kbd>←</kbd> <kbd>→</kbd> MOVE CUBE &nbsp;&nbsp; <kbd>SPACE</kbd> JUMP HAZARDS &amp; PLATFORMS &nbsp;&nbsp; <kbd>R</kbd> RESTART
   </div>
 
-  <!-- Level 3 Replay Link - only visible on Level Complete screen -->
-  <div id="level3-link-container" style="display: none; text-align: center; margin-top: 12px;">
-    <a id="level3-link" href="Level3.html" 
-       style="display: inline-block; 
-              color: #88aabb; 
-              text-decoration: none; 
-              font-size: 15px; 
-              font-weight: 600;
-              letter-spacing: 1.5px;
-              padding: 8px 24px;
-              border: 1px solid #556677;
-              border-radius: 4px;
-              background: rgba(30, 35, 45, 0.7);
-              transition: all 0.15s ease;">
-      → REPLAY LEVEL 3
-    </a>
-  </div>
-
-  <!-- Next Level Link - only visible on Level Complete screen (to Level 4) -->
-  <div id="next-level-link-container" style="display: none; text-align: center; margin-top: 8px;">
-    <a id="next-level-link" href="Level4.html" 
+  <!-- Level 2 Link - only visible on Level Complete screen -->
+  <div id="level2-link-container" style="display: none; text-align: center; margin-top: 12px;">
+    <a id="level2-link" href="level2.html" 
        style="display: inline-block; 
               color: #66ddff; 
               text-decoration: none; 
@@ -127,7 +109,7 @@
               border-radius: 4px;
               background: rgba(10, 30, 50, 0.6);
               transition: all 0.15s ease;">
-      → PLAY LEVEL 4
+      → PLAY LEVEL 2
     </a>
   </div>
 
@@ -165,28 +147,13 @@
     let neonOrbs = [];
     let neonScore = 0;
     let shieldSpawnIndex = 0;
-    let waterGaps = [];
-    let alienTrees = [];
-    let verticalEnemies = [];
-    let poisonClouds = [];
-    let poisonDarts = [];
-    let ceilingTurrets = [];
-    let turretLasers = [];
-    // firstSpecial for stomp tutorial
-    let firstSpecial = null;
-    let firstSpecialTutorialShown = false;
-    let lastTurretFrame = 0;
-    // firstWater* tutorial vars removed for L3 (players remember the acid vats from L2)
-    let greenOrbCount = 0;
-    let secondGreenTutorialActive = false;
     let lastWallWX = 280;
     let lastTrampolineWX = 200;
     let lastPlatWX = 280;
     let lastSpecialFrame = 0;
     let lastOrbSpawn = 0;
     let lastGreenOrbSpawn = 0;
-    let baseScore = 0;  // cumulative from previous levels (loaded from localStorage)
-    // Water/acid vat tutorial removed for Level 3 (assume knowledge from Level 2)
+    let firstShieldTutorialActive = false;
 
     const keys = {};
 
@@ -367,7 +334,7 @@
     }
 
     function resetGame() {
-      player = { wx: 90, y: 0, vx: 0, vy: 0, w: 26, h: 26, hasShield: false, isClimbing: false, invulnUntil: 0, drowningStart: 0 };
+      player = { wx: 90, y: 0, vx: 0, vy: 0, w: 26, h: 26, hasShield: false, isClimbing: false, invulnUntil: 0 };
       obstacles = [];
       particles = [];
       platforms = [];
@@ -383,41 +350,26 @@
       neonOrbs = [];
       neonScore = 0;
       shieldSpawnIndex = 0;
-      waterGaps = [];
-      alienTrees = [];
-      verticalEnemies = [];
-      poisonClouds = [];
-      poisonDarts = [];
-      ceilingTurrets = [];
-      turretLasers = [];
-      firstSpecial = null;
-      firstSpecialTutorialShown = false;
-      lastTurretFrame = 0;
-      // firstWater tutorial state cleared (no tutorial in L3)
-      greenOrbCount = 0;
-      secondGreenTutorialActive = false;
       lastWallWX = 280;
       lastTrampolineWX = 200;
       lastOrbSpawn = 0;
       lastGreenOrbSpawn = 0;
+      firstShieldTutorialActive = false;
       scrollX = 0;
       score = 0;
       jumpCount = 0;
       lastSpawnWX = 280;
       lastPlatWX = 310;
       lastSpecialFrame = 40;   // allow first monster to appear earlier
-      window.lastVertEnemySpawn = 0;
       frame = 0;
-      // baseScore is NOT reset here - it carries from previous levels via localStorage
       // seed a couple early obstacles
       obstacles.push({ wx: 340, h: 26 });
       obstacles.push({ wx: 520, h: 33 });
       lastSpawnWX = 520;
       // seed one floating platform for early play
       platforms.push({ wx: 295, y: GROUND_Y - 78, width: 62, height: 8 });
-      // seed an early tall grey chaser so player can encounter one soon
-      specials.push({ wx: 680, y: GROUND_Y - 64, w: 30, h: 64, nextShot: frame + 55 + Math.random() * 40 });
-      firstSpecial = { wx: 680, w: 30, h: 64 };
+      // seed an early monster so player can encounter one soon
+      specials.push({ wx: 680, y: GROUND_Y - 32, w: 30, h: 32, nextShot: frame + 55 + Math.random() * 40 });
       player.y = GROUND_Y - player.h;
 
       initBackgroundElements();
@@ -437,7 +389,7 @@
     }
 
     function initBackgroundElements() {
-      // Distant repeatable industrial sci-fi scenery: grey warehouses, silos, cranes in the void
+      // Distant repeatable sci-fi scenery: rocket pads, labs, and planets in the void
       backgroundElements = [];
       const spread = 12500;
       const startX = -600;
@@ -447,16 +399,16 @@
         const r = Math.random();
 
         if (r < 0.28) {
-          // Distant warehouse / loading bay (grey metal)
+          // Rocket launch site (distant tower + pad)
           backgroundElements.push({
-            type: 'rocket',  // repurposed as warehouse block
+            type: 'rocket',
             wx: wx,
             y: GROUND_Y - 18 - Math.random() * 38,
             scale: 0.65 + Math.random() * 0.55,
             parallax: 0.065 + Math.random() * 0.025
           });
         } else if (r < 0.58) {
-          // Industrial research / processing plant (chrome + panels)
+          // Science lab / research building
           backgroundElements.push({
             type: 'lab',
             wx: wx,
@@ -465,14 +417,14 @@
             parallax: 0.072 + Math.random() * 0.022
           });
         } else {
-          // Distant lit tower / crane (higher, slower parallax)
+          // Distant planet (higher in sky, slower parallax)
           backgroundElements.push({
             type: 'planet',
             wx: wx + (Math.random() - 0.5) * 180,
             y: 55 + Math.random() * 145,
             scale: 0.55 + Math.random() * 1.35,
             parallax: 0.028 + Math.random() * 0.018,
-            hue: Math.random() < 0.5 ? 'blue' : 'purple'  // no orange; chrome/grey + accent
+            hue: Math.random() < 0.5 ? 'blue' : (Math.random() < 0.5 ? 'orange' : 'purple')
           });
         }
       }
@@ -517,7 +469,7 @@
           vx: Math.cos(ang) * sp,
           vy: Math.sin(ang) * sp - 0.6,
           life: 22 + Math.random() * 26,
-          c: (Math.random() > 0.6) ? '#88aabb' : '#aaddff'
+          c: (Math.random() > 0.6) ? '#ffaa66' : '#aaddff'
         });
       }
     }
@@ -559,43 +511,6 @@
         const dx = Math.abs((pLeft + pRight) / 2 - mid);
         const allowedExtra = (oh / 2.4);
         if (dx < 11 + allowedExtra) return true;
-      }
-      return false;
-    }
-
-    // Ensures lava traps (waterGaps), triangle obstacles, lowWalls and trampolines
-    // never spawn on top of (overlapping x-ranges) or directly beside each other.
-    // Edge-to-edge min distance enforced (60px: player w~26 + margin).
-    // Used before any obs or waterGap push (and for consistency in low/tramp).
-    // Checks against ALL of the relevant existing arrays; bidirectional.
-    function wouldBeTooCloseToHazards(newLeft, newRight, minSep) {
-      // vs waterGaps (acid vats)
-      for (let g of waterGaps) {
-        const gLeft = g.wx;
-        const gRight = g.wx + g.width;
-        const dist = Math.max(0, Math.max(newLeft - gRight, gLeft - newRight));
-        if (dist < minSep) return true;
-      }
-      // vs obstacles (ground triangles) - use accurate collision width
-      for (let o of obstacles) {
-        const oLeft = o.wx - 14;
-        const oRight = o.wx + 14;
-        const dist = Math.max(0, Math.max(newLeft - oRight, oLeft - newRight));
-        if (dist < minSep) return true;
-      }
-      // vs lowWalls (for consistency)
-      for (let w of lowWalls) {
-        const wLeft = w.wx;
-        const wRight = w.wx + (w.width || 20);
-        const dist = Math.max(0, Math.max(newLeft - wRight, wLeft - newRight));
-        if (dist < minSep) return true;
-      }
-      // vs trampolines (prevent new hazards directly under/beside)
-      for (let t of trampolines) {
-        const tLeft = t.wx;
-        const tRight = t.wx + (t.width || 40);
-        const dist = Math.max(0, Math.max(newLeft - tRight, tLeft - newRight));
-        if (dist < minSep) return true;
       }
       return false;
     }
@@ -643,45 +558,6 @@
         }
       }
 
-      // Compute if currently over a toxic vat (for physics, landing, etc.)
-      let overWaterGap = false;
-      for (let gap of waterGaps) {
-        if (player.wx + player.w > gap.wx && player.wx < gap.wx + gap.width) {
-          overWaterGap = true;
-          break;
-        }
-      }
-
-      // Reset acid exposure state if player is no longer over a vat
-      if (!overWaterGap) {
-        player.drowningStart = 0;
-      }
-
-      // === VERTICAL ENEMY COLLISION (deadly up/down aliens) ===
-      for (let e of verticalEnemies) {
-        const ex = e.wx;
-        const ey = e.y;
-        // Simple AABB for the creature body
-        if (player.wx + player.w > ex - 14 && player.wx < ex + 14 &&
-            player.y + player.h > ey - 18 && player.y < ey + 18) {
-          gameState = 'over';
-          spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
-          break;
-        }
-      }
-
-      // Acid drip collision (deadly green drips from overhead)
-      for (let i = poisonDarts.length - 1; i >= 0; i--) {
-        const dart = poisonDarts[i];
-        if (player.wx + player.w > dart.wx - 3 && player.wx < dart.wx + 3 &&
-            player.y + player.h > dart.y - 2 && player.y < dart.y + 8) {
-          gameState = 'over';
-          spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
-          poisonDarts.splice(i, 1);
-          break;
-        }
-      }
-
       // === INVISIBLE BARRIER AT LEVEL END (prevents running past the ladder) ===
       if (levelExit) {
         const maxWX = levelExit.wx + 14;
@@ -714,6 +590,7 @@
         if (t >= 1) {
           player.isClimbing = false;
           gameState = 'complete';
+          playPortal();
 
           // Final portal touch burst (only ends when player reaches top)
           const ex = player.wx + 13;
@@ -736,11 +613,7 @@
       }
 
       // vertical physics
-      let gravity = 0.47;
-      if (overWaterGap) {
-        gravity = 0.22; // slightly slower fall through toxic vat than through air
-      }
-      player.vy += gravity;
+      player.vy += 0.47;
       player.y += player.vy;
 
       // === Robust landing resolution (fixes invisible platform floating bug) ===
@@ -748,21 +621,17 @@
       let landed = false;
       let targetY = player.y;
 
-      let platDeltaX = 0;
-
-      // Ground support - do not land if over an acid vat (must fall down the vat)
-      if (!overWaterGap && player.y + player.h >= GROUND_Y - 0.5) {
+      // Ground support
+      if (player.y + player.h >= GROUND_Y - 0.5) {
         targetY = GROUND_Y - player.h;
         landed = true;
       }
 
       // Platform support - find the highest (lowest y) surface we are on top of
-      // (swaying platforms use animated x position for both physics and visuals)
       for (let p of platforms) {
-        const sway = (p.swayAmp || 0) * Math.sin((frame * 0.021) + (p.swayPhase || 0));
         const platSurface = p.y - player.h;
-        const platLeft = p.wx + sway;
-        const platRight = p.wx + sway + p.width;
+        const platLeft = p.wx;
+        const platRight = p.wx + p.width;
         const pLeft = player.wx;
         const pRight = player.wx + player.w;
 
@@ -773,12 +642,6 @@
             if (platSurface < targetY) { // higher platform wins
               targetY = platSurface;
               landed = true;
-              const amp = (p.swayAmp || 0);
-              const phase = (p.swayPhase || 0);
-              const omega = 0.021;
-              const currSway = amp * Math.sin((frame * omega) + phase);
-              const prevSway = amp * Math.sin(((frame - 1) * omega) + phase);
-              platDeltaX = currSway - prevSway;
             }
           }
         }
@@ -787,10 +650,6 @@
       if (landed) {
         player.y = targetY;
         player.vy = 0;
-        player.wx += platDeltaX;
-        if (Math.abs(platDeltaX) > 0.0001) {
-          player.vx *= 0.8;
-        }
       }
 
       // === OVAL TRAMPOLINE BOOST (gives super jump just before tall walls) ===
@@ -827,24 +686,8 @@
         player.vy = -11.8;
         jumpCount++;
         spawnDust(player.wx + 8, player.y + player.h + 1, 7, true);
+        playJump();
         keys[' '] = false; // one-shot
-      }
-
-      // Slow fall and eventual death when falling through acid vats (not solid)
-      // Player must fall down the vat; falls slightly slower than sky
-      if (overWaterGap && player.y + player.h > GROUND_Y - 2) {
-        // already handled slower gravity in vertical physics
-        player.vx *= 0.6;
-
-        if (!player.drowningStart) {
-          player.drowningStart = frame;
-        }
-
-        // Die only after falling down into the vat for a while (sinking / dissolving)
-        if (frame - player.drowningStart > 65) {
-          gameState = 'over';
-          spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
-        }
       }
 
       // camera follow (smooth, with forward lead)
@@ -852,25 +695,12 @@
       scrollX += (target - scrollX) * 0.085;
 
       // === SPAWN: triangular ground hazards (spaced out more for longer level) ===
-      if (player.wx > lastSpawnWX - 140) {
-        const gap = 570 + Math.random() * 390;
+      if (player.wx > lastSpawnWX - 280) {
+        const gap = 285 + Math.random() * 195;
         const nextWX = lastSpawnWX + gap;
         const oh = 20 + Math.random() * 29;
-        const triW = 28; // accurate to collision/draw (centered -14/+14)
-        const triLeft = nextWX - triW / 2;
-        const triRight = nextWX + triW / 2;
-        // Strict pre-push check using unified helper: against ALL waterGaps, obstacles, lowWalls, trampolines.
-        // Enforces edge-to-edge >=60px separation (player ~26 + margin). Prevents "on top" (significant x-overlap considering widths)
-        // or "directly beside" (edge dist < minSep). Also covers same-type (tri vs tri) + bidirectional.
-        // (Replaces prior weak +/-10 overlap; now robust + also vs other triangles/lowWalls for full consistency.)
-        let safe = !wouldBeTooCloseToHazards(triLeft, triRight, 60);
-        if (safe) {
-          obstacles.push({ wx: nextWX, h: oh });
-          lastSpawnWX = nextWX;
-        } else {
-          // advance anyway to not get stuck
-          lastSpawnWX = nextWX;
-        }
+        obstacles.push({ wx: nextWX, h: oh });
+        lastSpawnWX = nextWX;
       }
 
       // === SPAWN: floating platforms (optional safe landings) - much more frequent now ===
@@ -892,35 +722,8 @@
             }
           }
 
-          // New rule: Trampolines must never have a platform directly above them
           if (canSpawn) {
-            for (let t of trampolines) {
-              const tCenter = t.wx + (t.width || 40) / 2;
-              const pCenter = platWX + platW / 2;
-              if (Math.abs(pCenter - tCenter) < 42) {
-                canSpawn = false;
-                break;
-              }
-            }
-          }
-
-          // Also avoid spawning platforms on acid vats
-          if (canSpawn) {
-            for (let g of waterGaps) {
-              const pCenter = platWX + platW / 2;
-              const gCenter = g.wx + g.width / 2;
-              if (Math.abs(pCenter - gCenter) < (platW / 2 + g.width / 2 + 5)) {
-                canSpawn = false;
-                break;
-              }
-            }
-          }
-
-          if (canSpawn) {
-            // Some platforms sway slowly side-to-side (acid green industrial catwalks)
-            const swayAmp = Math.random() < 0.38 ? (22 + Math.random() * 52) : 0;
-            const swayPhase = Math.random() * Math.PI * 2;
-            platforms.push({ wx: platWX, y: platY, width: platW, height: 8, swayAmp, swayPhase });
+            platforms.push({ wx: platWX, y: platY, width: platW, height: 8 });
           }
         }
         lastPlatWX = lastPlatWX + 145 + Math.random() * 70;
@@ -930,251 +733,45 @@
       if (player.wx > lastWallWX - 420) {
         if (Math.random() < 0.48) {
           const wallWX = lastWallWX + 55 + Math.random() * 95;
+          // Walls are now 5x taller to be a real challenge
+          const wallH = 85 + Math.random() * 60;
           const wallW = 16 + Math.random() * 8;
-          // Ensure walls never spawn directly beside acid vats (min 1 player length = 26px gap)
-          let wallCanSpawn = true;
-          for (let g of waterGaps) {
-            const wallLeft = wallWX;
-            const wallRight = wallWX + wallW;
-            const gapLeft = g.wx;
-            const gapRight = g.wx + g.width;
-            // distance between intervals
-            const dist = Math.max(0, Math.max(wallLeft - gapRight, gapLeft - wallRight));
-            if (dist < 26) {
-              wallCanSpawn = false;
-              break;
-            }
-          }
-          if (wallCanSpawn) {
-            // Walls are now 5x taller to be a real challenge
-            const wallH = 85 + Math.random() * 60;
-            lowWalls.push({ wx: wallWX, height: wallH, width: wallW });
+          lowWalls.push({ wx: wallWX, height: wallH, width: wallW });
 
-            // Spawn oval trampoline just before the wall to give a big boost
-            // Ensure trampolines never spawn on top of acid vats
-            let trampCanSpawn = true;
-            const tWX = wallWX - 72 - Math.random() * 18;
-            const tW = 36 + Math.random() * 8;
-            for (let g of waterGaps) {
-              if (tWX + tW > g.wx && tWX < g.wx + g.width) {
-                trampCanSpawn = false;
-                break;
-              }
-            }
-            if (trampCanSpawn) {
-              trampolines.push({
-                wx: tWX,
-                width: tW
-              });
-            }
-          }
-        }
-        // Always advance the spawn timer every time we enter the "consider spawning" block (original behavior)
-        lastWallWX = lastWallWX + 320 + Math.random() * 140;
-      }
-
-      // === SPAWN: toxic acid vats (Super Mario style gaps - deadly if fallen into) ===
-      if (!levelExit && player.wx > 600 && Math.random() < 0.012) {
-        const gapW = 60 + Math.random() * 52.5; // ~25% larger, still jumpable
-        const gapWX = player.wx + 320 + Math.random() * 180;
-
-        const gapLeft = gapWX;
-        const gapRight = gapWX + gapW;
-        // Unified/strengthened pre-push separation (replaces scattered tooClose blocks): Use robust helper
-        // for checks vs ALL existing waterGaps + obstacles + lowWalls + tramps at 60px min edge-to-edge.
-        // This covers triangles vs lava/acid (both directions), same-type, on-top (overlap) or directly beside.
-        // Then ADDITIONAL stricter gap-vs-gap at original 78px (to preserve exact difficulty curve / spacing).
-        let tooClose = wouldBeTooCloseToHazards(gapLeft, gapRight, 60);
-        if (!tooClose) {
-          // Ensure minimum distance between gaps (edge to edge) is at least 3x player width = 78px (original behavior preserved exactly)
-          for (let g of waterGaps) {
-            const existingRight = g.wx + g.width;
-            const newLeft = gapWX;
-            const distBetween = newLeft - existingRight;
-            if (distBetween < 78 && distBetween > - (gapW + 10)) { // allow some ordering
-              tooClose = true;
-              break;
-            }
-            // Check the other way too
-            const distOther = g.wx - (gapWX + gapW);
-            if (distOther < 78 && distOther > - (g.width + 10)) {
-              tooClose = true;
-              break;
-            }
-          }
-        }
-
-        // Ensure acid vats don't spawn under trampolines (nothing on top of trampolines)
-        if (!tooClose) {
-          for (let t of trampolines) {
-            const tLeft = t.wx;
-            const tRight = t.wx + (t.width || 40);
-            const gapLeft = gapWX;
-            const gapRight = gapWX + gapW;
-            if (Math.max(gapLeft, tLeft) < Math.min(gapRight, tRight)) {
-              tooClose = true;
-              break;
-            }
-          }
-        }
-
-        // Ensure acid vats never spawn on triangles / obstacles (prevents triangles appearing on gaps)
-        if (!tooClose) {
-          for (let o of obstacles) {
-            const oLeft = o.wx;
-            const oRight = o.wx + 28;  // approx triangle base width
-            const gapLeft = gapWX;
-            const gapRight = gapWX + gapW;
-            if (Math.max(gapLeft, oLeft) < Math.min(gapRight, oRight)) {
-              tooClose = true;
-              break;
-            }
-          }
-        }
-
-        if (!tooClose) {
-          waterGaps.push({ wx: gapWX, width: gapW });
-
-          // Spawn a toxic vapor cloud above the acid vat
-          poisonClouds.push({
-            wx: gapWX + gapW / 2,
-            y: 55 + Math.random() * 35, // high under ceiling
-            width: 38 + Math.random() * 12,
-            lastDart: frame,
-            gapWX: gapWX,
-            gapWidth: gapW
+          // Spawn oval trampoline just before the wall to give a big boost
+          trampolines.push({
+            wx: wallWX - 72 - Math.random() * 18,
+            width: 36 + Math.random() * 8
           });
         }
-      }
-
-      // === SPAWN: industrial structures in background (pipes, beams, vents - grey warehouse) ===
-      if (player.wx > 400 && Math.random() < 0.009) {
-        const treeWX = player.wx + 350 + Math.random() * 300;
-        alienTrees.push({
-          wx: treeWX,
-          y: GROUND_Y - 35 - Math.random() * 25,
-          scale: 0.7 + Math.random() * 0.6,
-          parallax: 0.07 + Math.random() * 0.03
-        });
+        lastWallWX = lastWallWX + 320 + Math.random() * 140;
       }
 
       // === SPAWN: special chasing red monster (slightly increased frequency) ===
       if (frame - lastSpecialFrame > 1380 && Math.random() < 0.039) {
         const spawnWX = Math.max(player.wx + 360, scrollX + W + 40) + Math.random() * 160;
-        // Ensure specials do not spawn on acid vats or on trampolines
-        let safe = true;
-        for (let g of waterGaps) {
-          if (spawnWX + 30 > g.wx && spawnWX < g.wx + g.width) {
-            safe = false;
-            break;
-          }
-        }
-        if (safe) {
-          for (let t of trampolines) {
-            if (spawnWX + 30 > t.wx && spawnWX < t.wx + (t.width || 40)) {
-              safe = false;
-              break;
-            }
-          }
-        }
-        if (safe) {
-          specials.push({
-            wx: spawnWX,
-            y: GROUND_Y - 64,
-            w: 30,
-            h: 64,
-            nextShot: frame + 70 + Math.random() * 70   // first shot after a short delay
-          });
-          if (!firstSpecial) {
-            firstSpecial = { wx: spawnWX, w: 30, h: 64 };
-          }
-          lastSpecialFrame = frame;
-        }
-      }
-
-      // === SPAWN: vertical moving aliens (less frequent, up/down patrollers with long tails) ===
-      if (!levelExit && frame - (window.lastVertEnemySpawn || 0) > 2100 && Math.random() < 0.028) {
-        const vwx = player.wx + 420 + Math.random() * 160;
-        const baseY = GROUND_Y - 55;
-        // Ensure vertical enemies do not spawn on acid vats or on trampolines
-        let safe = true;
-        for (let g of waterGaps) {
-          if (vwx + 14 > g.wx && vwx - 14 < g.wx + g.width) {
-            safe = false;
-            break;
-          }
-        }
-        if (safe) {
-          for (let t of trampolines) {
-            if (vwx + 14 > t.wx && vwx - 14 < t.wx + (t.width || 40)) {
-              safe = false;
-              break;
-            }
-          }
-        }
-        if (safe) {
-          verticalEnemies.push({
-            wx: vwx,
-            y: baseY,
-            baseY: baseY,
-            amplitude: 38 + Math.random() * 18,
-            speed: 0.045 + Math.random() * 0.025,
-            phase: Math.random() * Math.PI * 2
-          });
-        }
-        window.lastVertEnemySpawn = frame;
-      }
-
-      // === SPAWN: ceiling gun turrets (slow purple lasers, cel-shaded Samuel L. Jackson in turret) ===
-      if (!levelExit && frame - lastTurretFrame > 380 && Math.random() < 0.012) {
-        const tWX = player.wx + 350 + Math.random() * 250;
-        // avoid spawning directly above acid vats
-        let safe = true;
-        for (let g of waterGaps) {
-          if (tWX > g.wx - 15 && tWX < g.wx + g.width + 15) {
-            safe = false;
-            break;
-          }
-        }
-        if (safe) {
-          ceilingTurrets.push({
-            wx: tWX,
-            y: 22,
-            lastShot: frame + 18,
-            w: 30,
-            h: 20
-          });
-          lastTurretFrame = frame;
-        }
+        specials.push({
+          wx: spawnWX,
+          y: GROUND_Y - 32,
+          w: 30,
+          h: 32,
+          nextShot: frame + 70 + Math.random() * 70   // first shot after a short delay
+        });
+        lastSpecialFrame = frame;
       }
 
       // move specials toward player with lag (slow, jumpable)
-      // They change direction instead of walking over acid vats
       for (let s of specials) {
         const desired = player.wx - 6;
         const diff = desired - s.wx;
         if (Math.abs(diff) > 0.8) {
-          let move = Math.sign(diff) * 1.28;
-          let tentative = s.wx + move;
-          let onGap = false;
-          for (let g of waterGaps) {
-            if (tentative + s.w > g.wx && tentative < g.wx + g.width) {
-              onGap = true;
-              break;
-            }
-          }
-          if (onGap) {
-            // merely change direction
-            s.wx -= move * 2;
-          } else {
-            s.wx = tentative;
-          }
+          s.wx += Math.sign(diff) * 1.28; // slow lag chase
         }
         // keep them from going below ground visually
         if (s.y < GROUND_Y - s.h) s.y = GROUND_Y - s.h;
       }
 
-      // === MONSTER GUNFIRE: blue lightning from tall grey chasers ===
+      // === MONSTER GUNFIRE: aimed shots at randomised slow intervals ===
       // Monsters now fire directly toward the player's position at the moment of shooting (non-homing after fired)
       for (let s of specials) {
         if (typeof s.nextShot !== 'number') s.nextShot = frame + 60;
@@ -1182,32 +779,19 @@
         if (frame >= s.nextShot) {
           const onScreen = (s.wx - scrollX > -60 && s.wx - scrollX < W + 60);
           if (onScreen) {
-            // Aim at player, but restricted: only shoot in front of them and diagonally upwards (never straight up or backwards)
+            // Aim directly at player center at time of firing
             const targetX = player.wx + player.w * 0.5;
             const targetY = player.y + player.h * 0.5;
 
-            let dx = targetX - (s.wx + 8);
-            let dy = targetY - (s.y + s.h * 0.38);  // aim from mid-upper body (taller enemies)
-
-            const face = Math.sign(player.wx - (s.wx + 8)) || 1;
-
-            // Force forward only (never shoot behind)
-            if (Math.sign(dx) !== face && Math.abs(dx) > 4) {
-              dx = face * Math.max(28, Math.abs(dx));
-            }
-
-            // Prevent direct upwards: require a decent forward horizontal component when shooting up
-            if (dy < -4 && Math.abs(dx) < Math.abs(dy) * 0.62) {
-              dx = face * Math.abs(dy) * 0.62;
-            }
-
+            const dx = targetX - (s.wx + 8);
+            const dy = targetY - (s.y + 13);
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
             const speed = 2.35 + Math.random() * 0.55; // fairly slow projectiles
 
             projectiles.push({
               wx: s.wx + 8,
-              y: s.y + s.h * 0.38,  // fire from mid-upper body (taller enemies)
+              y: s.y + 13,
               vx: (dx / dist) * speed,
               vy: (dy / dist) * speed,
               life: 105 + Math.random() * 18
@@ -1215,29 +799,6 @@
           }
           // Randomised fairly slow interval between shots (roughly 1.6s – 3.2s)
           s.nextShot = frame + 95 + Math.random() * 95;
-        }
-      }
-
-      // === CEILING TURRET LASER FIRE (slow purple toward player) ===
-      for (let t of ceilingTurrets) {
-        if (frame - t.lastShot > 92) {
-          const onScreen = (t.wx - scrollX > -40 && t.wx - scrollX < W + 40);
-          if (onScreen) {
-            const targetX = player.wx + player.w * 0.5;
-            const targetY = player.y + player.h * 0.5;
-            const dx = targetX - (t.wx + t.w / 2);
-            const dy = targetY - (t.y + t.h + 5);
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            const speed = 1.6; // slow moving laser
-            turretLasers.push({
-              wx: t.wx + t.w / 2,
-              y: t.y + t.h + 2,
-              vx: (dx / dist) * speed,
-              vy: (dy / dist) * speed,
-              life: 140
-            });
-          }
-          t.lastShot = frame;
         }
       }
 
@@ -1256,13 +817,6 @@
       trampolines = trampolines.filter(t => t.wx > scrollX - 140);
       endFireballs = endFireballs.filter(f => f.wx > scrollX - 80);
       neonOrbs = neonOrbs.filter(o => o.wx > scrollX - 90);
-      waterGaps = waterGaps.filter(g => g.wx > scrollX - 150);
-      alienTrees = alienTrees.filter(t => t.wx > scrollX - 200);
-      verticalEnemies = verticalEnemies.filter(e => e.wx > scrollX - 120);
-      poisonClouds = poisonClouds.filter(c => c.wx > scrollX - 100);
-      poisonDarts = poisonDarts.filter(d => d.y < GROUND_Y + 50); // they fall down, prune when past floor
-      ceilingTurrets = ceilingTurrets.filter(t => t.wx > scrollX - 80);
-      turretLasers = turretLasers.filter(l => l.wx > scrollX - 50 && l.y < GROUND_Y + 30);
 
       // Move boss fireballs (they have slight gravity feel)
       for (let i = endFireballs.length - 1; i >= 0; i--) {
@@ -1271,33 +825,6 @@
         fb.y += fb.vy;
         fb.vy += 0.035;   // gentle arc downward
         if (fb.y > GROUND_Y - 10) endFireballs.splice(i, 1);
-      }
-
-      // Move vertical enemies (up and down in place)
-      for (let e of verticalEnemies) {
-        e.y = e.baseY + Math.sin(frame * e.speed + e.phase) * e.amplitude;
-      }
-
-      // Vapor drip logic - green acid drips fall slowly into vats every ~5 seconds
-      const rainInterval = 300; // ~5 seconds at 60fps
-      for (let cloud of poisonClouds) {
-        if (frame - cloud.lastDart > rainInterval) {
-          poisonDarts.push({
-            wx: cloud.wx + (Math.random() - 0.5) * (cloud.width * 0.6),
-            y: cloud.y + 8,
-            vy: 1.8 + Math.random() * 0.6 // slow fall
-          });
-          cloud.lastDart = frame;
-        }
-      }
-
-      // Move poison darts
-      for (let i = poisonDarts.length - 1; i >= 0; i--) {
-        const dart = poisonDarts[i];
-        dart.y += dart.vy;
-        if (dart.y > GROUND_Y + 10) {
-          poisonDarts.splice(i, 1);
-        }
       }
 
       // Move and collect neon orbs
@@ -1316,9 +843,6 @@
 
           // Collect particles - different color for green orbs
           const particleColor = (value === 5) ? '#33ff88' : '#3355aa';
-          if (value === 5 && secondGreenTutorialActive) {
-            secondGreenTutorialActive = false;
-          }
           for (let k = 0; k < (value === 5 ? 12 : 8); k++) {
             particles.push({
               x: orb.wx,
@@ -1352,22 +876,13 @@
         }
       }
 
-      // Move projectiles (blue lightning bolts)
+      // Move projectiles (slow enemy fire)
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const pr = projectiles[i];
         pr.wx += pr.vx;
         pr.y += pr.vy;
         pr.life--;
         if (pr.life <= 0) projectiles.splice(i, 1);
-      }
-
-      // Move turret lasers (slow purple)
-      for (let i = turretLasers.length - 1; i >= 0; i--) {
-        const l = turretLasers[i];
-        l.wx += l.vx;
-        l.y += l.vy;
-        l.life--;
-        if (l.life <= 0) turretLasers.splice(i, 1);
       }
 
       // particles (with special slow drift for neon smoke)
@@ -1413,8 +928,8 @@
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // small floor hit dust
             spawnDust(player.wx + player.w / 2, GROUND_Y, 5, false);
-            if (baseScore + score > best) {
-              best = baseScore + score;
+            if (score > best) {
+              best = score;
               saveBest();
             }
             break;
@@ -1422,45 +937,16 @@
         }
       }
 
-      // collisions with tall grey industrial chasers (AABB + height check)
-      // Mario-style stomp kill if jumping on top (from above while falling)
-      for (let i = specials.length - 1; i >= 0; i--) {
-        const s = specials[i];
+      // collisions with special red monsters (AABB + height check)
+      for (let s of specials) {
         const sLeft = s.wx + 2;
         const sRight = s.wx + s.w - 2;
         const sTop = s.y;
-        const sBottom = s.y + s.h;
         const pLeft = player.wx;
         const pRight = player.wx + player.w;
-        const pTop = player.y;
         const pBottom = player.y + player.h;
-        if (pRight > sLeft && pLeft < sRight && pBottom > sTop && pTop < sBottom) {
-          // Stomp kill: player falling and feet in the top zone of the tall enemy
-          if (player.vy > 0 && pBottom < sTop + 22) {
-            // Successful Mario jump on top!
-            player.vy = -11.5;  // satisfying upward bounce
-            spawnExplosion(s.wx + s.w / 2, s.y + 8);
-            // Grey industrial death particles + some cyan sparks
-            for (let k = 0; k < 14; k++) {
-              const ang = Math.random() * Math.PI * 2;
-              const sp = 1.3 + Math.random() * 2.9;
-              particles.push({
-                x: s.wx + s.w / 2,
-                y: s.y + 12,
-                vx: Math.cos(ang) * sp,
-                vy: Math.sin(ang) * sp - 1.1,
-                life: 20 + Math.random() * 16,
-                c: (Math.random() < 0.65) ? '#8899aa' : '#66ddff',
-                size: 1.5 + Math.random() * 0.9
-              });
-            }
-            neonScore += 5;  // small reward for skillful play
-            specials.splice(i, 1);
-            continue;
-          }
-
-          // Normal side/bottom hit (damage)
-          if (pBottom > sTop + 14) {  // taller enemies: more body overlap required to "hit" from above
+        if (pRight > sLeft && pLeft < sRight) {
+          if (pBottom > sTop + 7) {
             const now = frame;
             if (now < player.invulnUntil) {
               // Fully protected during 5-second post-shield grace period
@@ -1490,13 +976,13 @@
         }
       }
 
-      // collisions with monster projectiles (blue lightning bolts)
+      // collisions with monster projectiles (slow energy bolts)
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const pr = projectiles[i];
         const prLeft = pr.wx;
-        const prRight = pr.wx + 11;  // approx for longer lightning visual
-        const prTop = pr.y - 2;
-        const prBottom = pr.y + 5;
+        const prRight = pr.wx + 6;
+        const prTop = pr.y - 1;
+        const prBottom = pr.y + 4;
 
         const pLeft = player.wx;
         const pRight = player.wx + player.w;
@@ -1526,49 +1012,8 @@
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // Remove the projectile that hit
             projectiles.splice(i, 1);
-            if (baseScore + score > best) {
-              best = baseScore + score;
-              saveBest();
-            }
-            break;
-          }
-        }
-      }
-
-      // collisions with turret lasers (purple slow from ceiling)
-      for (let i = turretLasers.length - 1; i >= 0; i--) {
-        const l = turretLasers[i];
-        const lLeft = l.wx - 2;
-        const lRight = l.wx + 2;
-        const lTop = l.y - 2;
-        const lBottom = l.y + 6;
-        const pLeft = player.wx;
-        const pRight = player.wx + player.w;
-        const pTop = player.y;
-        const pBottom = player.y + player.h;
-        if (pRight > lLeft && pLeft < lRight && pBottom > lTop && pTop < lBottom) {
-          const now = frame;
-          if (now < player.invulnUntil) {
-            turretLasers.splice(i, 1);
-          } else if (player.hasShield) {
-            player.hasShield = false;
-            player.invulnUntil = now + 300;
-            for (let k = 0; k < 18; k++) {
-              const ang = Math.random() * Math.PI * 2;
-              const sp = 1.6 + Math.random() * 3.0;
-              particles.push({
-                x: player.wx + 13, y: player.y + 13,
-                vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 0.6,
-                life: 26 + Math.random() * 16, c: '#aa66ff', size: 1.8
-              });
-            }
-            turretLasers.splice(i, 1);
-          } else {
-            gameState = 'over';
-            spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
-            turretLasers.splice(i, 1);
-            if (baseScore + score > best) {
-              best = baseScore + score;
+            if (score > best) {
+              best = score;
               saveBest();
             }
             break;
@@ -1611,8 +1056,8 @@
             gameState = 'over';
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             endFireballs.splice(i, 1);
-            if (baseScore + score > best) {
-              best = baseScore + score;
+            if (score > best) {
+              best = score;
               saveBest();
             }
             break;
@@ -1632,6 +1077,11 @@
           player.hasShield = true;
           player.invulnUntil = 0; // Fresh shield replaces any grace period
 
+          // Dismiss first-shield tutorial
+          if (firstShieldTutorialActive) {
+            firstShieldTutorialActive = false;
+          }
+
           // Nice cyan pickup burst
           for (let i = 0; i < 14; i++) {
             const ang = Math.random() * Math.PI * 2;
@@ -1647,6 +1097,14 @@
             });
           }
           powerUp = null;
+        }
+      }
+
+      // Dismiss first shield tutorial if the powerup scrolls off screen
+      if (firstShieldTutorialActive && powerUp) {
+        const screenX = powerUp.wx - scrollX;
+        if (screenX < -40) {
+          firstShieldTutorialActive = false;
         }
       }
 
@@ -1694,17 +1152,12 @@
             phase: Math.random() * Math.PI * 2,
             value: 5
           });
-
-          greenOrbCount++;
-          if (greenOrbCount === 2 && !secondGreenTutorialActive) {
-            secondGreenTutorialActive = true;
-          }
         }
         lastGreenOrbSpawn = frame;
       }
 
       // === LEVEL EXIT: ladder + portal appears much later (15% longer level) ===
-      if (!levelExit && player.wx > 5106) {
+      if (!levelExit && player.wx > 4255) {
         levelExit = {
           wx: player.wx + 110 + Math.random() * 70,
           baseY: GROUND_Y
@@ -1746,7 +1199,7 @@
       }
 
       // Shield power-up: 3 evenly spaced spawns across the (longer) level
-      const endDist = 5106;
+      const endDist = 4255;
       const shieldTargets = [endDist * 0.22, endDist * 0.48, endDist * 0.74];
       if (shieldSpawnIndex < shieldTargets.length && !powerUp && !player.hasShield && player.wx > shieldTargets[shieldSpawnIndex]) {
         // Random height, never higher than 50% level height (y never too close to top)
@@ -1757,81 +1210,18 @@
           y: minY + Math.random() * (maxY - minY)
         };
         shieldSpawnIndex++;
+
+        // Activate tutorial only for the very first shield powerup
+        if (shieldSpawnIndex === 1) {
+          firstShieldTutorialActive = true;
+        }
       }
     }
 
     function draw() {
-      // Industrial dark grey ceiling (sci-fi warehouse)
-      ctx.fillStyle = '#15181f';
+      // deep void bg
+      ctx.fillStyle = '#02070f';
       ctx.fillRect(0, 0, W, H);
-
-      // Ceiling structure: dark grey beams and panels
-      ctx.fillStyle = '#22262e';
-      for (let i = -1; i < 12; i++) {
-        const bx = (i * 92) - ((scrollX * 0.03) % 92);
-        ctx.fillRect(bx, 0, 18, 38); // vertical supports / girders
-        ctx.fillRect(bx - 8, 28, 34, 6); // horizontal cross beam
-      }
-      // Additional ceiling plating lines
-      ctx.fillStyle = '#1a1e26';
-      for (let i = 0; i < 5; i++) {
-        const lx = (i * 210) - ((scrollX * 0.015) % 210);
-        ctx.fillRect(lx, 0, 210, 14);
-      }
-
-      // Interspersed overhead industrial lights (cool white / chrome, subtle flicker)
-      ctx.fillStyle = '#e4eaf0';
-      for (let i = -2; i < 14; i++) {
-        const lx = 38 + (i * 78) - ((scrollX * 0.02) % 78);
-        if (lx < -20 || lx > W + 20) continue;
-        const flicker = (Math.sin(frame * 0.07 + i) * 0.5 + 0.5) * 0.18 + 0.82;
-        const lightAlpha = 0.85 * flicker;
-        ctx.globalAlpha = lightAlpha;
-        // Light bar / fluorescent tube
-        ctx.fillRect(lx, 6, 42, 7);
-        // Glow spill downward
-        ctx.fillStyle = 'rgba(200, 215, 235, 0.35)';
-        ctx.fillRect(lx - 6, 12, 54, 22);
-        ctx.fillStyle = '#e4eaf0';
-      }
-      ctx.globalAlpha = 1;
-
-      // Occasional electrical arc / safety strobe from machinery (muted grey-blue, no yellow/orange)
-      const strobePhase = frame % 310;
-      if (strobePhase < 4 && Math.random() < 0.5) {
-        ctx.strokeStyle = 'rgba(160, 175, 200, 0.55)';
-        ctx.lineWidth = 1.2 + Math.random();
-        ctx.beginPath();
-        let lx = 80 + Math.random() * (W - 160);
-        let ly = 18 + Math.random() * 12;
-        ctx.moveTo(lx, ly);
-        for (let i = 0; i < 3; i++) {
-          lx += (Math.random() - 0.5) * 24;
-          ly += 6 + Math.random() * 8;
-          ctx.lineTo(lx, ly);
-        }
-        ctx.stroke();
-      }
-
-      // Toxic green vapor / fumes above acid vats (slow parallax)
-      for (let cloud of poisonClouds) {
-        const csx = cloud.wx - scrollX * 0.04; // very slow parallax, high in sky
-        if (csx < -50 || csx > W + 50) continue;
-
-        const cy = cloud.y;
-
-        // Toxic green haze body
-        ctx.fillStyle = 'rgba(70, 160, 95, 0.42)';
-        ctx.beginPath();
-        ctx.ellipse(csx, cy, cloud.width / 2, 8, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Brighter upper mist
-        ctx.fillStyle = 'rgba(95, 185, 115, 0.32)';
-        ctx.beginPath();
-        ctx.ellipse(csx - 3, cy - 4, cloud.width / 2.15, 5.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
 
       // faint stars (very subtle as requested)
       ctx.fillStyle = '#fff';
@@ -1848,101 +1238,70 @@
       }
       ctx.globalAlpha = 1;
 
-      // === DISTANT BACKGROUND SCENERY (grey warehouses, processing plants, cranes - industrial sci-fi) ===
-      // Drawn with strong parallax so they feel very far away inside the warehouse complex
+      // === DISTANT BACKGROUND SCENERY (rocket pads, labs, planets) ===
+      // Drawn with strong parallax so they feel very far away in the void
       for (let b of backgroundElements) {
         const sx = b.wx - scrollX * b.parallax;
         if (sx < -120 || sx > W + 140) continue;
 
-        const alpha = b.type === 'planet' ? 0.10 : 0.14;
+        const alpha = b.type === 'planet' ? 0.09 : 0.13;
         ctx.globalAlpha = alpha;
 
-        // per-building animation phase (stable, not all in sync)
-        const phase = frame * 0.038 + (((b.wx * 17) | 0) % 220) * 0.012;
-
         if (b.type === 'rocket') {
-          // Large grey warehouse / loading bay building
+          // Distant rocket launch complex
           const s = b.scale;
           const baseY = b.y;
-          // Main slab foundation / floor
-          ctx.fillStyle = '#3a3f48';
-          ctx.fillRect(sx, baseY, 52 * s, 7 * s);
-          // Warehouse body (flat grey metal panels)
-          ctx.fillStyle = '#4a505a';
-          ctx.fillRect(sx + 2 * s, baseY - 38 * s, 48 * s, 38 * s);
-          // Roof lip (chrome edge)
-          ctx.fillStyle = '#5f6672';
-          ctx.fillRect(sx, baseY - 42 * s, 52 * s, 5 * s);
-          // Vertical panel lines (riveted look)
-          ctx.fillStyle = 'rgba(60, 68, 78, 0.6)';
-          for (let p = 0; p < 4; p++) {
-            ctx.fillRect(sx + (8 + p * 11) * s, baseY - 37 * s, 1.5 * s, 36 * s);
-          }
-          // Loading door (darker)
-          ctx.fillStyle = '#2f343c';
-          ctx.fillRect(sx + 14 * s, baseY - 26 * s, 22 * s, 24 * s);
-          // Small safety lights on building (cool) -- subtle blink + pulse animation
-          const lightPhase = (frame + Math.floor(Math.abs(b.wx) % 87)) % 91;
-          const l1On = lightPhase > 9;
-          const l2Pulse = 0.5 + 0.5 * Math.sin(phase * 0.55);
-          ctx.fillStyle = l1On ? 'rgba(110, 180, 210, 0.35)' : 'rgba(110, 180, 210, 0.07)';
-          ctx.fillRect(sx + 6 * s, baseY - 32 * s, 3 * s, 2 * s);
-          ctx.fillStyle = `rgba(110, 180, 210, ${0.16 + 0.19 * l2Pulse})`;
-          ctx.fillRect(sx + 42 * s, baseY - 19 * s, 2.5 * s, 2 * s);
-          // NEW: very subtle slow moving interior scan / activity glow (warehouse panel)
-          const scanY = Math.sin(phase * 0.32) * 13 * s;
-          ctx.fillStyle = 'rgba(145, 158, 175, 0.065)';
-          ctx.fillRect(sx + 6 * s, baseY - 30 * s + scanY, 39 * s, 1.1 * s);
+          // Launch pad
+          ctx.fillStyle = '#1a2f44';
+          ctx.fillRect(sx, baseY, 38 * s, 5 * s);
+          // Tower
+          ctx.fillRect(sx + 14 * s, baseY - 52 * s, 6 * s, 52 * s);
+          // Top structure
+          ctx.fillRect(sx + 10 * s, baseY - 58 * s, 14 * s, 7 * s);
+          // Very faint vertical "light" lines
+          ctx.fillStyle = 'rgba(120,160,210,0.35)';
+          ctx.fillRect(sx + 16 * s, baseY - 48 * s, 1.5 * s, 44 * s);
         } else if (b.type === 'lab') {
-          // Processing plant / silo block (chrome + concrete)
+          // Distant research lab / dome facility
           const s = b.scale;
           const baseY = b.y;
-          ctx.fillStyle = '#3c424c';
-          // Main plant building
-          ctx.fillRect(sx, baseY, 46 * s, 13 * s);
-          // Tall silo
-          ctx.fillRect(sx + 34 * s, baseY - 48 * s, 12 * s, 48 * s);
-          // Silo cap (chrome)
-          ctx.fillStyle = '#555d68';
-          ctx.fillRect(sx + 32 * s, baseY - 52 * s, 16 * s, 5 * s);
-          // Side annex / control room
-          ctx.fillStyle = '#454b55';
-          ctx.fillRect(sx + 4 * s, baseY - 18 * s, 18 * s, 18 * s);
-          // External pipe / conduit
-          ctx.fillStyle = '#5a626e';
-          ctx.fillRect(sx + 21 * s, baseY - 36 * s, 4 * s, 30 * s);
-          // Warning / access lights (muted) -- now blink and pulse
-          const wPhase = (frame + Math.floor(Math.abs(b.wx * 1.1) % 71)) % 67;
-          const w1On = (wPhase % 31) > 6;
-          const w2On = Math.sin(phase * 0.75) > -0.15;
-          ctx.fillStyle = w1On ? 'rgba(90, 140, 170, 0.38)' : 'rgba(90, 140, 170, 0.05)';
-          ctx.fillRect(sx + 7 * s, baseY - 12 * s, 2 * s, 2 * s);
-          ctx.fillStyle = w2On ? 'rgba(90, 140, 170, 0.31)' : 'rgba(90, 140, 170, 0.06)';
-          ctx.fillRect(sx + 38 * s, baseY - 40 * s, 2 * s, 2 * s);
-          // NEW: faint pulsing vent exhaust on conduit
-          const ventA = 0.07 + 0.055 * Math.sin(phase * 1.25);
-          ctx.fillStyle = `rgba(125, 138, 158, ${ventA})`;
-          ctx.fillRect(sx + 22.5 * s, baseY - 33 * s, 1.8 * s, 3.2 * s);
+          ctx.fillStyle = '#162a3f';
+          // Main building
+          ctx.fillRect(sx, baseY, 52 * s, 11 * s);
+          // Low annex
+          ctx.fillRect(sx + 38 * s, baseY + 2 * s, 19 * s, 9 * s);
+          // Dome / observatory
+          ctx.beginPath();
+          ctx.arc(sx + 26 * s, baseY - 1, 13 * s, Math.PI, 0, false);
+          ctx.fill();
+          // Tiny glowing windows (very dim)
+          ctx.fillStyle = 'rgba(90,170,220,0.28)';
+          ctx.fillRect(sx + 8 * s, baseY + 3 * s, 3 * s, 2 * s);
+          ctx.fillRect(sx + 19 * s, baseY + 3.5 * s, 2.5 * s, 2 * s);
+          ctx.fillRect(sx + 46 * s, baseY + 5 * s, 2 * s, 1.5 * s);
         } else if (b.type === 'planet') {
-          // Distant floodlight / crane tower (grey industrial)
+          // Distant planet or gas giant
           const s = b.scale;
           const py = b.y;
-          const rad = 8 * s;
-          // Tower mast (thin chrome)
-          ctx.fillStyle = '#4f5662';
-          ctx.fillRect(sx - 1.5 * s, py - 48 * s, 3 * s, 52 * s);
-          // Cross beam / crane arm
-          ctx.fillRect(sx - 14 * s, py - 42 * s, 28 * s, 3.5 * s);
-          // Light housing at top (glowing) -- subtle slow pulse animation
-          const glow = 0.21 + 0.11 * Math.sin(phase * 0.48);
-          ctx.fillStyle = (b.hue === 'blue') ? `rgba(85, 135, 175, ${glow})` : `rgba(115, 105, 145, ${glow})`;
+          const rad = 17 * s;
+
+          if (b.hue === 'blue') {
+            ctx.fillStyle = 'rgba(70,115,175,0.22)';
+          } else if (b.hue === 'orange') {
+            ctx.fillStyle = 'rgba(155,105,55,0.20)';
+          } else {
+            ctx.fillStyle = 'rgba(105,70,155,0.22)';
+          }
           ctx.beginPath();
-          ctx.arc(sx, py - 50 * s, rad * 1.1, 0, Math.PI * 2);
+          ctx.arc(sx, py, rad, 0, Math.PI * 2);
           ctx.fill();
-          // Small bright core -- occasional brighter pulse
-          const coreA = 0.40 + 0.38 * Math.sin(phase * 0.85 + 1.1);
-          ctx.fillStyle = `rgba(180, 195, 220, ${coreA})`;
-          ctx.fillRect(sx - 1.5 * s, py - 52 * s, 3 * s, 3 * s);
+
+          // Subtle rim light / atmosphere
+          ctx.strokeStyle = 'rgba(200,220,255,0.12)';
+          ctx.lineWidth = 1.5 * s;
+          ctx.beginPath();
+          ctx.arc(sx - 3 * s, py - 2 * s, rad * 0.92, 0, Math.PI * 2);
+          ctx.stroke();
         }
       }
       ctx.globalAlpha = 1;
@@ -1984,96 +1343,6 @@
       }
       ctx.globalAlpha = 1;
 
-      // === CEILING GUN TURRETS (with cel-shaded Samuel L. Jackson operator) ===
-      for (let t of ceilingTurrets) {
-        const sx = t.wx - scrollX;
-        const sy = t.y;
-        if (sx < -40 || sx > W + 40) continue;
-
-        // Main turret housing (dark industrial metal)
-        ctx.fillStyle = '#2a2f38';
-        ctx.fillRect(sx, sy, 30, 16);
-        // Chrome top edge / mount to ceiling
-        ctx.fillStyle = '#4a515c';
-        ctx.fillRect(sx - 2, sy - 2, 34, 4);
-        // Side panels for depth
-        ctx.fillStyle = '#3a4048';
-        ctx.fillRect(sx + 2, sy + 2, 26, 12);
-
-        // Gun barrel assembly pointing down
-        ctx.fillStyle = '#1f242b';
-        ctx.fillRect(sx + 10, sy + 14, 10, 16);
-        // Barrel highlight / chrome
-        ctx.fillStyle = '#555d68';
-        ctx.fillRect(sx + 11, sy + 15, 3, 14);
-        // Purple energy ring on barrel
-        ctx.fillStyle = 'rgba(140, 70, 200, 0.6)';
-        ctx.fillRect(sx + 12, sy + 26, 6, 2);
-
-        // Small window / viewport for the operator
-        ctx.fillStyle = '#11151a';
-        ctx.fillRect(sx + 5, sy + 4, 20, 9);
-        // Inner "glass"
-        ctx.fillStyle = '#2c3540';
-        ctx.fillRect(sx + 7, sy + 5, 16, 7);
-
-        // === Cel-shaded Samuel L. Jackson head (bald, intense, goatee) ===
-        const hx = sx + 15;
-        const hy = sy + 8.5;
-
-        // Head base (bald, dark skin tone)
-        ctx.fillStyle = '#5a4638';
-        ctx.beginPath();
-        ctx.ellipse(hx, hy, 6.5, 5.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Strong cel-shade black outline
-        ctx.strokeStyle = '#1c140f';
-        ctx.lineWidth = 1.1;
-        ctx.stroke();
-        // Top head highlight (cel shade)
-        ctx.fillStyle = 'rgba(255, 235, 210, 0.22)';
-        ctx.beginPath();
-        ctx.ellipse(hx - 1.5, hy - 2, 2.8, 1.8, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Intense eyes (narrow, focused)
-        ctx.fillStyle = '#0a0a0a';
-        ctx.fillRect(hx - 3.8, hy - 1.2, 2.2, 1.3);
-        ctx.fillRect(hx + 1.6, hy - 1.2, 2.2, 1.3);
-        // Eye glints
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(hx - 3.4, hy - 0.9, 0.8, 0.5);
-        ctx.fillRect(hx + 2, hy - 0.9, 0.8, 0.5);
-
-        // Furrowed brows
-        ctx.strokeStyle = '#1c140f';
-        ctx.lineWidth = 0.7;
-        ctx.beginPath();
-        ctx.moveTo(hx - 4.2, hy - 2.3);
-        ctx.lineTo(hx - 1.2, hy - 2.6);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(hx + 1.3, hy - 2.6);
-        ctx.lineTo(hx + 4.3, hy - 2.3);
-        ctx.stroke();
-
-        // Signature goatee / mustache
-        ctx.fillStyle = '#1c140f';
-        ctx.fillRect(hx - 1.8, hy + 1.8, 3.6, 2.2);
-        ctx.fillRect(hx - 1.2, hy + 1.3, 2.4, 0.8);
-
-        // Mouth line (determined expression)
-        ctx.strokeStyle = '#1c140f';
-        ctx.beginPath();
-        ctx.moveTo(hx - 1.2, hy + 3.2);
-        ctx.lineTo(hx + 1.2, hy + 3.2);
-        ctx.stroke();
-
-        // Hint of suit collar or turret seat
-        ctx.fillStyle = '#151a20';
-        ctx.fillRect(sx + 6, sy + 12, 18, 3);
-      }
-
       // === FLOATING "NEON DASH" NEON SIGN AT START (suspended by rocket boosters) ===
       if (player.wx < 680) {
         const signX = 260 - scrollX * 0.08;   // slow parallax, early in level
@@ -2108,64 +1377,57 @@
         // Right booster
         ctx.fillRect(signX + 34, signY + 18, 14, 22);
 
-        // Booster exhaust (flickering - chrome / cyan industrial instead of orange/yellow)
+        // Booster flames (flickering)
         const flameFlicker = Math.sin(frame * 0.4) * 3;
-        ctx.fillStyle = '#66bbdd';
+        ctx.fillStyle = '#ffaa33';
         ctx.fillRect(signX - 46, signY + 38, 10, 7 + flameFlicker);
         ctx.fillRect(signX + 36, signY + 38, 10, 7 + flameFlicker);
 
-        ctx.fillStyle = '#aaddff';
+        ctx.fillStyle = '#ffee88';
         ctx.fillRect(signX - 43, signY + 40, 5, 4 + flameFlicker * 0.6);
         ctx.fillRect(signX + 39, signY + 40, 5, 4 + flameFlicker * 0.6);
       }
 
-      // === INDUSTRIAL WAREHOUSE FLOOR (grey concrete + chrome plating) ===
+      // === GLOWING BLUE FLOOR ===
       const floorTop = GROUND_Y - 2;
 
-      // cool steel outer glow / spill light from ceiling
+      // outer soft glow
       ctx.save();
-      ctx.shadowColor = '#5a6270';
-      ctx.shadowBlur = 28;
-      ctx.fillStyle = 'rgba(70, 78, 90, 0.22)';
-      ctx.fillRect(0, floorTop - 9, W, 48);
+      ctx.shadowColor = '#3a7bc8';
+      ctx.shadowBlur = 38;
+      ctx.fillStyle = 'rgba(45, 95, 165, 0.22)';
+      ctx.fillRect(0, floorTop - 9, W, 52);
 
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = 'rgba(90, 98, 110, 0.18)';
-      ctx.fillRect(0, floorTop - 2, W, 20);
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = 'rgba(70, 130, 205, 0.28)';
+      ctx.fillRect(0, floorTop - 2, W, 22);
       ctx.restore();
 
-      // base gunmetal grey concrete floor
-      ctx.fillStyle = '#464c56';
+      // base floor
+      ctx.fillStyle = '#0b2444';
       ctx.fillRect(0, floorTop, W, H - floorTop);
 
-      // top edge chrome highlight strip
-      ctx.fillStyle = '#6b727e';
-      ctx.fillRect(0, floorTop, W, 2.8);
+      // top edge highlight (glow line)
+      ctx.fillStyle = '#5aa0e0';
+      ctx.fillRect(0, floorTop, W, 2.5);
 
-      // inner seam / expansion joint
-      ctx.fillStyle = '#363c46';
-      ctx.fillRect(0, floorTop + 1, W, 1.2);
+      // inner bright seam
+      ctx.fillStyle = '#77bbff';
+      ctx.fillRect(0, floorTop + 1, W, 1);
 
-      // moving floor markers (rivets / panel seams) for sense of speed (parallax)
-      ctx.fillStyle = 'rgba(58, 64, 74, 0.55)';
+      // moving floor markers for sense of speed (parallax)
+      ctx.fillStyle = 'rgba(90, 155, 230, 0.32)';
       const mOffset = (scrollX * 1.35) % 68;
       for (let i = -1; i < 17; i++) {
         const mx = i * 68 - mOffset + 18;
         ctx.fillRect(mx, floorTop + 7, 15, 2);
       }
-      // secondary slower panel lines
-      ctx.fillStyle = 'rgba(70, 76, 86, 0.35)';
+      // secondary slower markers
+      ctx.fillStyle = 'rgba(70, 130, 205, 0.18)';
       const mOffset2 = (scrollX * 0.6) % 110;
       for (let i = -1; i < 11; i++) {
         const mx = i * 110 - mOffset2 + 40;
         ctx.fillRect(mx, floorTop + 14, 28, 1.5);
-      }
-      // Occasional hazard stripe plates (muted, no bright yellow)
-      ctx.fillStyle = 'rgba(80, 85, 95, 0.4)';
-      const stripeOffset = (scrollX * 0.9) % 260;
-      for (let i = -1; i < 5; i++) {
-        const sx = i * 260 - stripeOffset + 70;
-        ctx.fillRect(sx, floorTop + 4, 9, 3);
       }
 
       // === LOW WALLS / BARRIERS (must jump over - solid but non-lethal) ===
@@ -2192,168 +1454,6 @@
         ctx.fillStyle = 'rgba(40, 80, 110, 0.5)';
         ctx.fillRect(sx + 3, GROUND_Y - wh + 3, 1.5, wh - 5);
         ctx.fillRect(sx + ww - 5, GROUND_Y - wh + 3, 1.5, wh - 5);
-      }
-
-      // === TOXIC ACID VATS (green bubbling acid replacing acid vats - deadly if fallen into) ===
-      for (let gap of waterGaps) {
-        const sx = gap.wx - scrollX;
-        const gw = gap.width;
-        if (sx + gw < -20 || sx > W + 20) continue;
-
-        // Dark toxic base (deep green-black vat)
-        ctx.fillStyle = '#0b1f18';
-        ctx.fillRect(sx, floorTop, gw, H - floorTop + 10);
-
-        // Vat wall / rim (industrial chrome lip)
-        ctx.fillStyle = '#3a424d';
-        ctx.fillRect(sx, floorTop, gw, 4);
-
-        // Acid surface (murky green)
-        ctx.fillStyle = 'rgba(35, 105, 58, 0.92)';
-        ctx.fillRect(sx, floorTop + 3, gw, 7);
-
-        // Brighter caustic edge highlight
-        ctx.fillStyle = 'rgba(68, 145, 85, 0.75)';
-        ctx.fillRect(sx, floorTop + 3, gw, 2.5);
-
-        // Animated bubbling surface (procedural bubbles rising)
-        const bubblePhase = (frame * 0.045) % (Math.PI * 2);
-        ctx.fillStyle = 'rgba(105, 195, 125, 0.65)';
-        for (let b = 0; b < 5; b++) {
-          const bx = sx + ((b * 17 + 7) % (gw - 6));
-          const by = floorTop + 4 + ((Math.sin(bubblePhase + b * 1.7) + 1) * 3.5) + (b % 2) * 2;
-          const br = 1.6 + Math.sin(bubblePhase * 1.3 + b) * 0.6;
-          ctx.beginPath();
-          ctx.arc(bx, by, Math.max(0.8, br), 0, Math.PI * 2);
-          ctx.fill();
-        }
-        // Occasional larger slow bubble
-        if (((frame + Math.floor(gap.wx)) % 38) < 6) {
-          const lbr = 3.2 + Math.sin(frame * 0.06) * 0.4;
-          ctx.fillStyle = 'rgba(85, 175, 105, 0.5)';
-          ctx.beginPath();
-          ctx.arc(sx + gw * 0.5, floorTop + 5 + ((frame % 28) / 7), lbr, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Subtle deeper acid tint + sediment at bottom
-        ctx.fillStyle = 'rgba(18, 55, 35, 0.35)';
-        ctx.fillRect(sx + 1, floorTop + 14, gw - 2, 16);
-      }
-
-      // Green acid drips / toxic droplets falling from overhead pipes into vats
-      ctx.fillStyle = '#4fa86a';
-      for (let dart of poisonDarts) {
-        const dsx = dart.wx - scrollX;
-        const dsy = dart.y;
-        if (dsx < -10 || dsx > W + 10) continue;
-
-        // Small green drip
-        ctx.fillRect(dsx - 1.2, dsy, 2.4, 5);
-
-        // Tiny caustic highlight
-        ctx.fillStyle = '#7fd08f';
-        ctx.fillRect(dsx - 0.4, dsy + 1, 0.8, 1.6);
-        ctx.fillStyle = '#4fa86a';
-      }
-
-      // === INDUSTRIAL STRUCTURES (background pipes, I-beams, vents, catwalks - grey chrome sci-fi) ===
-      for (let tree of alienTrees) {
-        const sx = tree.wx - scrollX * tree.parallax;
-        if (sx < -60 || sx > W + 60) continue;
-
-        const s = tree.scale;
-        const ty = tree.y;
-
-        // Main vertical I-beam / support column (grey)
-        ctx.fillStyle = '#3f464f';
-        ctx.fillRect(sx, ty, 4 * s, 36 * s);
-        // Flanges
-        ctx.fillRect(sx - 3 * s, ty + 2 * s, 10 * s, 2.5 * s);
-        ctx.fillRect(sx - 3 * s, ty + 26 * s, 10 * s, 2.5 * s);
-
-        // Side pipe / conduit
-        ctx.fillStyle = '#4a515c';
-        ctx.fillRect(sx + 7 * s, ty + 4 * s, 3 * s, 28 * s);
-
-        // Small vent housing or junction box
-        ctx.fillStyle = '#555d68';
-        ctx.fillRect(sx - 6 * s, ty + 10 * s, 7 * s, 8 * s);
-        // Vent grill lines
-        ctx.fillStyle = '#2f343c';
-        ctx.fillRect(sx - 5 * s, ty + 12 * s, 5 * s, 1 * s);
-        ctx.fillRect(sx - 5 * s, ty + 15 * s, 5 * s, 1 * s);
-
-        // NEW: subtle blinking status LED on junction box
-        const ledPhase = (frame + Math.floor(Math.abs(tree.wx) % 53)) % 47;
-        if (ledPhase > 13 && ledPhase < 28) {
-          ctx.fillStyle = 'rgba(88, 170, 128, 0.52)';
-          ctx.fillRect(sx - 4.4 * s, ty + 13.2 * s, 1.7 * s, 1.5 * s);
-        }
-
-        // NEW: very subtle rising vent vapor wisps (slow, faint)
-        const steamT = frame * 0.021 + ((tree.wx * 5) % 21);
-        ctx.strokeStyle = `rgba(108, 118, 132, ${0.105 + 0.065 * Math.sin(steamT)})`;
-        ctx.lineWidth = 1.0;
-        const steamX = sx - 2.3 * s;
-        ctx.beginPath();
-        ctx.moveTo(steamX, ty + 9.5 * s);
-        ctx.lineTo(steamX + Math.sin(steamT * 0.65) * 1.4 * s, ty + 3.5 * s);
-        ctx.stroke();
-        ctx.strokeStyle = `rgba(108, 118, 132, ${0.08 + 0.05 * Math.sin(steamT + 1.7)})`;
-        ctx.beginPath();
-        ctx.moveTo(steamX + 2.1 * s, ty + 10.5 * s);
-        ctx.lineTo(steamX + 2.1 * s + Math.sin(steamT * 0.48 + 0.7) * 1.1 * s, ty + 2.5 * s);
-        ctx.stroke();
-
-        // Hanging chain or cable (subtle) -- now with very slight sway animation
-        const sway = Math.sin(frame * 0.011 + (((tree.wx * 9) | 0) % 37)) * 1.05;
-        ctx.strokeStyle = 'rgba(70, 78, 88, 0.6)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(sx + 2 * s, ty + 3);
-        ctx.lineTo(sx + 1 * s + sway * 0.55, ty + 32 * s);
-        ctx.stroke();
-      }
-
-      // === VERTICAL PATROLLING ALIENS (long tail, up/down movement) ===
-      for (let e of verticalEnemies) {
-        const sx = e.wx - scrollX;
-        const sy = e.y;
-        if (sx < -40 || sx > W + 40) continue;
-
-        // Body (purple alien)
-        ctx.fillStyle = '#5a2a7a';
-        ctx.beginPath();
-        ctx.ellipse(sx, sy, 13, 11, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Head
-        ctx.fillStyle = '#7a3a9a';
-        ctx.beginPath();
-        ctx.arc(sx + 5, sy - 6, 7, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Eyes (warning lights)
-        ctx.fillStyle = '#88ddee';
-        ctx.fillRect(sx + 7, sy - 8, 2, 2);
-        ctx.fillRect(sx + 11, sy - 7, 2, 2);
-
-        // Long tail (waving)
-        ctx.strokeStyle = '#4a1a5a';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.moveTo(sx - 8, sy + 4);
-        const tailWave = Math.sin(frame * 0.09 + e.phase) * 6;
-        ctx.quadraticCurveTo(sx - 22, sy + 12 + tailWave * 0.5, sx - 32, sy + 18 + tailWave);
-        ctx.stroke();
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#6a3a7a';
-        ctx.beginPath();
-        ctx.moveTo(sx - 8, sy + 4);
-        ctx.quadraticCurveTo(sx - 20, sy + 10 + tailWave * 0.3, sx - 30, sy + 16 + tailWave * 0.8);
-        ctx.stroke();
       }
 
       // === OVAL TRAMPOLINES (neon bounce pads before tall walls) ===
@@ -2390,35 +1490,34 @@
         ctx.stroke();
       }
 
-      // === FLOATING PLATFORMS (glowing acid green industrial pads) ===
+      // === FLOATING PLATFORMS (glowing blue sci-fi pads) ===
       for (let p of platforms) {
-        const sway = (p.swayAmp || 0) * Math.sin((frame * 0.021) + (p.swayPhase || 0));
-        const sx = p.wx - scrollX + sway;
+        const sx = p.wx - scrollX;
         if (sx < -90 || sx > W + 90) continue;
         const py = p.y;
 
-        // soft shadow (moves slightly with sway)
+        // soft shadow
         ctx.fillStyle = 'rgba(0,0,0,0.28)';
-        ctx.fillRect(sx + 3, py + p.height + 3, p.width - 6, 5);
+        ctx.fillRect(sx + 4, py + p.height + 3, p.width - 6, 5);
 
-        // main platform body (dark acid base)
-        ctx.fillStyle = '#0a221c';
+        // main platform body
+        ctx.fillStyle = '#0e2744';
         ctx.fillRect(sx, py, p.width, p.height);
 
-        // bright acid green top edge (glow)
-        ctx.fillStyle = '#33dd88';
+        // bright cyan top edge (glow)
+        ctx.fillStyle = '#4fa8d8';
         ctx.fillRect(sx, py, p.width, 2);
 
         // inner highlight
-        ctx.fillStyle = '#7fd08f';
+        ctx.fillStyle = '#6bc4f0';
         ctx.fillRect(sx + 3, py + 2, p.width - 6, 1);
 
         // underside detail
-        ctx.fillStyle = '#1a3329';
+        ctx.fillStyle = '#1e3a58';
         ctx.fillRect(sx + 2, py + p.height - 3, p.width - 4, 2);
 
-        // corner marker lights (acid green)
-        ctx.fillStyle = '#aaffbb';
+        // corner marker lights
+        ctx.fillStyle = '#88ddff';
         ctx.fillRect(sx + 5, py + 2.5, 2, 1);
         ctx.fillRect(sx + p.width - 8, py + 2.5, 2, 1);
       }
@@ -2440,8 +1539,8 @@
         ctx.closePath();
         ctx.fill();
 
-        // main triangle (hazard) - now dark grey industrial
-        ctx.fillStyle = '#3a4048';
+        // main triangle (hazard)
+        ctx.fillStyle = '#e8553a';
         ctx.beginPath();
         ctx.moveTo(sx, GROUND_Y - th);
         ctx.lineTo(sx - tw / 2, GROUND_Y + 0.5);
@@ -2449,153 +1548,81 @@
         ctx.closePath();
         ctx.fill();
 
-        // top edge (dark steel)
-        ctx.strokeStyle = '#4a515c';
+        // bright top edge
+        ctx.strokeStyle = '#ffaa77';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         ctx.moveTo(sx, GROUND_Y - th);
         ctx.lineTo(sx - tw / 2 + 2, GROUND_Y - 0.5);
         ctx.stroke();
 
-        // small accent line
-        ctx.fillStyle = '#2f343c';
+        // small danger accent
+        ctx.fillStyle = '#ffdd99';
         ctx.fillRect(sx - 1.5, GROUND_Y - th + 5, 3, 1.5);
       }
 
-      // === GREY INDUSTRIAL CHASERS (tall slow enforcers - fire blue lightning) ===
+      // === SPECIAL RED MONSTERS (slow chasers) ===
       for (let s of specials) {
         const sx = s.wx - scrollX;
         const sy = s.y;
         if (sx < -60 || sx > W + 60) continue;
 
-        const sh = s.h / 32; // vertical scale for 2x tall
-
         // soft shadow
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(sx + 4, GROUND_Y - 1, s.w - 5, 4);
 
-        // main body (industrial grey)
-        ctx.fillStyle = '#4f5662';
-        ctx.fillRect(sx + 3, sy + 5 * sh, s.w - 5, s.h - 12 * sh);
+        // body (deep red)
+        ctx.fillStyle = '#c83322';
+        ctx.fillRect(sx + 3, sy + 5, s.w - 5, s.h - 7);
 
-        // head / carapace (darker grey)
-        ctx.fillStyle = '#3f464f';
-        ctx.fillRect(sx + 5, sy + 1 * sh, s.w - 9, 8 * sh);
+        // head / carapace
+        ctx.fillStyle = '#a62618';
+        ctx.fillRect(sx + 5, sy + 1, s.w - 9, 8);
 
-        // small back spikes/horns (dark)
-        ctx.fillStyle = '#2f343c';
-        ctx.fillRect(sx + 6, sy + 0 * sh, 4, 5 * sh);
-        ctx.fillRect(sx + s.w - 11, sy + 2 * sh, 5, 4 * sh);
+        // small back spikes/horns
+        ctx.fillStyle = '#7a1a12';
+        ctx.fillRect(sx + 6, sy, 4, 5);
+        ctx.fillRect(sx + s.w - 11, sy + 2, 5, 4);
 
-        // glowing blue eyes (electric)
-        ctx.fillStyle = '#66bbff';
-        ctx.fillRect(sx + 8, sy + 9 * sh, 3, 3 * sh);
-        ctx.fillRect(sx + s.w - 12, sy + 9 * sh, 3, 3 * sh);
-        // pupils (dark)
-        ctx.fillStyle = '#113355';
-        ctx.fillRect(sx + 9, sy + 10 * sh, 1, 1 * sh);
-        ctx.fillRect(sx + s.w - 11, sy + 10 * sh, 1, 1 * sh);
+        // evil glowing eyes
+        ctx.fillStyle = '#ffdd55';
+        ctx.fillRect(sx + 8, sy + 9, 3, 3);
+        ctx.fillRect(sx + s.w - 12, sy + 9, 3, 3);
+        // pupils
+        ctx.fillStyle = '#220000';
+        ctx.fillRect(sx + 9, sy + 10, 1, 1);
+        ctx.fillRect(sx + s.w - 11, sy + 10, 1, 1);
 
-        // darker lower body + tiny legs (chrome accents)
-        ctx.fillStyle = '#3a3f48';
-        ctx.fillRect(sx + 4, sy + s.h - 6 * sh, s.w - 7, 5 * sh);
-        ctx.fillStyle = '#555d68';
-        ctx.fillRect(sx + 6, sy + s.h - 2 * sh, 4, 2 * sh);
-        ctx.fillRect(sx + s.w - 11, sy + s.h - 2 * sh, 4, 2 * sh);
+        // darker lower body + tiny legs
+        ctx.fillStyle = '#7a1a12';
+        ctx.fillRect(sx + 4, sy + s.h - 6, s.w - 7, 5);
+        ctx.fillStyle = '#aa2a1f';
+        ctx.fillRect(sx + 6, sy + s.h - 2, 4, 2);
+        ctx.fillRect(sx + s.w - 11, sy + s.h - 2, 4, 2);
 
-        // thin outline (dark steel)
-        ctx.strokeStyle = '#2a2f38';
+        // thin outline
+        ctx.strokeStyle = '#551100';
         ctx.lineWidth = 1;
-        ctx.strokeRect(sx + 2.5, sy + 1.5 * sh, s.w - 5, s.h - 3 * sh);
+        ctx.strokeRect(sx + 2.5, sy + 1.5, s.w - 5, s.h - 3);
       }
 
-      // === MONSTER PROJECTILES (blue lightning bolts from tall grey chasers) ===
+      // === MONSTER PROJECTILES (slow glowing enemy fire) ===
       for (let pr of projectiles) {
         const sx = pr.wx - scrollX;
         const sy = pr.y;
-        if (sx < -30 || sx > W + 30) continue;
+        if (sx < -20 || sx > W + 20) continue;
 
-        const vx = pr.vx || 2.5;
-        const vy = pr.vy || 0;
-        const dist = Math.sqrt(vx * vx + vy * vy) || 1;
-        const ux = vx / dist;
-        const uy = vy / dist;
-        const boltLen = 16;
-        const t = frame * 0.9;  // time for animated flicker
+        // Main bolt (glowing red-orange energy)
+        ctx.fillStyle = '#ff6644';
+        ctx.fillRect(sx, sy - 1, 7, 3);
 
-        // outer electric glow (thick blue)
-        ctx.strokeStyle = 'rgba(90, 170, 255, 0.5)';
-        ctx.lineWidth = 5.5;
-        ctx.beginPath();
-        let x = sx;
-        let y = sy;
-        ctx.moveTo(x, y);
-        for (let k = 1; k <= 5; k++) {
-          const jsign = Math.sin(t + k * 1.7) > 0 ? 1 : -1;
-          const j = jsign * 3.0 * (0.6 + Math.sin(t * 1.3 + k) * 0.3);
-          const px = x + ux * (boltLen / 5) + uy * j;
-          const py = y + uy * (boltLen / 5) - ux * j;
-          ctx.lineTo(px, py);
-          x = px; y = py;
-        }
-        ctx.stroke();
-
-        // main jagged lightning (bright blue)
-        ctx.strokeStyle = '#88bbff';
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        x = sx; y = sy;
-        ctx.moveTo(x, y);
-        for (let k = 1; k <= 5; k++) {
-          const jsign = Math.sin(t + k * 2.1) > 0 ? 1 : -1;
-          const j = jsign * 2.2 * (0.55 + Math.sin(t * 1.6 + k * 0.7) * 0.35);
-          const px = x + ux * (boltLen / 5) + uy * j;
-          const py = y + uy * (boltLen / 5) - ux * j;
-          ctx.lineTo(px, py);
-          x = px; y = py;
-        }
-        ctx.stroke();
-
-        // hot core (white-blue, thin)
-        ctx.strokeStyle = '#ddffff';
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        x = sx; y = sy;
-        ctx.moveTo(x, y);
-        for (let k = 1; k <= 5; k++) {
-          const jsign = Math.sin(t + k * 2.4) > 0 ? 1 : -1;
-          const j = jsign * 0.9 * (0.4 + Math.sin(t * 2.1 + k) * 0.3);
-          const px = x + ux * (boltLen / 5) + uy * j;
-          const py = y + uy * (boltLen / 5) - ux * j;
-          ctx.lineTo(px, py);
-          x = px; y = py;
-        }
-        ctx.stroke();
-
-        // bright tip flash
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x - 1, y - 1, 2, 2);
-      }
-
-      // === TURRET LASERS (slow glowing purple from ceiling gun turrets) ===
-      for (let l of turretLasers) {
-        const sx = l.wx - scrollX;
-        const sy = l.y;
-        if (sx < -25 || sx > W + 25) continue;
-
-        const pulse = 0.75 + Math.sin(frame * 0.25 + l.wx) * 0.25;
-        // Outer purple glow
-        ctx.fillStyle = 'rgba(160, 80, 230, 0.35)';
-        ctx.fillRect(sx - 4 * pulse, sy - 1, 8 * pulse, 12);
-        // Main laser body
-        ctx.fillStyle = '#bb77ff';
-        ctx.fillRect(sx - 2, sy, 4, 10);
         // Bright core
-        ctx.fillStyle = '#ddbbff';
-        ctx.fillRect(sx - 0.7, sy + 2, 1.4, 6);
-        // Additional shimmer
-        ctx.fillStyle = 'rgba(220, 160, 255, 0.5)';
-        ctx.fillRect(sx - 1.5, sy + 1, 3, 3);
+        ctx.fillStyle = '#ffaa66';
+        ctx.fillRect(sx + 1, sy, 4, 1);
+
+        // Soft outer glow
+        ctx.fillStyle = 'rgba(255,120,60,0.35)';
+        ctx.fillRect(sx - 2, sy - 2.5, 11, 6);
       }
 
       // === LEVEL EXIT LADDER + PORTAL (appears after ~1000 distance) ===
@@ -2632,96 +1659,29 @@
         ctx.fillStyle = '#1f3347';
         ctx.fillRect(lx - 16, baseY - 323, 32, 7);
 
-        // Glowing cyan portal / rift at the top - now BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed). Applied to all levels.
+        // Glowing cyan portal / rift at the top
         const portalY = baseY - 305;
-        const px = lx;
-        const py = portalY;
-        const baseRx = 25;
-        const baseRy = 36;
-        const pulse = Math.sin(frame * 0.27) * 2 + 3;
-        // Outer pulsing fill glow (larger)
         ctx.save();
         ctx.shadowColor = '#66ddff';
-        ctx.shadowBlur = 28;
-        ctx.fillStyle = '#4fb8ff';
+        ctx.shadowBlur = 22;
+        ctx.fillStyle = '#55bbff';
         ctx.beginPath();
-        ctx.ellipse(px, py, baseRx + pulse, baseRy + pulse * 0.7, 0, 0, Math.PI * 2);
+        ctx.ellipse(lx, portalY, 13, 19, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // Inner core rift (brighter, larger)
+
+        // Inner bright core
         ctx.fillStyle = '#aaddff';
         ctx.beginPath();
-        ctx.ellipse(px, py - 1, baseRx * 0.55, baseRy * 0.7, 0, 0, Math.PI * 2);
+        ctx.ellipse(lx, portalY - 2, 6, 10, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#eeffff';
-        ctx.beginPath();
-        ctx.ellipse(px, py - 2, baseRx * 0.28, baseRy * 0.38, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Concentric swirling glowing segments (5 layers, different speeds/dirs, dashed for rift effect)
-        for (let i = 0; i < 5; i++) {
-          const rot = (frame * (0.013 + i * 0.0075) * ((i % 2) ? 1 : -1)) % (Math.PI * 2);
-          const rx = baseRx + i * 3.5 + Math.sin(frame * 0.11 + i) * 1.2;
-          const ry = baseRy + i * 2.8 + Math.cos(frame * 0.09 + i) * 0.9;
-          const alpha = 0.28 + 0.12 * (1 - i / 5) + Math.sin(frame * 0.2 + i) * 0.08;
-          ctx.save();
-          ctx.translate(px, py);
-          ctx.rotate(rot);
-          ctx.strokeStyle = 'rgba(120, 200, 255, ' + alpha + ')';
-          ctx.lineWidth = 1.8 + (4 - i) * 0.4;
-          ctx.beginPath();
-          ctx.ellipse(0, i * 1.2, rx, ry, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          // Animated dashed swirl segments on odd layers
-          if (i % 2 === 1) {
-            ctx.setLineDash([3, 5]);
-            ctx.lineDashOffset = -frame * (1.2 + i * 0.6) * ((i % 4 < 2) ? 1 : -1);
-            ctx.strokeStyle = 'rgba(180, 230, 255, ' + (alpha * 0.7) + ')';
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            ctx.ellipse(0, i * 1.2, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 1.1);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          }
-          ctx.restore();
-        }
-        // Subtle rim
+
+        // Subtle portal rim
         ctx.strokeStyle = '#88eeff';
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.ellipse(px, py, baseRx + 1, baseRy + 1, 0, 0, Math.PI * 2);
+        ctx.ellipse(lx, portalY, 13, 19, 0, 0, Math.PI * 2);
         ctx.stroke();
-        // Harmless lightning bolts (occasional, jagged, 3-pass glow; timed ~every 47 frames, duration ~8; biased upward/outward)
-        const boltCycle = 47;
-        const boltDur = 8;
-        const phase = frame % boltCycle;
-        if (phase < boltDur) {
-          const numBolts = 1 + ((frame / 23) | 0) % 3;
-          for (let b = 0; b < numBolts; b++) {
-            const spread = (b - (numBolts - 1) / 2) * 0.55;
-            const ang = -1.65 + spread;
-            const tPhase = frame * 0.9 + b * 2.3;
-            ctx.strokeStyle = 'rgba(180, 230, 255, 0.45)';
-            ctx.lineWidth = 3.8;
-            ctx.beginPath();
-            let cx = px + Math.cos(ang) * 8;
-            let cy = py - 4;
-            ctx.moveTo(cx, cy);
-            for (let k = 1; k <= 5; k++) {
-              const j = Math.sin(tPhase + k * 1.7) * (7 + b);
-              const len = 42 + k * 2;
-              cx += Math.cos(ang) * len + j * Math.cos(ang + 1.57) * 0.6;
-              cy += Math.sin(ang) * len + j * Math.sin(ang + 1.57) * 0.6;
-              ctx.lineTo(cx, cy);
-            }
-            ctx.stroke();
-            ctx.strokeStyle = '#aaddff';
-            ctx.lineWidth = 1.8;
-            ctx.stroke();
-            ctx.strokeStyle = '#eeffff';
-            ctx.lineWidth = 0.9;
-            ctx.stroke();
-          }
-        }
       }
 
       // === LARGE POLYGONAL BOSS MONSTER (beyond the invisible barrier - stomps & spits fireballs) ===
@@ -2782,12 +1742,12 @@
         ctx.closePath();
         ctx.fill();
 
-        // Glowing red eye / vent (industrial warning)
-        ctx.fillStyle = '#cc6644';
+        // Glowing red eye / vent
+        ctx.fillStyle = '#ff5533';
         ctx.beginPath();
         ctx.arc(bx + 18, by - 56, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#dd8855';
+        ctx.fillStyle = '#ffaa44';
         ctx.beginPath();
         ctx.arc(bx + 19, by - 56, 2.2, 0, Math.PI * 2);
         ctx.fill();
@@ -2908,13 +1868,13 @@
         ctx.fill();
 
         // Core fireball
-        ctx.fillStyle = '#dd6622';
+        ctx.fillStyle = '#ff6622';
         ctx.beginPath();
         ctx.arc(sx + 4, sy + 2, 4.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hot inner (less yellow, more plasma)
-        ctx.fillStyle = '#eeaa77';
+        // Hot inner
+        ctx.fillStyle = '#ffdd66';
         ctx.beginPath();
         ctx.arc(sx + 5, sy + 1, 2, 0, Math.PI * 2);
         ctx.fill();
@@ -2964,20 +1924,20 @@
         }
       }
 
-      // === SHIELD POWERUP (small glowing chrome-cyan shield icon) ===
+      // === SHIELD POWERUP (small glowing orange shield icon) ===
       if (powerUp) {
         const pux = powerUp.wx - scrollX;
         const puy = powerUp.y;
         const pulse = Math.sin(frame * 0.18) * 2.2;
 
         ctx.save();
-        ctx.shadowColor = '#66bbdd';
+        ctx.shadowColor = '#ffaa44';
         ctx.shadowBlur = 14 + pulse * 0.7;
 
-        // Glowing cyan/chrome shield
+        // Glowing orange shield
         const s = 9 + pulse * 0.25;
 
-        ctx.fillStyle = '#5599bb';
+        ctx.fillStyle = '#ff8833';
         ctx.beginPath();
         ctx.moveTo(pux, puy - s * 1.1);           // top center
         ctx.lineTo(pux + s * 0.85, puy - s * 0.35);
@@ -2989,12 +1949,12 @@
         ctx.fill();
 
         // Brighter edge highlight
-        ctx.strokeStyle = '#88ccee';
+        ctx.strokeStyle = '#ffcc88';
         ctx.lineWidth = 1.8;
         ctx.stroke();
 
         // Inner detail (small cross / emblem)
-        ctx.fillStyle = '#aaddff';
+        ctx.fillStyle = '#ffddaa';
         ctx.fillRect(pux - 1.5, puy - 4, 3, 1.2);
         ctx.fillRect(pux - 1, puy - 6, 2, 5);
 
@@ -3092,88 +2052,38 @@
 
       // === UI OVERLAYS ===
       if (gameState === 'playing') {
-        // (Water/acid vat tutorial removed for L3 - players remember from Level 2)
+        // First shield powerup tutorial (only for the very first one)
+        if (firstShieldTutorialActive && powerUp) {
+          const pux = powerUp.wx - scrollX;
+          const puy = powerUp.y;
 
-        // Second green Neon tutorial (only for the second green orb)
-        if (secondGreenTutorialActive) {
-          // Find the most recent green orb on screen for pointing
-          let targetOrb = null;
-          for (let o of neonOrbs) {
-            if (o.value === 5) {
-              const osx = o.wx - scrollX;
-              if (osx > 50 && osx < W - 50) {
-                targetOrb = o;
-                break;
-              }
-            }
-          }
+          // Text box in upper area
+          const boxX = W / 2 - 155;
+          const boxY = 32;
+          const boxW = 310;
+          const boxH = 48;
 
-          if (targetOrb) {
-            const gox = targetOrb.wx - scrollX;
-            const goy = targetOrb.y;
+          // Semi-transparent background with blue border
+          ctx.fillStyle = 'rgba(8, 20, 40, 0.85)';
+          ctx.fillRect(boxX, boxY, boxW, boxH);
+          ctx.strokeStyle = '#4488cc';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-            const boxX = W / 2 - 145;
-            const boxY = 38;
-            const boxW = 290;
-            const boxH = 36;
+          // Instructional text
+          ctx.fillStyle = '#aaddff';
+          ctx.font = '13px Segoe UI, Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Touch this powerup to get a shield', W / 2, boxY + 18);
+          ctx.fillText('to protect you for a time...', W / 2, boxY + 34);
 
-            ctx.fillStyle = 'rgba(15, 40, 25, 0.88)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#55cc88';
-            ctx.lineWidth = 1.8;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-            ctx.fillStyle = '#99ffbb';
-            ctx.font = '13px Segoe UI, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('The green Neon Tokes are worth Extra Points!', W / 2, boxY + 23);
-
-            // Green pointing line
-            ctx.strokeStyle = '#66dd99';
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.moveTo(W / 2, boxY + boxH);
-            ctx.lineTo(gox, goy - 8);
-            ctx.stroke();
-          } else {
-            // If no green orb visible, dismiss the tutorial
-            secondGreenTutorialActive = false;
-          }
-        }
-
-        // Stomp tutorial for the first taller lightning shooting enemy (grey chasers)
-        if (firstSpecial && !firstSpecialTutorialShown) {
-          const fsx = firstSpecial.wx - scrollX + (firstSpecial.w || 30) / 2;
-          const fsy = GROUND_Y - (firstSpecial.h || 64) - 5; // near top of the enemy
-          const playerHasPassed = player.wx > firstSpecial.wx + (firstSpecial.w || 30) + 100;
-          const isOnScreen = fsx > -30 && fsx < W + 50;
-          if (!playerHasPassed && isOnScreen) {
-            const boxX = W / 2 - 155;
-            const boxY = 38;
-            const boxW = 310;
-            const boxH = 36;
-
-            ctx.fillStyle = 'rgba(25, 30, 42, 0.92)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#7788aa';
-            ctx.lineWidth = 1.8;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-            ctx.fillStyle = '#aabbdd';
-            ctx.font = '12px Segoe UI, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('You can now jump on these enemies to kill them', W / 2, boxY + 23);
-
-            // Dynamic line pointing to the enemy
-            ctx.strokeStyle = '#667799';
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.moveTo(W / 2, boxY + boxH);
-            ctx.lineTo(fsx, fsy);
-            ctx.stroke();
-          } else if (playerHasPassed) {
-            firstSpecialTutorialShown = true;
-          }
+          // Thin blue pointing line to the powerup
+          ctx.strokeStyle = '#66bbff';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(W / 2, boxY + boxH);           // bottom center of box
+          ctx.lineTo(pux, puy - 14);                // near top of the shield icon
+          ctx.stroke();
         }
 
         // distance readout (top right)
@@ -3183,7 +2093,7 @@
         ctx.fillText('DISTANCE', W - 18, 24);
         ctx.font = '700 22px Consolas, monospace';
         ctx.fillStyle = '#aaddff';
-        ctx.fillText(String(baseScore + score).padStart(5, '0'), W - 18, 48);
+        ctx.fillText(String(score).padStart(5, '0'), W - 18, 48);
 
         // small jump counter
         ctx.font = '11px Consolas, monospace';
@@ -3199,7 +2109,7 @@
         ctx.fillText(String(neonScore).padStart(3, '0'), W - 18, 104);
 
         // Level Progress bar (fills as player approaches the ending)
-        const progress = Math.min(1, Math.max(0, player.wx / 5106));
+        const progress = Math.min(1, Math.max(0, player.wx / 4255));
         const barY = 8;
         const barW = 180;
         const barH = 5;
@@ -3229,7 +2139,7 @@
 
         ctx.font = '13px Consolas, monospace';
         ctx.fillStyle = '#5a8fb8';
-        ctx.fillText('WAREHOUSE HAZARD PROTOCOL', W / 2, H / 2 - 26);
+        ctx.fillText('SIDE-SCROLL HAZARD PROTOCOL', W / 2, H / 2 - 26);
 
         ctx.font = '13px Segoe UI, Arial';
         ctx.fillStyle = '#6699bb';
@@ -3247,15 +2157,15 @@
 
         ctx.font = '700 28px Segoe UI, Arial';
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#cc7766';
+        ctx.fillStyle = '#ff8866';
         ctx.fillText('COLLISION DETECTED', W / 2, H / 2 - 38);
 
         ctx.font = '15px Consolas, monospace';
         ctx.fillStyle = '#aaddff';
-        ctx.fillText('DISTANCE TRAVELED: ' + String(baseScore + score).padStart(5, '0'), W / 2, H / 2 + 4);
+        ctx.fillText('DISTANCE TRAVELED: ' + String(score).padStart(5, '0'), W / 2, H / 2 + 4);
 
-        if (baseScore + score === best && baseScore + score > 0) {
-          ctx.fillStyle = '#aaccdd';
+        if (score === best && score > 0) {
+          ctx.fillStyle = '#ffcc66';
           ctx.fillText('NEW PERSONAL BEST', W / 2, H / 2 + 24);
         } else if (best > 0) {
           ctx.fillStyle = '#6688aa';
@@ -3278,7 +2188,7 @@
 
         ctx.font = '15px Consolas, monospace';
         ctx.fillStyle = '#aaddff';
-        ctx.fillText('DISTANCE TRAVELED: ' + String(baseScore + score).padStart(5, '0'), W / 2, H / 2 + 2);
+        ctx.fillText('DISTANCE TRAVELED: ' + String(score).padStart(5, '0'), W / 2, H / 2 + 2);
 
         ctx.font = '13px Segoe UI, Arial';
         ctx.fillStyle = '#88bbdd';
@@ -3288,8 +2198,8 @@
         ctx.fillStyle = '#88ffbb';
         ctx.fillText('NEON COLLECTED: ' + neonScore, W / 2, H / 2 + 48);
 
-        if (baseScore + score === best) {
-          ctx.fillStyle = '#aaccdd';
+        if (score === best) {
+          ctx.fillStyle = '#ffcc66';
           ctx.fillText('NEW PERSONAL BEST!', W / 2, H / 2 + 72);
         }
 
@@ -3299,17 +2209,9 @@
       }
     }
 
-    // Show/hide Level 3 replay link based on game state
-    function updateLevel3LinkVisibility() {
-      const container = document.getElementById('level3-link-container');
-      if (container) {
-        container.style.display = (gameState === 'complete') ? 'block' : 'none';
-      }
-    }
-
-    // Show/hide Next Level (L4) link based on game state
-    function updateNextLevelLinkVisibility() {
-      const container = document.getElementById('next-level-link-container');
+    // Show/hide Level 2 link based on game state
+    function updateLevel2LinkVisibility() {
+      const container = document.getElementById('level2-link-container');
       if (container) {
         container.style.display = (gameState === 'complete') ? 'block' : 'none';
       }
@@ -3318,40 +2220,26 @@
     function gameLoop() {
       update();
       draw();
-      updateLevel3LinkVisibility();
-      updateNextLevelLinkVisibility();
+      updateLevel2LinkVisibility();
       requestAnimationFrame(gameLoop);
     }
 
     function startPlaying() {
+      getAudioCtx();
       if (gameState === 'start') {
         gameState = 'playing';
       } else if (gameState === 'over' || gameState === 'complete') {
         resetGame();
         gameState = 'playing';
       }
-      updateLevel3LinkVisibility();
-      updateNextLevelLinkVisibility();
-    }
-
-    // Save cumulative score when proceeding to Level 4 (so it carries over)
-    function saveCumulativeForNextLevel() {
-      try {
-        const finalForThisLevel = baseScore + score;
-        localStorage.setItem('neonDashCumulativeScore', String(finalForThisLevel));
-      } catch(e){}
+      updateLevel2LinkVisibility();
     }
 
     function init() {
       loadBest();
-      try {
-        baseScore = parseInt(localStorage.getItem('neonDashCumulativeScore') || '0', 10) || 0;
-      } catch(e) { baseScore = 0; }
       initStars();
       resetGame();
-      updateLevel3LinkVisibility();
-      updateNextLevelLinkVisibility();
-      updateNextLevelLinkVisibility();
+      updateLevel2LinkVisibility();
 
       // keyboard
       window.addEventListener('keydown', (e) => {
@@ -3400,14 +2288,8 @@
       // kick off loop
       gameLoop();
 
-      // Attach handler to next-level link to persist cumulative score (like previous levels)
-      const nextLinkEl = document.getElementById('next-level-link');
-      if (nextLinkEl) {
-        nextLinkEl.addEventListener('click', saveCumulativeForNextLevel);
-      }
-
       // subtle console note
-      console.log('%c[NEON DASH LEVEL 3] Arrow keys / A D to move, Space to jump. Avoid the red triangles and acid vats.', 'color:#334455');
+      console.log('%c[NEON DASH] Arrow keys / A D to move, Space to jump. Avoid the red triangles.', 'color:#334455');
     }
 
     // boot
