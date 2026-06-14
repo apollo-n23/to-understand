@@ -81,6 +81,12 @@
       color: #ccddee;
       transform: translateY(-1px);
     }
+    #next-level-link:hover {
+      background: rgba(20, 40, 70, 0.85);
+      border-color: #66aadd;
+      color: #bbddff;
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
@@ -110,6 +116,24 @@
               background: rgba(30, 35, 45, 0.7);
               transition: all 0.15s ease;">
       → REPLAY LEVEL 4
+    </a>
+  </div>
+
+  <!-- Next Level Link - only visible on Level Complete screen (to Level 5) -->
+  <div id="next-level-link-container" style="display: none; text-align: center; margin-top: 8px;">
+    <a id="next-level-link" href="Leve5.html" 
+       style="display: inline-block; 
+              color: #66ddff; 
+              text-decoration: none; 
+              font-size: 15px; 
+              font-weight: 600;
+              letter-spacing: 1.5px;
+              padding: 8px 24px;
+              border: 1px solid #4488aa;
+              border-radius: 4px;
+              background: rgba(10, 30, 50, 0.6);
+              transition: all 0.15s ease;">
+      → PLAY LEVEL 5
     </a>
   </div>
 
@@ -846,6 +870,7 @@
           player.isClimbing = false;
           gameState = 'complete';
           updateLevel3LinkVisibility();  // explicit on transition (perf: no longer in every gameLoop frame)
+          updateNextLevelLinkVisibility();
 
           // Final portal touch burst (only ends when player reaches top)
           const ex = player.wx + 13;
@@ -3686,6 +3711,14 @@
       }
     }
 
+    // Show/hide Next Level (L5) link based on game state
+    function updateNextLevelLinkVisibility() {
+      const container = document.getElementById('next-level-link-container');
+      if (container) {
+        container.style.display = (gameState === 'complete') ? 'block' : 'none';
+      }
+    }
+
     function gameLoop() {
       update();
       draw();
@@ -3702,6 +3735,15 @@
         gameState = 'playing';
       }
       updateLevel3LinkVisibility();
+      updateNextLevelLinkVisibility();
+    }
+
+    // Save cumulative score when proceeding to Level 5 (so it carries over)
+    function saveCumulativeForNextLevel() {
+      try {
+        const finalForThisLevel = baseScore + score;
+        localStorage.setItem('neonDashCumulativeScore', String(finalForThisLevel));
+      } catch(e){}
     }
 
     function init() {
@@ -3733,6 +3775,7 @@
           resetGame();
           gameState = 'playing';
           updateLevel3LinkVisibility();
+          updateNextLevelLinkVisibility();
         }
       });
 
@@ -3762,6 +3805,12 @@
 
       // kick off loop
       gameLoop();
+
+      // Attach handler to next-level link to persist cumulative score (like previous levels)
+      const nextLinkEl = document.getElementById('next-level-link');
+      if (nextLinkEl) {
+        nextLinkEl.addEventListener('click', saveCumulativeForNextLevel);
+      }
 
       // subtle console note
       console.log('%c[NEON DASH LEVEL 4] Arrow keys / A D to move, Space to jump. Avoid the lava pits and fiery spheres. (Lava hazards wiggle, burned trees in bg)', 'color:#553322');
