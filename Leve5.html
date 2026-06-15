@@ -2641,7 +2641,7 @@
         ctx.fillRect(sx + 3, py + p.height + 3, p.width - 6, 5);
 
         // main platform body (charred rock)
-        ctx.fillStyle = (pVar > 0.04 ? '#4a2233' : '#3a1a2a');
+        ctx.fillStyle = ((p.swayAmp || 0) > 0.04 ? '#4a2233' : '#3a1a2a');
         ctx.fillRect(sx, py, p.width, p.height);
 
         // lava glow top edge
