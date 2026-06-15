@@ -343,6 +343,45 @@
       setTimeout(() => playTone(205, 55, 'sine', 0.08, 6, 45), 25);
     }
 
+    // === NEW DREAMY SFX FOR CONSISTENCY & L5 ENHANCEMENTS (soft, wondrous 9yo sci-fi per bible) ===
+    function playPyramidEmerge() {
+      if (muted) return;
+      playNoise(180, 0.09, 850, 'lowpass'); // soft ascending whoosh
+      const chimes = [510, 640, 770, 910, 1080];
+      chimes.forEach((f, i) => {
+        setTimeout(() => playTone(f, 92, 'sine', 0.13 + (i > 2 ? 0.02 : 0), 14, 85), i * 13);
+      });
+    }
+    function playPyramidChat() {
+      if (muted) return;
+      playTone(690, 105, 'sine', 0.11, 18, 95); // mysterious glassy
+      setTimeout(() => playTone(860, 82, 'triangle', 0.08, 12, 72), 48);
+    }
+    function playBuildingHum() {
+      if (muted) return;
+      playTone(92, 210, 'sine', 0.06, 22, 190); // low pulsing glow
+      setTimeout(() => playTone(138, 155, 'sine', 0.05, 18, 130), 65);
+    }
+    function playGooPop() {
+      if (muted) return;
+      playNoise(52, 0.10, 720, 'lowpass'); // wet low pop
+      playTone(295, 46, 'sine', 0.12, 5, 40);
+    }
+    function playLaser() {
+      if (muted) return;
+      playTone(1420, 36, 'square', 0.13, 3, 30); // sharp high zap, soft not harsh
+      setTimeout(() => playTone(1680, 24, 'sine', 0.08, 2, 18), 7);
+    }
+    function playNPCApproach() {
+      if (muted) return;
+      playTone(505, 62, 'sine', 0.11, 9, 52); // soft friendly ping
+      setTimeout(() => playTone(670, 48, 'triangle', 0.07, 7, 38), 24);
+    }
+    function playBlock() {
+      if (muted) return;
+      playTone(175, 68, 'sine', 0.09, 6, 55); // low deny but dreamy
+    }
+
     function toggleMute() {
       muted = !muted;
       console.log('[NEON DASH] Sound ' + (muted ? 'muted' : 'enabled'));
@@ -756,6 +795,8 @@
             poisonDarts.splice(i, 1);
           } else {
             gameState = 'over';
+            playGooPop();
+            playDeath('lava');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             poisonDarts.splice(i, 1);
             break;
@@ -775,6 +816,7 @@
       // === VISIBLE LADDER CLIMB (executes only when triggered; ends level at portal) ===
       if (player.isClimbing && gameState === 'playing') {
         player.climbProgress = (player.climbProgress || 0) + 0.0198;
+        if ((frame % 7) === 0) playLadderStep();
         const t = Math.min(1, player.climbProgress);
 
         if (levelExit) {
@@ -795,6 +837,7 @@
         if (t >= 1) {
           player.isClimbing = false;
           gameState = 'complete';
+          playPortal();
           updateLevel3LinkVisibility();  // explicit on transition (perf: no longer in every gameLoop frame)
 
           // Final portal touch burst (only ends when player reaches top)
@@ -1369,6 +1412,7 @@
         if (dx < 22 && dy < 22) {
           const value = orb.value || 1;
           neonScore += value;
+          playCollect(value === 5);
 
           // Collect particles - different color for green orbs
           const particleColor = (value === 5) ? '#33ff88' : '#3355aa';
@@ -1467,6 +1511,7 @@
             }
           } else {
             gameState = 'over';
+            playDeath('hazard');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // small floor hit dust
             spawnDust(player.wx + player.w / 2, GROUND_Y, 5, false);
@@ -1708,6 +1753,7 @@
         const dy = Math.abs((player.y + player.h * 0.5) - (octopoppStart.y - 17));
         if (dx < 80 && dy < 60) {
           octopoppStart.approached = true;
+          playNPCApproach();
         }
       }
       if (octopoppMid) {
@@ -1716,6 +1762,7 @@
         const dy = Math.abs((player.y + player.h * 0.5) - (octopoppMid.y - 17));
         if (dx < 80 && dy < 60) {
           octopoppMid.approached = true;
+          playNPCApproach();
         }
       }
 
@@ -1802,8 +1849,9 @@
             phase: Math.random() * Math.PI * 2,
             approached: true  // emerges and shows bubble immediately
           };
-          // play sound for emerge if available (will be enhanced by sound agent)
-          if (typeof playPyramidEmerge === 'function') playPyramidEmerge();
+          playPyramidEmerge();
+          playPyramidChat();
+          playBuildingHum();
         }
       }
 
@@ -1811,6 +1859,7 @@
       if (endPyramid && !player.isClimbing && levelExit && player.wx > levelExit.wx + 25) {
         player.wx = levelExit.wx + 25;
         player.vx = Math.min(player.vx || 0, 0);
+        playBlock();
       }
 
       // Climb the exit ladder with UP key (starts visible climb - level ends only at portal)
@@ -1824,6 +1873,7 @@
           player.isClimbing = true;
           player.climbProgress = 0;
           player.climbStartY = player.y;
+          playLadderGrab();
           player.climbTargetY = levelExit.baseY - 305; // tall portal (60%+ of level height)
           keys['ArrowUp'] = false;
           keys['w'] = false;

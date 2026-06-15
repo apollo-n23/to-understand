@@ -369,6 +369,45 @@
       setTimeout(() => playTone(205, 55, 'sine', 0.08, 6, 45), 25);
     }
 
+    // === NEW DREAMY SFX FOR CONSISTENCY & L5 ENHANCEMENTS (soft, wondrous 9yo sci-fi per bible) ===
+    function playPyramidEmerge() {
+      if (muted) return;
+      playNoise(180, 0.09, 850, 'lowpass'); // soft ascending whoosh
+      const chimes = [510, 640, 770, 910, 1080];
+      chimes.forEach((f, i) => {
+        setTimeout(() => playTone(f, 92, 'sine', 0.13 + (i > 2 ? 0.02 : 0), 14, 85), i * 13);
+      });
+    }
+    function playPyramidChat() {
+      if (muted) return;
+      playTone(690, 105, 'sine', 0.11, 18, 95); // mysterious glassy
+      setTimeout(() => playTone(860, 82, 'triangle', 0.08, 12, 72), 48);
+    }
+    function playBuildingHum() {
+      if (muted) return;
+      playTone(92, 210, 'sine', 0.06, 22, 190); // low pulsing glow
+      setTimeout(() => playTone(138, 155, 'sine', 0.05, 18, 130), 65);
+    }
+    function playGooPop() {
+      if (muted) return;
+      playNoise(52, 0.10, 720, 'lowpass'); // wet low pop
+      playTone(295, 46, 'sine', 0.12, 5, 40);
+    }
+    function playLaser() {
+      if (muted) return;
+      playTone(1420, 36, 'square', 0.13, 3, 30); // sharp high zap, soft not harsh
+      setTimeout(() => playTone(1680, 24, 'sine', 0.08, 2, 18), 7);
+    }
+    function playNPCApproach() {
+      if (muted) return;
+      playTone(505, 62, 'sine', 0.11, 9, 52); // soft friendly ping
+      setTimeout(() => playTone(670, 48, 'triangle', 0.07, 7, 38), 24);
+    }
+    function playBlock() {
+      if (muted) return;
+      playTone(175, 68, 'sine', 0.09, 6, 55); // low deny but dreamy
+    }
+
     function toggleMute() {
       muted = !muted;
       console.log('[NEON DASH] Sound ' + (muted ? 'muted' : 'enabled'));
