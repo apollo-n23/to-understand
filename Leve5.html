@@ -145,6 +145,7 @@
     let projectiles = [];
     let levelExit = null;
     let powerUp = null;
+    let endPyramid = null;  // Golden floating pyramid NPC for door block at Neon Control Zone building
     let icePowerUp = null;
     let hasIceBlast = false;
     let lowWalls = [];
@@ -369,6 +370,7 @@
       levelExit = null;
       powerUp = null;
       icePowerUp = null;
+      endPyramid = null;
       hasIceBlast = false;
       lowWalls = [];
       trampolines = [];
@@ -1788,6 +1790,29 @@
         });
       }
 
+      // Neon Control Zone glowing building door approach: spawn golden pyramid NPC if player approaches door instead of ladder
+      if (levelExit && !endPyramid && gameState === 'playing' && !player.isClimbing) {
+        const doorX = levelExit.wx + 55;  // door position to the side of ladder
+        const distToDoor = Math.abs(player.wx + player.w * 0.5 - doorX);
+        const nearDoor = distToDoor < 70 && (player.y + player.h) >= GROUND_Y - 30;
+        if (nearDoor) {
+          endPyramid = {
+            wx: doorX + 15,
+            y: GROUND_Y - 70,
+            phase: Math.random() * Math.PI * 2,
+            approached: true  // emerges and shows bubble immediately
+          };
+          // play sound for emerge if available (will be enhanced by sound agent)
+          if (typeof playPyramidEmerge === 'function') playPyramidEmerge();
+        }
+      }
+
+      // Block player from proceeding past door into the building (must use ladder to finish)
+      if (endPyramid && !player.isClimbing && levelExit && player.wx > levelExit.wx + 25) {
+        player.wx = levelExit.wx + 25;
+        player.vx = Math.min(player.vx || 0, 0);
+      }
+
       // Climb the exit ladder with UP key (starts visible climb - level ends only at portal)
       if (levelExit && gameState === 'playing' && !player.isClimbing) {
         const ex = levelExit.wx;
@@ -3030,14 +3055,100 @@
             ctx.stroke();
           }
         }
+
+        // Glowing "Neon Control Zone" building (replaces usual background monster; golden glow, open door with light)
+        const bx = lx + 48;
+        const by = baseY;
+        const bPulse = Math.sin(frame * 0.22) * 1.8 + 1.2;
+        // Aura glow (golden)
+        ctx.fillStyle = 'rgba(255, 200, 60, 0.22)';
+        ctx.fillRect(bx - 8, by - 185, 58, 165);
+        ctx.fillStyle = 'rgba(255, 220, 100, 0.35)';
+        ctx.fillRect(bx - 4, by - 178, 50, 155);
+        // Building body (dark metallic with gold trim)
+        ctx.fillStyle = '#0f1a2a';
+        ctx.fillRect(bx, by - 170, 42, 145);
+        ctx.strokeStyle = '#ffcc66';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(bx, by - 170, 42, 145);
+        // Glowing panels / windows
+        ctx.fillStyle = 'rgba(255, 230, 120, 0.65)';
+        for (let wy = 0; wy < 3; wy++) {
+          ctx.fillRect(bx + 6, by - 155 + wy * 38, 10, 8);
+          ctx.fillRect(bx + 24, by - 155 + wy * 38, 10, 8);
+        }
+        // Open door with inner light (player can approach but blocked)
+        ctx.fillStyle = '#080808';
+        ctx.fillRect(bx + 14, by - 55, 14, 55);
+        ctx.fillStyle = 'rgba(120, 200, 255, 0.75)';
+        ctx.fillRect(bx + 16, by - 53, 10, 51);
+        // Sign / label
+        ctx.fillStyle = '#ffdd88';
+        ctx.font = 'bold 10px Segoe UI, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Neon Control Zone', bx + 21, by - 178);
+        // Extra glow on text
+        ctx.fillStyle = 'rgba(255, 220, 80, 0.5)';
+        ctx.fillText('Neon Control Zone', bx + 21, by - 178);
+
+        // Golden floating pyramid NPC emerges from door if approached (blocks further progress)
+        if (endPyramid) {
+          const bob = Math.sin(endPyramid.phase || 0) * 5;
+          const npcX = endPyramid.wx - scrollX;
+          const drawY = endPyramid.y - bob;
+          // Golden pyramid body
+          ctx.fillStyle = '#ffcc55';
+          ctx.strokeStyle = '#ddaa33';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(npcX - 20, drawY + 14);
+          ctx.lineTo(npcX + 20, drawY + 14);
+          ctx.lineTo(npcX, drawY - 26);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // Wide white eyes (floating pyramid "face")
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(npcX - 7, drawY - 6, 6, 4.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(npcX + 7, drawY - 6, 6, 4.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Dark pupils (wide-eyed look)
+          ctx.fillStyle = '#112244';
+          ctx.beginPath();
+          ctx.arc(npcX - 7, drawY - 6, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(npcX + 7, drawY - 6, 2, 0, Math.PI * 2);
+          ctx.fill();
+          // Speech bubble (same mechanic, emerges when player approaches door)
+          const onScreen = npcX > -50 && npcX < W + 50;
+          if (endPyramid.approached && onScreen) {
+            const boxW = 265;
+            const boxH = 48;
+            const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
+            const boxY = Math.max(12, drawY - 72);
+            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
+            ctx.fillRect(boxX, boxY, boxW, boxH);
+            ctx.strokeStyle = '#aaddff';
+            ctx.lineWidth = 1.6;
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
+            ctx.fillStyle = '#ccddff';
+            ctx.font = '11px Segoe UI, Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('There\'s so much chaos in here!', boxX + boxW / 2, boxY + 14);
+            ctx.fillText('I cant let you in right now, get to the next level!', boxX + boxW / 2, boxY + 30);
+            ctx.strokeStyle = '#88bbdd';
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxW / 2, boxY + boxH);
+            ctx.lineTo(npcX, drawY - 5);
+            ctx.stroke();
+          }
+        }
       }
-
-      // === ACTIVE END BOSS (foreground): repurposed LARGE POLYGONAL red/dark-red boss as bouncing active entity ===
-      // (Active foreground boss draw removed - L5 end now functions like levels 1-3 with direct ladder spawn; distant background boss may remain for visual)
-
-      // (Orphaned duplicated background boss draw excised for startup fix.)
-
-        // (remainder of orphaned duplicate boss draw body removed for clean startup)
 
       // === BOSS FIREBALLS (dangerous while climbing the ladder) ===
       for (let fb of endFireballs) {
