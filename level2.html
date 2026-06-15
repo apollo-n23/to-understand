@@ -688,6 +688,7 @@
         if (player.wx + player.w > ex - 14 && player.wx < ex + 14 &&
             player.y + player.h > ey - 18 && player.y < ey + 18) {
           gameState = 'over';
+          playDeath('hazard');
           spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
           break;
         }
@@ -735,6 +736,7 @@
       // === VISIBLE LADDER CLIMB (executes only when triggered; ends level at portal) ===
       if (player.isClimbing && gameState === 'playing') {
         player.climbProgress = (player.climbProgress || 0) + 0.0198;
+        if ((frame % 7) === 0) playLadderStep();
         const t = Math.min(1, player.climbProgress);
 
         if (levelExit) {
@@ -755,6 +757,7 @@
         if (t >= 1) {
           player.isClimbing = false;
           gameState = 'complete';
+          playPortal();
 
           // Final portal touch burst (only ends when player reaches top)
           const ex = player.wx + 13;
@@ -796,6 +799,11 @@
         targetY = GROUND_Y - player.h;
         landed = true;
       }
+      // Land sound (only on first contact after being airborne) + track airborne state
+      if (landed && wasAirborne) {
+        playLand();
+      }
+      wasAirborne = !landed;
 
       // Platform support - find the highest (lowest y) surface we are on top of
       for (let p of platforms) {
@@ -845,6 +853,7 @@
             player.vy = -19.5;   // Much stronger upward boost than normal jump
             landed = true;
             player.y = tTop - player.h - 1;
+            playTrampoline();
             // Fun bounce particles
             for (let i = 0; i < 7; i++) {
               particles.push({
@@ -866,6 +875,8 @@
         player.vy = -11.8;
         jumpCount++;
         spawnDust(player.wx + 8, player.y + player.h + 1, 7, true);
+        playJump();
+        wasAirborne = true;
         keys[' '] = false; // one-shot
       }
 
@@ -1300,6 +1311,7 @@
         if (dx < 22 && dy < 22) {
           const value = orb.value || 1;
           neonScore += value;
+          playCollect(value === 5);
 
           // Collect particles - different color for green orbs
           const particleColor = (value === 5) ? '#33ff88' : '#3355aa';
@@ -1578,13 +1590,16 @@
         if (Math.random() < 0.58) {
           const orbWX = player.wx + 280 + Math.random() * 220;
           const orbY = GROUND_Y - 65 - Math.random() * 195; // floating in air
-          neonOrbs.push({
-            wx: orbWX,
-            y: orbY,
-            vx: -0.45 - Math.random() * 0.35,
-            phase: Math.random() * Math.PI * 2,
-            value: 1
-          });
+          // Guard: prevent orbs spawning directly touching/overlapping end ladder (plus levelExit cleanup)
+          if (!levelExit || Math.abs(orbWX - levelExit.wx) > 100) {
+            neonOrbs.push({
+              wx: orbWX,
+              y: orbY,
+              vx: -0.45 - Math.random() * 0.35,
+              phase: Math.random() * Math.PI * 2,
+              value: 1
+            });
+          }
         }
         lastOrbSpawn = frame;
       }
@@ -1618,9 +1633,9 @@
           baseY: GROUND_Y
         };
 
-        // Ensure no floating platforms are touching the ending ladder/platform
+        // Ensure no floating platforms or ANY other objects are touching or overlapping the ending ladder (prevent spawns touching ladder)
         const ladderCenter = levelExit.wx;
-        const safeMargin = 100; // generous padding so nothing visually or physically overlaps the ladder or top platform
+        const safeMargin = 100; // generous padding so nothing visually or physically overlaps the ladder or top platform; covers triangles/obstacles, enemies/specials/verticals/pteros, waterGaps, neonOrbs, powerUps, lowWalls, trampolines, poison*, bg elems, flyingShips, alienTrees
         platforms = platforms.filter(p => {
           const platCenter = p.wx + p.width / 2;
           const xDist = Math.abs(platCenter - ladderCenter);
@@ -1630,6 +1645,16 @@
           }
           return true;
         });
+        // Extended filters for all other spawn types to prevent any overlap with ladder (use x dist + y tall check for high objects; ground objs by x only)
+        obstacles = obstacles.filter(o => Math.abs(o.wx - ladderCenter) >= safeMargin);
+        specials = specials.filter(s => Math.abs(s.wx - ladderCenter) >= safeMargin || (s.y && s.y <= GROUND_Y - 420));
+        waterGaps = waterGaps.filter(g => Math.abs(g.wx - ladderCenter) >= safeMargin);
+        verticalEnemies = verticalEnemies.filter(e => !(Math.abs(e.wx - ladderCenter) < safeMargin && e.y > GROUND_Y - 420));
+        neonOrbs = neonOrbs.filter(o => !(Math.abs(o.wx - ladderCenter) < safeMargin && o.y > GROUND_Y - 420));
+        lowWalls = lowWalls.filter(w => Math.abs(w.wx - ladderCenter) >= safeMargin);
+        trampolines = trampolines.filter(t => Math.abs(t.wx - ladderCenter) >= safeMargin);
+        poisonClouds = poisonClouds.filter(c => !(Math.abs(c.wx - ladderCenter) < safeMargin && c.y > GROUND_Y - 420));
+        poisonDarts = poisonDarts.filter(d => !(Math.abs(d.wx - ladderCenter) < safeMargin && d.y > GROUND_Y - 420));
 
         // Invisible barrier + large polygonal boss beyond it
         // (boss will be drawn and will start spitting fireballs)
@@ -1656,6 +1681,7 @@
           player.isClimbing = true;
           player.climbProgress = 0;
           player.climbStartY = player.y;
+          playLadderGrab();
           player.climbTargetY = levelExit.baseY - 305; // tall portal (60%+ of level height)
           keys['ArrowUp'] = false;
           keys['w'] = false;
