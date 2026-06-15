@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LCARS 4.7 // PROMPT SYNTHESIZER</title>
+  <title>LCARS 4.7 // POPCORN PROMPT SYNTHESIZER</title>
   <style>
     :root {
       --bg: #000000;
@@ -293,12 +293,13 @@
       color: #000;
       position: relative;
     }
-    .input-header.role     { background: var(--orange); }
-    .input-header.objective { background: var(--blue); }
-    .input-header.context   { background: var(--purple); }
-    .input-header.constraints { background: var(--magenta); }
-    .input-header.output    { background: var(--cyan); }
-    .input-header.stop      { background: var(--gold); }
+    .input-header.persona      { background: var(--orange); }
+    .input-header.objective    { background: var(--blue); }
+    .input-header.process      { background: var(--purple); }
+    .input-header.context      { background: var(--magenta); }
+    .input-header.output       { background: var(--cyan); }
+    .input-header.restrictions { background: var(--gold); }
+    .input-header.nature       { background: var(--beige); }
 
     .input-header .extra {
       margin-left: auto;
@@ -327,13 +328,14 @@
       font-style: italic;
     }
 
-    /* Size variations */
-    #role { height: 58px; }
-    #objective { height: 82px; }
-    #context { height: 196px; }
-    #constraints { height: 196px; }
-    #output { height: 96px; }
-    #stop { height: 68px; }
+    /* Size variations - wider for Process, Context, Restrictions */
+    #persona { height: 55px; }
+    #objective { height: 78px; }
+    #process { height: 172px; }
+    #context { height: 172px; }
+    #output { height: 88px; }
+    #restrictions { height: 172px; }
+    #nature { height: 62px; }
 
     /* === PROMINENT COPY BUTTON (very LCARS) === */
     .copy-section {
@@ -576,7 +578,7 @@
   <!-- TOP ENGINEERING BAR -->
   <div class="top-bar">
     <div class="top-bar-left">LCARS 4.7</div>
-    <div class="top-bar-title">PROMPT SYNTHESIZER • DECK 09</div>
+    <div class="top-bar-title">PROMPT SYNTHESIZER • POPCORN</div>
     <div class="top-bar-right">
       <div>INTERFACE ACTIVE</div>
       <div class="top-status" id="stardate">45221.7</div>
@@ -639,7 +641,7 @@
 
       <!-- CENTER - THE ACTUAL PROMPT BUILDER -->
       <div class="work-area">
-        <div class="work-title">PROMPT CONSTRUCTION MATRIX • INPUT CHANNELS</div>
+        <div class="work-title">POPCORN PROMPT FRAMEWORK • 7 CHANNELS</div>
 
         <div class="copy-section">
           <button id="copy-btn" class="lcars-copy"><span>COPY PROMPT TO DATABANK</span></button>
@@ -649,28 +651,32 @@
 
         <!-- INPUT PANELS -->
         <div class="input-panel">
-          <div class="input-header role">ROLE <span class="extra">CH-01  2.258</span></div>
-          <textarea id="role" placeholder="Describe the persona the AI should adopt..."></textarea>
+          <div class="input-header persona">PERSONA <span class="extra">CH-01  2.258</span></div>
+          <textarea id="persona" placeholder="The role and personality the AI should take on..."></textarea>
         </div>
         <div class="input-panel">
           <div class="input-header objective">OBJECTIVE <span class="extra">CH-02  1701</span></div>
-          <textarea id="objective" placeholder="What the prompt should accomplish..."></textarea>
+          <textarea id="objective" placeholder="The end goal for the AI model..."></textarea>
         </div>
         <div class="input-panel">
-          <div class="input-header context">CONTEXT <span class="extra">CH-03  9840</span></div>
-          <textarea id="context" placeholder="Relevant background, facts, or situation..."></textarea>
+          <div class="input-header process">PROCESS <span class="extra">CH-03  9840</span></div>
+          <textarea id="process" placeholder="Steps to follow or chain of logic to adhere to..."></textarea>
         </div>
         <div class="input-panel">
-          <div class="input-header constraints">CONSTRAINTS <span class="extra">CH-04  7233</span></div>
-          <textarea id="constraints" placeholder="Rules, limitations, tone, forbidden topics..."></textarea>
+          <div class="input-header context">CONTEXT <span class="extra">CH-04  6607</span></div>
+          <textarea id="context" placeholder="Useful information about the wider situation..."></textarea>
         </div>
         <div class="input-panel">
           <div class="input-header output">OUTPUT <span class="extra">CH-05  258</span></div>
-          <textarea id="output" placeholder="Desired format, structure, length, style..."></textarea>
+          <textarea id="output" placeholder="The nature of the output required from the AI model..."></textarea>
         </div>
         <div class="input-panel">
-          <div class="input-header stop">STOP <span class="extra">CH-06  2</span></div>
-          <textarea id="stop" placeholder="When to stop or final instructions..."></textarea>
+          <div class="input-header restrictions">RESTRICTIONS <span class="extra">CH-06  7233</span></div>
+          <textarea id="restrictions" placeholder="The constraints the model must follow..."></textarea>
+        </div>
+        <div class="input-panel">
+          <div class="input-header nature">NATURE <span class="extra">CH-07  42</span></div>
+          <textarea id="nature" placeholder="The tone and any other softer guidance..."></textarea>
         </div>
       </div>
 
@@ -687,7 +693,7 @@
         </div>
         <div class="data-readout">
           <div class="label">SECTIONS ACTIVE</div>
-          <div id="sections-active">0 / 6</div>
+          <div id="sections-active">0 / 7</div>
         </div>
         <div class="data-readout">
           <div class="label">EST. TOKENS</div>
@@ -699,6 +705,11 @@
           READY<br>
           18-5245 18-5245<br>
           23-854  4-2584
+        </div>
+
+        <div style="margin: 9px 0 1px;">
+          <div style="font-size:8px; color:#446688; margin-bottom:3px; padding-left:1px; letter-spacing:0.5px;">SIMULATIONS</div>
+          <a href="void-cube.html" style="display:block; background: linear-gradient(180deg, #4499ff 0%, #2a6fcc 100%); color:#000; text-decoration:none; font-size:9.5px; font-weight:800; letter-spacing:0.8px; padding:5px 9px; border-radius:999px; text-align:center; box-shadow: 0 0 0 1px #000; transition: transform 0.08s ease, box-shadow 0.08s ease;">VOID CUBE PROTOCOL</a>
         </div>
 
         <div style="margin-top:auto; font-size:7.5px; color:#334455; text-align:center; padding-top:4px;">
@@ -725,14 +736,14 @@
     </div>
 
     <div class="lcars-footer">
-      LCARS • PROMPT MATRIX 4.7 • ACCESS LEVEL: COMMANDER • ALL SECTIONS SECURE
+      LCARS • POPCORN PROMPT MATRIX 4.7 • ACCESS LEVEL: COMMANDER • ALL SECTIONS SECURE
     </div>
   </div>
 
   <div id="toast" class="toast">PROMPT COPIED TO DATABANK</div>
 
   <script>
-    const ids = ['role', 'objective', 'context', 'constraints', 'output', 'stop'];
+    const ids = ['persona', 'objective', 'process', 'context', 'output', 'restrictions', 'nature'];
 
     function getValue(id) {
       const el = document.getElementById(id);
@@ -741,18 +752,20 @@
 
     function buildPrompt() {
       const parts = [];
-      const role = getValue('role');
-      if (role) parts.push(`ROLE:\n${role}`);
+      const persona = getValue('persona');
+      if (persona) parts.push(`PERSONA:\n${persona}`);
       const objective = getValue('objective');
       if (objective) parts.push(`OBJECTIVE:\n${objective}`);
+      const process = getValue('process');
+      if (process) parts.push(`PROCESS:\n${process}`);
       const context = getValue('context');
       if (context) parts.push(`CONTEXT:\n${context}`);
-      const constraints = getValue('constraints');
-      if (constraints) parts.push(`CONSTRAINTS:\n${constraints}`);
       const output = getValue('output');
-      if (output) parts.push(`OUTPUT FORMAT:\n${output}`);
-      const stop = getValue('stop');
-      if (stop) parts.push(`STOP CONDITIONS:\n${stop}`);
+      if (output) parts.push(`OUTPUT:\n${output}`);
+      const restrictions = getValue('restrictions');
+      if (restrictions) parts.push(`RESTRICTIONS:\n${restrictions}`);
+      const nature = getValue('nature');
+      if (nature) parts.push(`NATURE:\n${nature}`);
       return parts.join('\n\n');
     }
 
@@ -765,7 +778,7 @@
       let active = 0;
       ids.forEach(id => { if (getValue(id)) active++; });
       const activeEl = document.getElementById('sections-active');
-      if (activeEl) activeEl.textContent = `${active} / 6`;
+      if (activeEl) activeEl.textContent = `${active} / ${ids.length}`;
 
       // Rough token estimate (very approximate)
       const tokenEl = document.getElementById('token-est');
