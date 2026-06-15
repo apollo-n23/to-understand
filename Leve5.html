@@ -160,7 +160,7 @@
     let verticalEnemies = [];
     let poisonClouds = [];
     let poisonDarts = [];
-    // Lava pterodactyl-like reptile birds (new for lava theme; gliding high, spit down fire)
+    // Purple alien drones (ptero array + lastPteroSpawn reused for reskinned tech/floral theme; glide + laser instead of fire)
     let pteros = [];
     let lastPteroSpawn = 0;
     // (stomp tutorial / firstSpecial vars removed - no tutorial instructions)
@@ -171,7 +171,7 @@
     let lastOrbSpawn = 0;
     let lastGreenOrbSpawn = 0;
     let baseScore = 0;  // cumulative from previous levels (loaded from localStorage)
-    // Water/acid vat tutorial removed for Level 3 (assume knowledge from Level 2)
+    // (Water/acid vat tutorial removed - players remember from Level 2)
 
     // Note: endBoss / bossDefeated removed - end of level now functions like levels 1-3 (direct ladder+portal spawn)
     let friendlyNPC = null;
@@ -187,7 +187,6 @@
     let audioCtx;
     let muted = false;
     const masterVol = 0.22;
-    let wasAirborne = true;
 
     function getAudioCtx() {
       if (!audioCtx) {
@@ -261,11 +260,6 @@
       playTone(620, 72, 'square', 0.18, 6, 70);
       setTimeout(() => playTone(880, 38, 'sine', 0.09, 4, 30), 18);
     }
-    function playLand() {
-      if (muted) return;
-      playTone(280, 55, 'sine', 0.12, 5, 55);
-      playNoise(48, 0.06, 900, 'lowpass');
-    }
     function playTrampoline() {
       if (muted) return;
       playTone(780, 95, 'triangle', 0.20, 7, 90);
@@ -336,11 +330,6 @@
       if (muted) return;
       playTone(1050, 55, 'sine', 0.15, 4, 45);
       setTimeout(() => playTone(720, 48, 'triangle', 0.10, 4, 38), 18);
-    }
-    function playBossStomp() {
-      if (muted) return;
-      playTone(165, 90, 'sine', 0.14, 8, 80);
-      setTimeout(() => playTone(205, 55, 'sine', 0.08, 6, 45), 25);
     }
 
     // === NEW DREAMY SFX FOR CONSISTENCY & L5 ENHANCEMENTS (soft, wondrous 9yo sci-fi per bible) ===
@@ -1207,7 +1196,7 @@
         window.lastVertEnemySpawn = frame;
       }
 
-      // === SPAWN: lava pterodactyl reptile birds (gliding high across top, occasional downward fire spit)
+      // === SPAWN: purple alien drones (ptero array reused; gliding high; laser bolt instead of fire)
       // Spawn ~4-6 per level, not too frequent. Use lastPteroSpawn. Spawn from right (mostly) or left.
       // Gliding: slow vx negative, y around 50-100 with sin oscillation for natural glide/bob.
       if (player.wx > 520 && frame - lastPteroSpawn > 610 && Math.random() < 0.055) {
@@ -1332,7 +1321,7 @@
         e.y = e.baseY + Math.sin(frame * e.speed + e.phase) * e.amplitude;
       }
 
-      // Move & animate lava pteros (glide + y bob oscillation), occasional downward spit fireballs (reuse projectiles)
+      // Move & animate drones (ptero array reused; glide + y bob; laser bolt instead of downward spit; projectiles reused)
       for (let i = pteros.length - 1; i >= 0; i--) {
         const p = pteros[i];
         p.wx += p.vx;
@@ -2015,7 +2004,7 @@
         ctx.fillRect(ax, ay, 1.6, 0.9);
       }
 
-      // Lava heat haze / dark smoke plumes above lava pits (slow parallax) - volcanic ash
+      // Heat haze / dark smoke plumes (repurposed poisonClouds array for floral/pink theme consistency)
       for (let cloud of poisonClouds) {
         const csx = cloud.wx - scrollX * 0.04; // very slow parallax, high in sky
         if (csx < -50 || csx > W + 50) continue;
@@ -2238,7 +2227,7 @@
         ctx.moveTo(sx + 2, sy + 1);
         ctx.quadraticCurveTo(sx - 10, sy + 3, sx - 24, sy + 1);
         ctx.stroke();
-        // Wings (flapping, lava vein glow)
+        // Wings (flapping, tech energy vein glow for drone reskin)
         ctx.fillStyle = '#2a1210';
         ctx.beginPath();
         ctx.moveTo(sx + 8, sy);
@@ -3217,7 +3206,7 @@
         }
       }
 
-      // === BOSS FIREBALLS (dangerous while climbing the ladder) ===
+      // === END FIREBALLS (near-exit hazard; repurposed from prior boss logic in L5 - no active endBoss entity) ===
       for (let fb of endFireballs) {
         const sx = fb.wx - scrollX;
         const sy = fb.y;
@@ -3515,7 +3504,7 @@
 
       // === UI OVERLAYS ===
       if (gameState === 'playing') {
-        // (Water/acid vat tutorial removed for L3 - players remember from Level 2)
+        // (Water/acid vat tutorial removed - players remember from Level 2)
 
         // (second green tutorial box removed - no tutorial instructions)
 

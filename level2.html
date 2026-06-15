@@ -1626,7 +1626,7 @@
         lastGreenOrbSpawn = frame;
       }
 
-      // === LEVEL EXIT: ladder + portal appears much later (15% longer level) ===
+      // === LEVEL EXIT: ladder + portal (~20% longer than L1; threshold 5106, same as L2) ===
       if (!levelExit && player.wx > 5106) {
         levelExit = {
           wx: player.wx + 110 + Math.random() * 70,
