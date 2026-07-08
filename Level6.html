@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NEON DASH - LEVEL 4 // ROCK &amp; LAVA</title>
+  <title>NEON DASH - LEVEL 6 // DEEP WATER</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #0c0e12;
-      color: #aabbcc;
+      background: #0a1628;
+      color: #88bbdd;
       font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
@@ -22,39 +22,39 @@
       gap: 14px;
     }
     .back-link {
-      color: #8899aa;
+      color: #66aacc;
       text-decoration: none;
       font-size: 11px;
       letter-spacing: 1.5px;
       padding: 5px 13px;
-      border: 1px solid #3a424f;
+      border: 1px solid #1a4a6e;
       border-radius: 2px;
       transition: all 0.1s ease;
       white-space: nowrap;
     }
     .back-link:hover {
-      background: #1a1f28;
-      border-color: #8899aa;
-      color: #aabbcc;
+      background: #0d2840;
+      border-color: #33aacc;
+      color: #88eeff;
     }
     .page-title {
       flex: 1;
       text-align: center;
       font-size: 11px;
       letter-spacing: 4px;
-      color: #556677;
+      color: #2277aa;
       font-weight: 700;
       text-transform: uppercase;
     }
     .page-title span {
-      color: #778899;
+      color: #66ddff;
       font-weight: 400;
     }
     canvas {
       display: block;
       margin: 0 auto;
-      border: 1px solid #2a2f38;
-      box-shadow: 0 0 40px rgba(20, 25, 35, 0.6);
+      border: 1px solid #1a4a6e;
+      box-shadow: 0 0 40px rgba(10, 40, 80, 0.65);
       background: #000;
       image-rendering: pixelated;
     }
@@ -63,28 +63,22 @@
       margin: 8px auto 18px;
       text-align: center;
       font-size: 10px;
-      color: #445566;
+      color: #336688;
       letter-spacing: 1px;
     }
     .info kbd {
       font-family: "Consolas", monospace;
-      background: #1a1f28;
+      background: #0d2840;
       padding: 1px 5px;
       border-radius: 2px;
-      color: #778899;
-      border: 1px solid #3a424f;
+      color: #66ddff;
+      border: 1px solid #1a4a6e;
     }
 
     #level3-link:hover {
-      background: rgba(45, 50, 60, 0.85);
-      border-color: #88aabb;
-      color: #ccddee;
-      transform: translateY(-1px);
-    }
-    #next-level-link:hover {
-      background: rgba(10, 40, 60, 0.85);
-      border-color: #66ddff;
-      color: #bbf0ff;
+      background: rgba(13, 40, 64, 0.9);
+      border-color: #33aacc;
+      color: #88eeff;
       transform: translateY(-1px);
     }
   </style>
@@ -92,36 +86,18 @@
 <body>
   <div class="header">
     <a href="index.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
-    <div class="page-title">NEON DASH LEVEL 4 <span>ROCK &amp; LAVA • SIDE-SCROLL SIM</span></div>
+    <div class="page-title">NEON DASH LEVEL 6 <span>DEEP WATER • SIDE-SCROLL SIM</span></div>
   </div>
 
   <canvas id="game" width="960" height="520"></canvas>
 
   <div class="info">
-    <kbd>←</kbd> <kbd>→</kbd> MOVE CUBE &nbsp;&nbsp; <kbd>SPACE</kbd> JUMP HAZARDS + LAVA PITS &nbsp;&nbsp; <kbd>R</kbd> RESTART
+    <kbd>←</kbd> <kbd>→</kbd> MOVE CUBE &nbsp;&nbsp; <kbd>SPACE</kbd> JUMP HAZARDS + WATER PITS &nbsp;&nbsp; <kbd>R</kbd> RESTART
   </div>
 
-  <!-- Level 5 Replay Link - only visible on Level Complete screen -->
+  <!-- Level 6 Replay Link - only visible on Level Complete screen -->
   <div id="level3-link-container" style="display: none; text-align: center; margin-top: 12px;">
-    <a id="level3-link" href="Leve5.html" 
-       style="display: inline-block; 
-              color: #88aabb; 
-              text-decoration: none; 
-              font-size: 15px; 
-              font-weight: 600;
-              letter-spacing: 1.5px;
-              padding: 8px 24px;
-              border: 1px solid #556677;
-              border-radius: 4px;
-              background: rgba(30, 35, 45, 0.7);
-              transition: all 0.15s ease;">
-      → REPLAY LEVEL 5
-    </a>
-  </div>
-
-  <!-- Next Level Link - only visible on Level Complete screen (to Level 6) -->
-  <div id="next-level-link-container" style="display: none; text-align: center; margin-top: 8px;">
-    <a id="next-level-link" href="Level6.html" 
+    <a id="level3-link" href="Level6.html" 
        style="display: inline-block; 
               color: #66ddff; 
               text-decoration: none; 
@@ -129,11 +105,11 @@
               font-weight: 600;
               letter-spacing: 1.5px;
               padding: 8px 24px;
-              border: 1px solid #4488aa;
+              border: 1px solid #2277aa;
               border-radius: 4px;
-              background: rgba(10, 30, 50, 0.6);
+              background: rgba(10, 40, 70, 0.75);
               transition: all 0.15s ease;">
-      → PLAY LEVEL 6
+      → REPLAY LEVEL 6
     </a>
   </div>
 
@@ -144,6 +120,16 @@
     const W = canvas.width;
     const H = canvas.height;
     const GROUND_Y = 418;
+
+    // Level 6 oxygen + air bubble mechanic (underwater breathing)
+    const OXYGEN_MAX = 100;
+    const OXYGEN_DRAIN = 0.17;
+    const OXYGEN_REFILL = 1.15;
+    const MAX_AIR_BUBBLES = 12;
+    const AIR_BUBBLE_R_MIN = 42;
+    const AIR_BUBBLE_R_MAX = 78;
+    const AIR_BUBBLE_SPAWN_MIN = 14;
+    const AIR_BUBBLE_SPAWN_SPAN = 12;
 
     let player = { wx: 90, y: 0, vx: 0, vy: 0, w: 26, h: 26 };
     let obstacles = [];
@@ -169,7 +155,7 @@
     let projectiles = [];
     let levelExit = null;
     let powerUp = null;
-    let endPyramid = null;  // Golden floating pyramid NPC for door block at Neon Control Zone building
+    let endPyramid = null;  // Floating pyramid NPC for door block at Hydro Control Zone building
     let icePowerUp = null;
     let hasIceBlast = false;
     let lowWalls = [];
@@ -184,9 +170,14 @@
     let verticalEnemies = [];
     let poisonClouds = [];
     let poisonDarts = [];
-    let slimePuddles = [];  // short-lived deadly puddles from splatted purple slimeballs (from pits/enemy spits)
-    let ceilingFlowers = [];  // pink snake-like flower ceiling hazards (L5 biosphere theme; extend slowly from ceiling, whole vine deadly)
-    // Purple alien drones (ptero array + lastPteroSpawn reused for reskinned tech/floral theme; glide + laser instead of fire)
+    let slimePuddles = [];  // short-lived deadly puddles from splatted blue ink/water orbs (from pits/enemy spits)
+    let ceilingFlowers = [];  // blue-green seaweed / aqua frond ceiling hazards (L6 watery theme; extend slowly from ceiling, whole vine deadly)
+    // Large pass-through air bubbles + oxygen meter (L6 only; drain while swimming, refill inside bubbles)
+    let airBubbles = [];
+    let oxygen = OXYGEN_MAX;
+    let nextAirBubbleSpawn = 0;
+    let wasInsideAirBubble = false;
+    // Aqua drones (ptero array + lastPteroSpawn reused for underwater tech theme; glide + bolt)
     let pteros = [];
     let lastPteroSpawn = 0;
     // (stomp tutorial / firstSpecial vars removed - no tutorial instructions)
@@ -332,6 +323,14 @@
     }
     function playDeath(cause = 'hazard') {
       if (muted) return;
+      if (cause === 'drown') {
+        // Low, muffled underwater choke — separate from pit lava drown timer
+        playTone(210, 200, 'sine', 0.14, 18, 180);
+        setTimeout(() => playTone(150, 180, 'triangle', 0.11, 14, 160), 70);
+        setTimeout(() => playTone(95, 220, 'sine', 0.09, 20, 200), 140);
+        playNoise(280, 0.08, 420, 'lowpass');
+        return;
+      }
       const base = (cause === 'lava' || cause === 'acid') ? 480 : (cause === 'ptero' || cause === 'ice' ? 780 : 650);
       playTone(base, 160, 'sine', 0.16, 12, 140);
       setTimeout(() => playTone(base * 0.75, 140, 'sine', 0.12, 10, 120), 55);
@@ -340,6 +339,11 @@
       } else if (cause === 'ice' || cause === 'ptero') {
         playNoise(90, 0.05, 2800, 'highpass');
       }
+    }
+    function playBubbleChirp() {
+      if (muted) return;
+      playTone(880 + Math.random() * 220, 55, 'sine', 0.08, 4, 48);
+      setTimeout(() => playTone(1100 + Math.random() * 180, 40, 'triangle', 0.05, 3, 32), 18);
     }
     function playPortal() {
       if (muted) return;
@@ -448,7 +452,11 @@
       poisonClouds = [];
       poisonDarts = [];
       slimePuddles = [];
-      ceilingFlowers = [];  // clear pink snake flower hazards
+      ceilingFlowers = [];  // clear seaweed / aqua frond hazards
+      airBubbles = [];
+      oxygen = OXYGEN_MAX;
+      nextAirBubbleSpawn = 0;
+      wasInsideAirBubble = false;
       pteros = [];
       lastPteroSpawn = 0;
       // (firstSpecial / green tutorial state cleared removed)
@@ -464,7 +472,7 @@
       lastSpecialFrame = 40;   // allow first monster to appear earlier
       window.lastVertEnemySpawn = 0;
       frame = 0;
-      // boss state removed for L5 (no active boss mechanic)
+      // boss state removed for L6 (no active boss mechanic)
       friendlyNPC = null;
       octopoppStart = null;
       octopoppMid = null;
@@ -475,16 +483,26 @@
       lastSpawnWX = 520;
       // seed one floating platform for early play (thicker, with props for new sway/float system)
       platforms.push({ wx: 295, y: GROUND_Y - 78, width: 62, height: 13, swayAmp: 0, swayPhase: 0, floatAmp: 0, floatPhase: 0 });
-      // seed an early glowing purple blob so player can encounter one soon
+      // seed an early aqua bio-shooter so player can encounter one soon
       specials.push({ wx: 680, y: GROUND_Y - 64, w: 30, h: 64, nextShot: frame + 55 + Math.random() * 40 });
       player.y = GROUND_Y - player.h;
+
+      // Seed 4–5 large air bubbles near the start so oxygen play is immediate
+      const seedCount = 4 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < seedCount; i++) {
+        airBubbles.push(makeAirBubble(
+          player.wx + 90 + i * 95 + Math.random() * 40,
+          90 + Math.random() * (GROUND_Y - 160)
+        ));
+      }
+      nextAirBubbleSpawn = AIR_BUBBLE_SPAWN_MIN + Math.floor(Math.random() * AIR_BUBBLE_SPAWN_SPAN);
 
       initBackgroundElements();
       initFlyingShips();
     }
 
     function initBackgroundElements() {
-      // Distant alien floral blooms + midground vine stalks (botanical biosphere; pink/purple/green palette)
+      // Distant coral blooms + midground seaweed stalks (underwater palette; aqua/teal/blue-green)
       backgroundElements = [];
       const spread = 12500;
       const startX = -600;
@@ -494,7 +512,7 @@
         const r = Math.random();
 
         if (r < 0.72) {
-          // Large alien floral bloom stem with layered petals + glowing center (reduced polys; parallax + phase sway preserved)
+          // Large coral bloom stem with layered fronds + glowing center (parallax + phase sway preserved)
           backgroundElements.push({
             type: 'largeBloom',
             wx: wx,
@@ -504,7 +522,7 @@
             phase: Math.random() * Math.PI * 2
           });
         } else {
-          // Closer midground vine stalk cluster with small blooms / leaves
+          // Closer midground seaweed stalk cluster with small fronds / leaves
           backgroundElements.push({
             type: 'midStalk',
             wx: wx + (Math.random() - 0.5) * 120,
@@ -518,7 +536,7 @@
     }
 
     function initFlyingShips() {
-      // Drifting volcanic ash plumes high in the smoggy sky (reduced count)
+      // Drifting bubble / silt plumes high in the water column (reduced count)
       flyingShips = [];
       for (let i = 0; i < 6; i++) {
         const wx = -400 + Math.random() * 4800 + i * 580;
@@ -562,7 +580,7 @@
     }
 
     function spawnNeonSmoke(x, y, count) {
-      // Atmospheric volcanic haze / ash vapor (grey with ember tint)
+      // Atmospheric silt / bubble haze in the water column (blue-aqua)
       for (let i = 0; i < count; i++) {
         particles.push({
           x: x + (Math.random() - 0.5) * 28,
@@ -570,7 +588,7 @@
           vx: (Math.random() - 0.5) * 0.7,
           vy: -0.35 - Math.random() * 0.55,   // slow upward drift
           life: 38 + Math.random() * 46,
-          c: (Math.random() < 0.3 ? '#cc7744' : '#665e55'),
+          c: (Math.random() < 0.3 ? '#33aacc' : '#1a4a6e'),
           size: 1.6 + Math.random() * 1.4
         });
       }
@@ -589,6 +607,117 @@
           c: (Math.random() < 0.6 ? '#ddffff' : '#99ccff'),
           size: 1.6 + Math.random() * 1.2
         });
+      }
+    }
+
+    // === L6 AIR BUBBLES + OXYGEN ===
+    function makeAirBubble(wx, y) {
+      const r = AIR_BUBBLE_R_MIN + Math.random() * (AIR_BUBBLE_R_MAX - AIR_BUBBLE_R_MIN);
+      return {
+        wx: wx,
+        y: y,
+        r: r,
+        vx: -0.35 - Math.random() * 0.55,   // slow leftward water drift
+        bobAmp: 0.25 + Math.random() * 0.45,
+        bobPhase: Math.random() * Math.PI * 2,
+        bobSpeed: 0.02 + Math.random() * 0.025,
+        baseY: y
+      };
+    }
+
+    // Circle (bubble) vs player AABB — pass-through gas pocket, not solid
+    function playerInsideAirBubble(b) {
+      const left = player.wx;
+      const right = player.wx + player.w;
+      const top = player.y;
+      const bottom = player.y + player.h;
+      const closestX = Math.max(left, Math.min(b.wx, right));
+      const closestY = Math.max(top, Math.min(b.y, bottom));
+      const dx = b.wx - closestX;
+      const dy = b.y - closestY;
+      return (dx * dx + dy * dy) <= (b.r * b.r);
+    }
+
+    function spawnAquaDrownBurst(x, y) {
+      for (let i = 0; i < 36; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const sp = 1.2 + Math.random() * 3.6;
+        particles.push({
+          x: x + (Math.random() - 0.5) * 8,
+          y: y + (Math.random() - 0.5) * 8,
+          vx: Math.cos(ang) * sp,
+          vy: Math.sin(ang) * sp - 0.8,
+          life: 24 + Math.random() * 28,
+          c: (Math.random() < 0.45) ? '#66ddff' : ((Math.random() < 0.5) ? '#33aacc' : '#a8e8ff'),
+          size: 1.8 + Math.random() * 1.6
+        });
+      }
+    }
+
+    function updateAirBubblesAndOxygen() {
+      // Only while actively playing (climb early-return never reaches here → oxygen freezes)
+      if (gameState !== 'playing') return;
+
+      // Drift + bob bubbles; prune far off-screen
+      for (let i = airBubbles.length - 1; i >= 0; i--) {
+        const b = airBubbles[i];
+        b.bobPhase += b.bobSpeed;
+        b.wx += b.vx;
+        b.y = b.baseY + Math.sin(b.bobPhase) * (b.bobAmp * 18);
+        // gentle upward float of base so they feel alive
+        b.baseY -= 0.08 + Math.random() * 0.04;
+        if (b.wx + b.r < scrollX - 140 || b.wx - b.r > scrollX + W + 220 || b.y + b.r < -80 || b.y - b.r > H + 40) {
+          airBubbles.splice(i, 1);
+        }
+      }
+
+      // Very frequent large bubble spawns ahead / around the player
+      if (--nextAirBubbleSpawn <= 0 && airBubbles.length < MAX_AIR_BUBBLES) {
+        const side = Math.random();
+        let wx;
+        if (side < 0.55) {
+          wx = player.wx + 180 + Math.random() * 320; // ahead
+        } else if (side < 0.8) {
+          wx = player.wx - 40 + Math.random() * 120; // near player
+        } else {
+          wx = player.wx + W * 0.55 + Math.random() * 160; // far forward
+        }
+        const y = 70 + Math.random() * (GROUND_Y - 140); // multi-height
+        airBubbles.push(makeAirBubble(wx, y));
+        nextAirBubbleSpawn = AIR_BUBBLE_SPAWN_MIN + Math.floor(Math.random() * AIR_BUBBLE_SPAWN_SPAN);
+      } else if (airBubbles.length >= MAX_AIR_BUBBLES && nextAirBubbleSpawn <= 0) {
+        nextAirBubbleSpawn = AIR_BUBBLE_SPAWN_MIN;
+      }
+
+      // Oxygen drain / refill
+      let inside = false;
+      for (let b of airBubbles) {
+        if (playerInsideAirBubble(b)) {
+          inside = true;
+          break;
+        }
+      }
+
+      if (inside) {
+        if (!wasInsideAirBubble) playBubbleChirp();
+        oxygen = Math.min(OXYGEN_MAX, oxygen + OXYGEN_REFILL);
+        // Soft refill chirp occasionally while breathing in bubble
+        if ((frame % 28) === 0) playBubbleChirp();
+      } else {
+        oxygen = Math.max(0, oxygen - OXYGEN_DRAIN);
+      }
+      wasInsideAirBubble = inside;
+
+      if (oxygen <= 0) {
+        oxygen = 0;
+        gameState = 'over';
+        playDeath('drown');
+        spawnAquaDrownBurst(player.wx + player.w / 2, player.y + player.h / 2);
+        spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+        if (score > best) {
+          best = score;
+          saveBest();
+        }
       }
     }
 
@@ -810,7 +939,7 @@
         }
       }
 
-      // === CEILING FLOWER SNAKE HAZARD COLLISION (whole extended vine deadly; pink biosphere hazard)
+      // === CEILING SEAWEED FROND HAZARD COLLISION (whole extended vine deadly; watery theme hazard)
       // Use simple generous AABB over current length (wiggle considered by extra x margin); touch any part of extended vine = die
       for (let f of ceilingFlowers) {
         const fTop = f.baseY;
@@ -823,7 +952,7 @@
           gameState = 'over';
           playDeath('hazard');
           spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
-          // pink petal burst on flower vine death (theme)
+          // aqua frond / bubble burst on seaweed vine death (theme)
           for (let k = 0; k < 11; k++) {
             const ang = Math.random() * Math.PI * 2;
             const sp = 1.1 + Math.random() * 2.4;
@@ -833,7 +962,7 @@
               vx: Math.cos(ang) * sp,
               vy: Math.sin(ang) * sp - 0.8,
               life: 16 + Math.random() * 12,
-              c: (Math.random() < 0.6 ? '#ff88cc' : '#ff77cc'),
+              c: (Math.random() < 0.6 ? '#33aacc' : '#66ddff'),
               size: 1.6 + Math.random() * 0.8
             });
           }
@@ -866,7 +995,7 @@
               particles.push({
                 x: player.wx + 13, y: player.y + 13,
                 vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 0.6,
-                life: 26 + Math.random() * 16, c: '#ff6622', size: 1.8
+                life: 26 + Math.random() * 16, c: '#33aacc', size: 1.8
               });
             }
           } else {
@@ -879,7 +1008,7 @@
         }
       }
 
-      // Slimeball collision (deadly erupting purple slimeballs from slime pits)
+      // Water/ink orb collision (deadly erupting blue orbs from water pits)
       for (let i = poisonDarts.length - 1; i >= 0; i--) {
         const dart = poisonDarts[i];
         if (player.wx + player.w > dart.wx - 4 && player.wx < dart.wx + 4 &&
@@ -948,7 +1077,6 @@
           gameState = 'complete';
           playPortal();
           updateLevel3LinkVisibility();  // explicit on transition (perf: no longer in every gameLoop frame)
-          updateNextLevelLinkVisibility();
 
           // Final portal touch burst (only ends when player reaches top)
           const ex = player.wx + 13;
@@ -1152,7 +1280,7 @@
             }
           }
 
-          // Also avoid spawning platforms on pink slime pits
+          // Also avoid spawning platforms on water pits
           if (canSpawn) {
             for (let g of waterGaps) {
               const pCenter = platWX + platW / 2;
@@ -1165,10 +1293,10 @@
           }
 
           if (canSpawn) {
-            // Some platforms sway slowly side-to-side (biosphere platforms); more now for variety
+            // Some platforms sway slowly side-to-side (underwater drift); more now for variety
             const swayAmp = Math.random() < 0.65 ? (22 + Math.random() * 52) : 0;
             const swayPhase = Math.random() * Math.PI * 2;
-            // New: some float up/down (vertical bob) for pink alien biosphere feel; ~28% get float (allow overlap with sway for some that do both)
+            // New: some float up/down (vertical bob) for watery feel; ~28% get float (allow overlap with sway for some that do both)
             let floatAmp = 0;
             let floatPhase = 0;
             if (Math.random() < 0.28) {
@@ -1215,7 +1343,7 @@
         lastWallWX = lastWallWX + 320 + Math.random() * 140;
       }
 
-      // === SPAWN: pink slime pits (full oozing goo pools - deadly if fallen into; L5 biosphere reskin) ===
+      // === SPAWN: blue water pits (deadly if fallen into; L6 watery reskin) ===
       if (!levelExit && player.wx > 600 && Math.random() < 0.012) {
         const gapW = 60 + Math.random() * 52.5; // ~25% larger, still jumpable
         const gapWX = player.wx + 320 + Math.random() * 180;
@@ -1249,7 +1377,7 @@
         if (!tooClose) {
           waterGaps.push({ wx: gapWX, width: gapW });
 
-          // Spawn a heat/smoke plume above the lava pit (volcanic ash)
+          // Spawn a silt/bubble plume above the water pit
           poisonClouds.push({
             wx: gapWX + gapW / 2,
             y: 55 + Math.random() * 35, // high in sky
@@ -1272,7 +1400,7 @@
         });
       }
 
-      // === SPAWN: special chasing purple blob (glowing melting enemy, slightly increased frequency) ===
+      // === SPAWN: special chasing aqua bio-shooter (fins/tentacles, slightly increased frequency) ===
       if (frame - lastSpecialFrame > 1380 && Math.random() < 0.039) {
         const spawnWX = Math.max(player.wx + 360, scrollX + W + 40) + Math.random() * 160;
         // Ensure specials do not spawn on acid vats or on trampolines
@@ -1337,7 +1465,7 @@
         window.lastVertEnemySpawn = frame;
       }
 
-      // === SPAWN: pink snake-like flower ceiling hazards (L5 pink biosphere; "from time to time" extend slowly downward to reach player; whole vine deadly) ===
+      // === SPAWN: blue-green seaweed ceiling hazards (L6 watery; extend slowly downward; whole vine deadly) ===
       // Spawn occasionally ahead (not during end), y near ceiling, initial length 0, maxLength < H/2 (~240), extendRate slow.
       // WigglePhase for snake curve. Safe guards: avoid close to levelExit/ladder, platforms (x), other verticals/ceilingFlowers.
       if (!levelExit && frame % 95 === 0 && Math.random() < 0.045) {
@@ -1383,7 +1511,7 @@
         }
       }
 
-      // === SPAWN: purple alien drones (ptero array reused; gliding high; laser bolt instead of fire)
+      // === SPAWN: aqua submersible drones (ptero array reused; gliding high; laser bolt)
       // Spawn ~4-6 per level, not too frequent. Use lastPteroSpawn. Spawn from right (mostly) or left.
       // Gliding: slow vx negative, y around 50-100 with sin oscillation for natural glide/bob.
       if (player.wx > 520 && frame - lastPteroSpawn > 610 && Math.random() < 0.055) {
@@ -1427,7 +1555,7 @@
         if (s.y < GROUND_Y - s.h) s.y = GROUND_Y - s.h;
       }
 
-      // === MONSTER GUNFIRE: projectiles from glowing purple blobs ===
+      // === MONSTER GUNFIRE: projectiles from aqua bio-shooters (ink/water orbs) ===
       // Monsters now fire directly toward the player's position at the moment of shooting (non-homing after fired)
       for (let s of specials) {
         if (typeof s.nextShot !== 'number') s.nextShot = frame + 60;
@@ -1521,7 +1649,7 @@
         e.y = e.baseY + Math.sin(frame * e.speed + e.phase) * e.amplitude;
       }
 
-      // Extend pink ceiling snake-flowers slowly (main "tries to get the player" behavior); no full retract, hold at max or pulse lightly
+      // Extend seaweed ceiling fronds slowly (main "tries to get the player" behavior); no full retract, hold at max or pulse lightly
       for (let f of ceilingFlowers) {
         if (f.length < f.maxLength) {
           f.length += f.extendRate;
@@ -1556,7 +1684,7 @@
                 vx: (Math.random() - 0.5) * 1.2,
                 vy: 0.8 + Math.random() * 0.6,
                 life: 12 + Math.random() * 8,
-                c: (Math.random() < 0.6 ? '#ff6622' : '#ffaa33'),
+                c: (Math.random() < 0.6 ? '#33aacc' : '#66ddff'),
                 size: 1.4 + Math.random()
               });
             }
@@ -1674,7 +1802,7 @@
             vx: (Math.random() - 0.5) * 0.6 - pr.vx * 0.08,
             vy: (Math.random() - 0.5) * 0.5 - 0.3,
             life: 16 + Math.random() * 11,
-            c: (Math.random() < 0.5) ? '#553322' : '#442211',
+            c: (Math.random() < 0.5) ? '#1a4a6e' : '#0d2840',
             size: 1.4 + Math.random()
           });
         }
@@ -1753,7 +1881,7 @@
         }
       }
 
-      // collisions with glowing purple blobs (AABB + stomp-from-above check)
+      // collisions with aqua bio-shooters (AABB + stomp-from-above check)
       // Mario-style stomp kill if jumping on top (from above while falling)
       for (let i = specials.length - 1; i >= 0; i--) {
         const s = specials[i];
@@ -1771,7 +1899,7 @@
             // Successful Mario jump on top!
             player.vy = -11.5;  // satisfying upward bounce
             spawnExplosion(s.wx + s.w / 2, s.y + 8);
-            // Melting purple death particles + pink vapor (matches new blob visuals)
+            // Aqua ink / bubble death particles (matches watery shooter visuals)
             for (let k = 0; k < 14; k++) {
               const ang = Math.random() * Math.PI * 2;
               const sp = 1.3 + Math.random() * 2.9;
@@ -1781,7 +1909,7 @@
                 vx: Math.cos(ang) * sp,
                 vy: Math.sin(ang) * sp - 1.1,
                 life: 20 + Math.random() * 16,
-                c: (Math.random() < 0.65) ? '#aa66ff' : '#ff88cc',
+                c: (Math.random() < 0.65) ? '#2277aa' : '#66ddff',
                 size: 1.5 + Math.random() * 0.9
               });
             }
@@ -1823,7 +1951,7 @@
         }
       }
 
-      // collisions with monster slimeballs (bubbling purple)
+      // collisions with monster ink/water orbs (blue-aqua)
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const pr = projectiles[i];
         const prLeft = pr.wx;
@@ -2053,8 +2181,8 @@
         lastGreenOrbSpawn = frame;
       }
 
-      // === LEVEL EXIT: ladder + portal (direct spawn like levels 1-3; 10% longer than base L4) ===
-      if (!levelExit && player.wx > 6740) {
+      // === LEVEL EXIT: ladder + portal (direct spawn; L6 watery ~+20% length vs L5 base 6740) ===
+      if (!levelExit && player.wx > 8088) {
         levelExit = {
           wx: player.wx + 110 + Math.random() * 70,
           baseY: GROUND_Y
@@ -2093,7 +2221,7 @@
         }
       }
 
-      // Neon Control Zone glowing building door approach: spawn golden pyramid NPC if player approaches door instead of ladder
+      // Hydro Control Zone glowing building door approach: spawn pyramid NPC if player approaches door instead of ladder
       if (levelExit && !endPyramid && gameState === 'playing' && !player.isClimbing) {
         const doorX = levelExit.wx + 55;  // door position to the side of ladder
         const distToDoor = Math.abs(player.wx + player.w * 0.5 - doorX);
@@ -2137,8 +2265,8 @@
         }
       }
 
-      // Ice blaster power-up: exactly 3 spawns (evenly across 10% longer level)
-      const iceTargets = [200, 3300, 6200];
+      // Ice blaster power-up: exactly 3 spawns (evenly across +20% longer watery level)
+      const iceTargets = [200, 3960, 7440];
       if (iceSpawnIndex < iceTargets.length && !icePowerUp && !hasIceBlast && player.wx > iceTargets[iceSpawnIndex]) {
         const rand = Math.random();
         icePowerUp = {
@@ -2148,8 +2276,8 @@
         iceSpawnIndex++;
       }
 
-      // Friendly NPC (pink octagon, middle of the extended level)
-      if (!friendlyNPC && player.wx > 4040 && player.wx < 4450) {
+      // Friendly NPC (aqua octagon, middle of the extended level)
+      if (!friendlyNPC && player.wx > 4848 && player.wx < 5340) {
         const rand = Math.random();
         friendlyNPC = {
           wx: player.wx + 180 + rand * 50,
@@ -2159,7 +2287,7 @@
         };
       }
 
-      // Spawn Octopopp at the VERY START of level 5 (early, fixed position ahead of player)
+      // Spawn Octopopp at the VERY START of level 6 (early, fixed position ahead of player)
       if (!octopoppStart && player.wx > 100) {
         octopoppStart = {
           wx: 175,
@@ -2169,8 +2297,8 @@
         };
       }
 
-      // Spawn Octopopp HALFWAY through level 5 (around 3200-3500 for ~6740 length)
-      if (!octopoppMid && player.wx > 3200 && player.wx < 3600) {
+      // Spawn Octopopp HALFWAY through level 6 (scaled ~*1.2 for ~8088 length)
+      if (!octopoppMid && player.wx > 3840 && player.wx < 4320) {
         const rand = Math.random();
         octopoppMid = {
           wx: player.wx + 120 + rand * 40,
@@ -2180,8 +2308,8 @@
         };
       }
 
-      // Shield power-up: 3 evenly spaced spawns across the (10% longer) level
-      const endDist = 6740;
+      // Shield power-up: 3 evenly spaced spawns across the (+20% longer) level
+      const endDist = 8088;
       const shieldTargets = [endDist * 0.22, endDist * 0.48, endDist * 0.74];
       if (shieldSpawnIndex < shieldTargets.length && !powerUp && !player.hasShield && player.wx > shieldTargets[shieldSpawnIndex]) {
         // Random height, never higher than 50% level height (y never too close to top)
@@ -2193,6 +2321,9 @@
         };
         shieldSpawnIndex++;
       }
+
+      // Oxygen drain / air bubble drift+spawn (climb early-return freezes oxygen automatically)
+      updateAirBubblesAndOxygen();
     }
 
     function draw() {
@@ -2201,44 +2332,43 @@
       const _now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       if (_now - lastFpsTime >= 500) { fps = Math.round(fpsFrameCount * 1000 / (_now - lastFpsTime)); fpsFrameCount = 0; lastFpsTime = _now; }
 
-      // === GREY SMOGGY SKY + PINK-PURPLE BIOSPHERE SUN ===
-      // Layered grey smog for hazy atmosphere (no ceiling)
-      ctx.fillStyle = '#2c313a';
+      // === DEEP BLUE WATER COLUMN + SURFACE CAUSTIC GLOW ===
+      // Layered deep blues / aqua tints (underwater atmosphere)
+      ctx.fillStyle = '#0a1628';
       ctx.fillRect(0, 0, W, 210);
-      ctx.fillStyle = '#363c47';
+      ctx.fillStyle = '#0d2840';
       ctx.fillRect(0, 70, W, 170);
-      ctx.fillStyle = '#414850';
+      ctx.fillStyle = '#1a4a6e';
       ctx.fillRect(0, 150, W, 200);
-      // Diffuse smog bands
-      ctx.fillStyle = 'rgba(48, 52, 58, 0.55)';
+      // Diffuse water bands / depth haze
+      ctx.fillStyle = 'rgba(34, 119, 170, 0.22)';
       ctx.fillRect(0, 30, W, 65);
-      ctx.fillStyle = 'rgba(58, 63, 70, 0.32)';
+      ctx.fillStyle = 'rgba(51, 170, 204, 0.12)';
       ctx.fillRect(0, 120, W, 85);
-      // Horizon dust / heat shimmer near ground
-      ctx.fillStyle = 'rgba(55, 50, 45, 0.22)';
+      // Near-seabed murk
+      ctx.fillStyle = 'rgba(10, 40, 70, 0.28)';
       ctx.fillRect(0, 270, W, 170);
 
-      // Pink-purple biosphere sun (2x size; deep pink #ff88cc/#ff77cc + purple #cc66ee/#7722bb palette;
-      // surrounded by 6 shimmering concentric rings with pulsing alpha + radius shimmer via sin(frame), plus thin beaming radial rays; magical glowing alien flora sun)
+      // Pale blue-white surface light / underwater caustic glow (2x size rings + rays)
       const sunBaseX = 760;
       const sunX = sunBaseX - ((scrollX * 0.007) % 220);
       const sunY = 82;
 
-      // Soft base atmospheric glow (pink-purple, larger for 2x scale)
-      ctx.fillStyle = 'rgba(170, 51, 136, 0.08)';
+      // Soft base atmospheric glow (blue-aqua, larger for 2x scale)
+      ctx.fillStyle = 'rgba(51, 170, 204, 0.10)';
       ctx.beginPath(); ctx.arc(sunX, sunY, 140, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255, 136, 204, 0.16)';
+      ctx.fillStyle = 'rgba(136, 238, 255, 0.16)';
       ctx.beginPath(); ctx.arc(sunX, sunY, 70, 0, Math.PI * 2); ctx.fill();
 
-      // Shimmering concentric rings (6 rings at increasing radii; beaming magical effect)
-      // Each ring: slight radius offset (shimmer) + alpha flicker via sin(frame * rate + phase), different phases; pink/purple alternating
+      // Shimmering concentric rings (caustic light rings)
+      // Each ring: slight radius offset (shimmer) + alpha flicker via sin(frame * rate + phase); aqua/blue alternating
       const ringRadii = [44, 60, 80, 102, 126, 148];
       for (let i = 0; i < ringRadii.length; i++) {
         const phase = i * 0.87;
         const shimmer = Math.sin(frame * 0.027 + phase) * 2.4;
         let alpha = 0.13 + Math.sin(frame * 0.046 + phase * 1.35) * 0.17;
         alpha = Math.max(0.06, Math.min(0.36, alpha));
-        const col = (i % 2 === 0) ? '255, 119, 204' : '204, 102, 238'; // #ff77cc / #cc66ee
+        const col = (i % 2 === 0) ? '102, 221, 255' : '51, 170, 204'; // #66ddff / #33aacc
         ctx.strokeStyle = `rgba(${col}, ${alpha})`;
         ctx.lineWidth = (i % 3 === 0) ? 2.1 : 1.35;
         ctx.beginPath();
@@ -2246,16 +2376,16 @@
         ctx.stroke();
       }
 
-      // Core sun (2x size, deep pink/purple layered)
-      ctx.fillStyle = '#ff88cc';
+      // Core surface light (pale blue-white layered)
+      ctx.fillStyle = '#88eeff';
       ctx.beginPath(); ctx.arc(sunX, sunY, 30, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#cc66ee';
+      ctx.fillStyle = '#66ddff';
       ctx.beginPath(); ctx.arc(sunX - 5, sunY - 5, 15, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ff77cc';
+      ctx.fillStyle = '#eeffff';
       ctx.beginPath(); ctx.arc(sunX - 7, sunY - 7, 7, 0, Math.PI * 2); ctx.fill();
 
-      // Beaming radial rays (6 thin pink-purple beams, slow rotation + length shimmer for energy)
-      ctx.strokeStyle = 'rgba(119, 34, 187, 0.27)';
+      // Beaming caustic rays (6 thin aqua beams, slow rotation + length shimmer)
+      ctx.strokeStyle = 'rgba(102, 221, 255, 0.28)';
       ctx.lineWidth = 1.7;
       const numBeams = 6;
       for (let r = 0; r < numBeams; r++) {
@@ -2270,37 +2400,37 @@
       }
       ctx.lineWidth = 1;
 
-      // Very subtle drifting ash specks high in smog (reduced 8->5)
-      ctx.fillStyle = 'rgba(75, 72, 68, 0.22)';
+      // Very subtle drifting bubble/silt specks high in water (reduced 8->5)
+      ctx.fillStyle = 'rgba(136, 238, 255, 0.22)';
       for (let i = 0; i < 5; i++) {
         const ax = ((i * 131 + frame * 0.18) % (W + 100)) - 50;
         const ay = 22 + ((i * 17) % 48) + Math.sin(frame * 0.022 + i) * 3.2;
         ctx.fillRect(ax, ay, 1.6, 0.9);
       }
 
-      // Heat haze / dark smoke plumes (repurposed poisonClouds array for floral/pink theme consistency)
+      // Silt haze / bubble plumes (repurposed poisonClouds array for watery theme)
       for (let cloud of poisonClouds) {
-        const csx = cloud.wx - scrollX * 0.04; // very slow parallax, high in sky
+        const csx = cloud.wx - scrollX * 0.04; // very slow parallax, high in water column
         if (csx < -50 || csx > W + 50) continue;
 
         const cy = cloud.y;
 
-        // Dark volcanic smoke body (charcoal + ember tint)
-        ctx.fillStyle = 'rgba(55, 48, 42, 0.42)';
+        // Soft blue silt body
+        ctx.fillStyle = 'rgba(26, 74, 110, 0.42)';
         ctx.beginPath();
         ctx.ellipse(csx, cy, cloud.width / 2, 9, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hotter inner lava glow haze (orange-red)
-        ctx.fillStyle = 'rgba(175, 70, 30, 0.26)';
+        // Brighter aqua inner glow
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.22)';
         ctx.beginPath();
         ctx.ellipse(csx - 2, cy - 5, cloud.width / 2.1, 6, 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // === DISTANT BACKGROUND SCENERY: ALIEN FLORAL BLOOMS + VINE STALKS (parallax) ===
-      // Drawn far back with strong parallax; animated petal/leaf sway + glow pulse (pink alien botanical biosphere)
-      // Perf: alpha hoisted once (batch), reduced paths (stems via rects + few leaf triangles + petal ellipses), sway via phase
+      // === DISTANT BACKGROUND SCENERY: CORAL BLOOMS + SEAWEED STALKS (parallax) ===
+      // Drawn far back with strong parallax; animated frond sway + glow pulse (underwater)
+      // Perf: alpha hoisted once (batch), reduced paths (stems via rects + few leaf triangles + frond ellipses), sway via phase
       ctx.globalAlpha = 0.82;
       for (let b of backgroundElements) {
         const sx = b.wx - scrollX * b.parallax;
@@ -2309,19 +2439,19 @@
         const s = b.scale || 1;
         const baseY = b.y;
         const phase = (b.phase || 0) + frame * 0.031;
-        const floralPulse = Math.sin(phase * 1.3); // reuse sin for petal sway + bloom glow pulse (was lavaPulse)
+        const floralPulse = Math.sin(phase * 1.3); // reuse sin for frond sway + bloom glow pulse
 
         if (b.type === 'largeBloom') {
-          // Large alien floral bloom: tall green stem, swaying pink/magenta petals, soft green leaves, glowing purple center (phase sway preserved)
+          // Large coral bloom: tall blue-green stem, swaying aqua fronds, soft teal leaves, glowing cyan center
           const stemH = 56 * s;
           const stemX = sx - 1.8 * s;
-          ctx.fillStyle = '#44aa66';
+          ctx.fillStyle = '#1a6a66';
           ctx.fillRect(stemX, baseY - stemH, 3.6 * s, stemH);
-          // Sway offset for animated petals/leaves (uses existing phase hook)
+          // Sway offset for animated fronds/leaves (uses existing phase hook)
           const sway = Math.sin(phase) * 3.2 * s;
-          const p = 1.0 + floralPulse * 0.12; // light petal pulse
+          const p = 1.0 + floralPulse * 0.12; // light frond pulse
           // Leaves (alternating sides, simple triangle-ish paths, low count for perf)
-          ctx.fillStyle = '#3a8a55';
+          ctx.fillStyle = '#227766';
           // leaf 1 lower left
           ctx.beginPath();
           ctx.moveTo(stemX + 1.5*s, baseY - 18*s);
@@ -2340,35 +2470,35 @@
           ctx.lineTo(stemX - 11*s + sway*0.6, baseY - 46*s);
           ctx.lineTo(stemX + 1.2*s, baseY - 50*s);
           ctx.closePath(); ctx.fill();
-          // Flower head position (gentle sway)
+          // Coral head position (gentle sway)
           const hx = sx + sway * 0.7;
           const hy = baseY - 58 * s;
-          // Outer soft pink petal glow layer
-          ctx.fillStyle = 'rgba(255, 136, 204, 0.55)';
+          // Outer soft aqua glow layer
+          ctx.fillStyle = 'rgba(102, 221, 255, 0.45)';
           ctx.beginPath(); ctx.ellipse(hx, hy, 14 * s * p, 8 * s * p, 0, 0, Math.PI * 2); ctx.fill();
-          // Layered petals (pinks/magentas, offset for bloom shape)
-          ctx.fillStyle = '#ff88cc';
+          // Layered fronds (aqua/teal blues, offset for bloom shape)
+          ctx.fillStyle = '#33aacc';
           ctx.beginPath(); ctx.ellipse(hx - 4*s, hy - 1*s, 8*s*p, 5*s*p, 0, 0, Math.PI * 2); ctx.fill();
           ctx.beginPath(); ctx.ellipse(hx + 4.5*s, hy + 1.5*s, 7.5*s*p, 4.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ff66aa';
+          ctx.fillStyle = '#2277aa';
           ctx.beginPath(); ctx.ellipse(hx + 2*s, hy - 5*s, 7*s*p, 4.2*s*p, 0, 0, Math.PI * 2); ctx.fill();
           ctx.beginPath(); ctx.ellipse(hx - 5*s, hy + 3*s, 6.5*s*p, 5*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#cc4499';
+          ctx.fillStyle = '#1a5a88';
           ctx.beginPath(); ctx.ellipse(hx, hy + 1*s, 6*s*p, 3.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          // Glowing center bloom (purple accent + pulse)
-          ctx.fillStyle = `rgba(102, 34, 170, ${0.75 + 0.25 * floralPulse})`;
+          // Glowing center bloom (cyan accent + pulse)
+          ctx.fillStyle = `rgba(102, 221, 255, ${0.75 + 0.25 * floralPulse})`;
           ctx.beginPath(); ctx.ellipse(hx, hy, 4.5 * s * p, 3.2 * s * p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffccdd';
+          ctx.fillStyle = '#88eeff';
           ctx.beginPath(); ctx.ellipse(hx - 1*s, hy - 0.8*s, 1.8 * s, 1.2 * s, 0, 0, Math.PI * 2); ctx.fill();
         } else if (b.type === 'midStalk') {
-          // Midground vine stalk cluster: compact stems, small leaves + pink/purple glowing mini-blooms (sway anim)
+          // Midground seaweed stalk cluster: compact stems, small leaves + aqua glowing mini-fronds (sway anim)
           const stemH = 36 * s;
-          ctx.fillStyle = '#3a8a55';
+          ctx.fillStyle = '#1a5a55';
           ctx.fillRect(sx - 1.2 * s, baseY - stemH, 2.4 * s, stemH);
           const sway = Math.sin(phase * 0.95) * 2.1 * s;
           const p = 1.0 + floralPulse * 0.15;
           // Small side leaves
-          ctx.fillStyle = '#44aa66';
+          ctx.fillStyle = '#228866';
           ctx.beginPath();
           ctx.moveTo(sx, baseY - 12*s);
           ctx.lineTo(sx - 8*s + sway*0.5, baseY - 15*s);
@@ -2379,23 +2509,23 @@
           ctx.lineTo(sx + 9*s + sway*0.6, baseY - 23*s);
           ctx.lineTo(sx + 0.5*s, baseY - 30*s);
           ctx.closePath(); ctx.fill();
-          // Mini blooms / glowing petals clusters (2-3)
-          ctx.fillStyle = 'rgba(255, 136, 204, 0.5)';
+          // Mini fronds / glowing clusters (2-3)
+          ctx.fillStyle = 'rgba(102, 221, 255, 0.45)';
           ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 5.5*s*p, 3.5*s*p, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#ff88cc';
+          ctx.fillStyle = '#33aacc';
           ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 3*s*p, 2.2*s*p, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#6622aa';
+          ctx.fillStyle = '#004466';
           ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 1.6*s, 1.1*s, 0, 0, Math.PI*2); ctx.fill();
           // Second small bloom higher/side
-          ctx.fillStyle = 'rgba(255, 102, 170, 0.45)';
+          ctx.fillStyle = 'rgba(51, 170, 204, 0.4)';
           ctx.beginPath(); ctx.ellipse(sx - 5*s + sway*0.6, baseY - 29*s, 4.2*s*p, 2.8*s*p, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#ee77bb';
+          ctx.fillStyle = '#66ddff';
           ctx.beginPath(); ctx.ellipse(sx - 5*s + sway*0.6, baseY - 29*s, 2.3*s, 1.6*s, 0, 0, Math.PI*2); ctx.fill();
         }
       }
       ctx.globalAlpha = 1;
 
-      // === DRIFTING VOLCANIC ASH / SMOKE CLOUDS (repurposed background traffic layer) ===
+      // === DRIFTING SILT / BUBBLE CLOUDS (repurposed background traffic layer) ===
       ctx.globalAlpha = 0.32;
       for (let ship of flyingShips) {
         const sx = ship.wx - scrollX * ship.parallax;
@@ -2404,48 +2534,48 @@
         const s = ship.scale;
         const sy = ship.y;
 
-        // Puffy dark ash cloud body (multi layered ellipses)
-        ctx.fillStyle = 'rgba(48, 45, 42, 0.75)';
+        // Puffy blue silt cloud body (multi layered ellipses)
+        ctx.fillStyle = 'rgba(26, 74, 110, 0.75)';
         ctx.beginPath(); ctx.ellipse(sx + 8*s, sy + 2*s, 22*s, 7*s, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(sx + 22*s, sy - 1*s, 18*s, 9*s, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(sx - 2*s, sy + 3*s, 14*s, 6*s, 0, 0, Math.PI*2); ctx.fill();
 
-        // Ember / lava glow core inside some plumes
+        // Aqua glow core inside some plumes
         if ((Math.floor(ship.wx) % 3) !== 0) {
-          ctx.fillStyle = 'rgba(210, 95, 35, 0.28)';
+          ctx.fillStyle = 'rgba(102, 221, 255, 0.28)';
           ctx.beginPath(); ctx.ellipse(sx + 14*s, sy + 1*s, 6*s, 3*s, 0, 0, Math.PI*2); ctx.fill();
         }
 
-        // Faint trailing ash wisps
-        ctx.fillStyle = 'rgba(60, 57, 53, 0.25)';
+        // Faint trailing silt wisps
+        ctx.fillStyle = 'rgba(34, 100, 150, 0.25)';
         ctx.fillRect(sx - 18*s, sy + 1*s, 14*s, 3*s);
       }
       ctx.globalAlpha = 1;
 
-      // === PURPLE ALIEN DRONES (gliding high in sky, ptero array reused, tech geometric - reskinned)
+      // === AQUA SUBMERSIBLE DRONES (gliding high in water column, ptero array reused)
       for (let p of pteros) {
         const sx = p.wx - scrollX;
         if (sx < -80 || sx > W + 80) continue;
         const sy = p.y;
         const flap = Math.sin(frame * 0.18 + p.phase) * 0.75;
-        // Outer tech energy aura glow (purple)
-        ctx.fillStyle = 'rgba(170, 102, 255, 0.18)';
+        // Outer aqua energy aura glow
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.18)';
         ctx.beginPath();
         ctx.ellipse(sx + 14, sy + 1, 22, 9 + flap * 0.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Main drone body (boxy saucer, deep purple tech)
-        ctx.fillStyle = '#4a1a7a';
+        // Main drone body (boxy sub, deep blue tech)
+        ctx.fillStyle = '#0d2840';
         ctx.fillRect(sx + 2, sy - 3, 24, 8);
-        ctx.fillStyle = '#6622aa';
+        ctx.fillStyle = '#1a4a6e';
         ctx.beginPath();
         ctx.ellipse(sx + 14, sy + 1, 13, 6 + flap * 0.2, 0, 0, Math.PI * 2);
         ctx.fill();
         // Metallic panel highlights
-        ctx.fillStyle = '#aa88ff';
+        ctx.fillStyle = '#66ddff';
         ctx.fillRect(sx + 6, sy - 1, 5, 2);
         ctx.fillRect(sx + 17, sy + 1, 4, 1.5);
-        // Rotor / wing panels (geometric, animated with flap for tilt/spin feel)
-        ctx.fillStyle = '#7733cc';
+        // Fin / wing panels (geometric, animated with flap)
+        ctx.fillStyle = '#2277aa';
         ctx.beginPath();
         ctx.moveTo(sx + 5, sy + 1);
         ctx.lineTo(sx - 4, sy - 12 - flap * 2.5);
@@ -2459,7 +2589,7 @@
         ctx.closePath();
         ctx.fill();
         // Rotor blades (thin lines for tech)
-        ctx.strokeStyle = '#aa88ff';
+        ctx.strokeStyle = '#88eeff';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(sx - 2, sy - 8 - flap);
@@ -2471,7 +2601,7 @@
         ctx.stroke();
         ctx.lineWidth = 1;
         // Cyan tech accents / lights
-        ctx.fillStyle = '#88ddff';
+        ctx.fillStyle = '#88eeff';
         ctx.beginPath();
         ctx.arc(sx + 8, sy + 0.5, 1.3, 0, Math.PI * 2);
         ctx.fill();
@@ -2479,30 +2609,30 @@
         ctx.arc(sx + 20, sy + 1.5, 1.1, 0, Math.PI * 2);
         ctx.fill();
         // Head/sensor dome (forward)
-        ctx.fillStyle = '#552266';
+        ctx.fillStyle = '#003355';
         ctx.beginPath();
         ctx.ellipse(sx + 27, sy + 1, 4, 3, 0, 0, Math.PI * 2);
         ctx.fill();
         // Eye
-        ctx.fillStyle = '#ffaa33';
+        ctx.fillStyle = '#66ddff';
         ctx.beginPath();
         ctx.arc(sx + 27, sy - 0.8, 1.2, 0, Math.PI * 2);
         ctx.fill();
         // Long tail (waving)
-        ctx.strokeStyle = '#120a08';
+        ctx.strokeStyle = '#0a1628';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(sx + 2, sy + 1);
         ctx.quadraticCurveTo(sx - 12, sy + 4 + Math.sin(frame * 0.11 + p.phase) * 3, sx - 28, sy + 2 + Math.sin(frame * 0.09 + p.phase * 1.3) * 5);
         ctx.stroke();
         ctx.lineWidth = 1.2;
-        ctx.strokeStyle = '#3a1a10';
+        ctx.strokeStyle = '#1a4a6e';
         ctx.beginPath();
         ctx.moveTo(sx + 2, sy + 1);
         ctx.quadraticCurveTo(sx - 10, sy + 3, sx - 24, sy + 1);
         ctx.stroke();
-        // Wings (flapping, tech energy vein glow for drone reskin)
-        ctx.fillStyle = '#2a1210';
+        // Wings (flapping, aqua energy vein glow)
+        ctx.fillStyle = '#0d2840';
         ctx.beginPath();
         ctx.moveTo(sx + 8, sy);
         ctx.quadraticCurveTo(sx - 2, sy - 18 - flap * 2, sx + 4, sy - 2);
@@ -2511,8 +2641,8 @@
         ctx.moveTo(sx + 20, sy);
         ctx.quadraticCurveTo(sx + 30, sy - 16 + flap * 1.5, sx + 24, sy - 1);
         ctx.fill();
-        // Lava veins on wings (pulsing orange)
-        ctx.strokeStyle = `rgba(255, 100, 30, ${0.5 + 0.4 * Math.sin(frame * 0.2 + p.phase)})`;
+        // Aqua veins on wings (pulsing cyan)
+        ctx.strokeStyle = `rgba(102, 221, 255, ${0.5 + 0.4 * Math.sin(frame * 0.2 + p.phase)})`;
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.moveTo(sx + 5, sy - 1);
@@ -2525,10 +2655,10 @@
         ctx.lineWidth = 1;
       }
 
-      // === ROCKY BIOSPHERE GROUND / FLOOR (charred stone + pink slime influenced seams) ===
+      // === DEEP BLUE SEABED / FLOOR (stone + aqua water seams) ===
       const floorTop = GROUND_Y - 2;
 
-      // Precompute if any pink slime pit visible this frame (cheap loop; skips costly shadow/save when none)
+      // Precompute if any water pit visible this frame (cheap loop; skips costly shadow/save when none)
       let hasVisibleLava = false;
       for (let gap of waterGaps) {
         const sx = gap.wx - scrollX;
@@ -2536,43 +2666,43 @@
         if (sx + gw >= -20 && sx <= W + 20) { hasVisibleLava = true; break; }
       }
 
-      // Subtle heat/pink glow from slime pits / ground (conditional to avoid save/shadow thrash every frame)
+      // Subtle aqua glow from water pits / ground (conditional to avoid save/shadow thrash every frame)
       if (hasVisibleLava) {
         ctx.save();
-        ctx.shadowColor = '#3a1a2a';
+        ctx.shadowColor = '#0d2840';
         ctx.shadowBlur = 22;
-        ctx.fillStyle = 'rgba(74, 34, 51, 0.18)';
+        ctx.fillStyle = 'rgba(34, 119, 170, 0.18)';
         ctx.fillRect(0, floorTop - 7, W, 38);
         ctx.shadowBlur = 10;
-        ctx.fillStyle = 'rgba(90, 45, 80, 0.12)';
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.12)';
         ctx.fillRect(0, floorTop - 1, W, 16);
         ctx.restore();
       }
 
-      // Base charred rocky floor (dark slate / basalt, pink biosphere influence)
-      ctx.fillStyle = '#2f2a26';
+      // Base deep blue stone seabed floor
+      ctx.fillStyle = '#0d1e30';
       ctx.fillRect(0, floorTop, W, H - floorTop);
 
       // Rough top edge / lip
-      ctx.fillStyle = '#3a3430';
+      ctx.fillStyle = '#1a3a55';
       ctx.fillRect(0, floorTop, W, 3.2);
 
       // Cracked stone texture / seams (parallax scroll; reduced iters)
-      ctx.fillStyle = 'rgba(22, 19, 17, 0.55)';
+      ctx.fillStyle = 'rgba(8, 20, 35, 0.55)';
       const mOffset = (scrollX * 1.25) % 62;
       for (let i = -1; i < 11; i++) {
         const mx = i * 62 - mOffset + 12;
         ctx.fillRect(mx, floorTop + 6, 18, 1.6);
       }
       // Secondary cracks
-      ctx.fillStyle = 'rgba(40, 36, 33, 0.35)';
+      ctx.fillStyle = 'rgba(26, 60, 90, 0.35)';
       const mOffset2 = (scrollX * 0.55) % 104;
       for (let i = -1; i < 7; i++) {
         const mx = i * 104 - mOffset2 + 28;
         ctx.fillRect(mx, floorTop + 13, 32, 1.2);
       }
-      // Occasional glowing pink slime seams in floor cracks (subtle, no lava orange)
-      ctx.fillStyle = 'rgba(255, 136, 204, 0.18)';
+      // Occasional glowing aqua seams in floor cracks
+      ctx.fillStyle = 'rgba(102, 221, 255, 0.18)';
       const seamOffset = (scrollX * 0.85) % 240;
       for (let i = -1; i < 2; i++) {
         const sx = i * 240 - seamOffset + 55;
@@ -2587,77 +2717,77 @@
         const wh = wall.height;
         const ww = wall.width;
 
-        // Base stone-like block (dark volcanic rock)
-        ctx.fillStyle = '#25211d';
+        // Base stone-like block (deep blue seabed rock)
+        ctx.fillStyle = '#0a1a2c';
         ctx.fillRect(sx, GROUND_Y - wh, ww, wh);
 
         // Top edge (slightly lighter, looks like a lip)
-        ctx.fillStyle = '#322c27';
+        ctx.fillStyle = '#1a3a55';
         ctx.fillRect(sx, GROUND_Y - wh, ww, 4);
 
         // Subtle top highlight line
-        ctx.fillStyle = '#413831';
+        ctx.fillStyle = '#2a5580';
         ctx.fillRect(sx, GROUND_Y - wh, ww, 1.5);
 
         // Small vertical "support" lines for texture
-        ctx.fillStyle = 'rgba(30, 26, 23, 0.6)';
+        ctx.fillStyle = 'rgba(10, 30, 50, 0.6)';
         ctx.fillRect(sx + 3, GROUND_Y - wh + 3, 1.5, wh - 5);
         ctx.fillRect(sx + ww - 5, GROUND_Y - wh + 3, 1.5, wh - 5);
       }
 
-      // === PINK SLIME PITS (oozing flowing goo pools - deadly if fallen into; reskinned from lava) ===
+      // === BLUE WATER PITS (deadly if fallen into; keep deadly behavior, blue water look) ===
       for (let gap of waterGaps) {
         const sx = gap.wx - scrollX;
         const gw = gap.width;
         if (sx + gw < -20 || sx > W + 20) continue;
 
-        const pitDepth = 135; // deep slime pool visually
+        const pitDepth = 135; // deep water pool visually
 
-        // Dark pink rock/biosphere rim / upper edges of pit (cracked, deep tones)
-        ctx.fillStyle = '#2c1f2b';
+        // Deep blue rock/seabed rim / upper edges of pit
+        ctx.fillStyle = '#0a1e32';
         ctx.fillRect(sx - 1, floorTop - 1, gw + 2, 7);
         // Cracked rim texture
-        ctx.fillStyle = '#1f1420';
+        ctx.fillStyle = '#061420';
         ctx.fillRect(sx + 3, floorTop, 2, 4);
         ctx.fillRect(sx + gw - 7, floorTop + 1, 3, 3);
 
-        // Subtle pink glow on upper pit walls (rock lit by slime)
-        ctx.fillStyle = 'rgba(90, 45, 80, 0.45)';
+        // Subtle aqua glow on upper pit walls
+        ctx.fillStyle = 'rgba(34, 119, 170, 0.45)';
         ctx.fillRect(sx, floorTop + 5, 3, 22);
         ctx.fillRect(sx + gw - 3, floorTop + 5, 3, 22);
 
-        // === FULL DEPTH OOZING PINK SLIME (animated downward flow + drips + bubbles; no orange/lava) ===
-        // Deep base slime (dark pink fill #3a1a2a theme)
-        ctx.fillStyle = '#3a1a2a';
+        // === FULL DEPTH BLUE WATER (animated flow + bubbles) ===
+        // Deep base water
+        ctx.fillStyle = '#003355';
         ctx.fillRect(sx + 1, floorTop + 5, gw - 2, pitDepth);
 
-        // Mid slime layer (richer dark pink #4a2233)
-        ctx.fillStyle = '#4a2233';
+        // Mid water layer
+        ctx.fillStyle = '#004466';
         ctx.fillRect(sx + 2, floorTop + 8, gw - 4, pitDepth - 12);
 
-        // Side wall slime glow / ooze (grouped, deep to bright pink)
-        ctx.fillStyle = 'rgba(100, 50, 90, 0.32)';
+        // Side wall water glow
+        ctx.fillStyle = 'rgba(34, 119, 170, 0.32)';
         ctx.fillRect(sx + 1, floorTop + 18, 2, pitDepth - 10);
         ctx.fillRect(sx + gw - 3, floorTop + 18, 2, pitDepth - 10);
 
-        // Upper brighter slime surface (grouped)
-        ctx.fillStyle = 'rgba(85, 40, 75, 0.92)';
+        // Upper brighter water surface
+        ctx.fillStyle = 'rgba(26, 90, 140, 0.92)';
         ctx.fillRect(sx + 1, floorTop + 5, gw - 2, 28);
-        ctx.fillStyle = 'rgba(120, 55, 95, 0.82)';
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.72)';
         ctx.fillRect(sx + 1, floorTop + 6, gw - 2, 11);
 
-        // Animated vertical flow / ooze streaks (downward slow, use sin(frame*rate + phase + gap.wx) for offset)
+        // Animated vertical flow streaks
         const flowT = (frame * 0.035) % (gw + 50);
         const flowPhase = gap.wx * 0.013; // seeded by position for variation
-        ctx.fillStyle = 'rgba(255, 119, 204, 0.26)';
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.26)';
         for (let f = 0; f < 3; f++) {
           const phaseOff = (f * 1.3 + flowPhase);
-          const dripOff = Math.sin(frame * 0.022 + phaseOff) * 4.5; // vertical flow/drip offset
+          const dripOff = Math.sin(frame * 0.022 + phaseOff) * 4.5;
           const fx = sx + 5 + ((f * 19 + flowT * 0.55) % (gw - 10));
           const fy = floorTop + 10 + dripOff * 0.6;
           ctx.fillRect(fx, fy, 2.2, pitDepth - 20 - (f % 2));
         }
-        ctx.fillStyle = 'rgba(255, 136, 204, 0.15)';
+        ctx.fillStyle = 'rgba(136, 238, 255, 0.15)';
         for (let f = 0; f < 2; f++) {
           const phaseOff = (f * 2.1 + flowPhase + 1.7);
           const dripOff = Math.sin(frame * 0.018 + phaseOff) * 6.2;
@@ -2666,12 +2796,12 @@
           ctx.fillRect(fx, fy, 1.6, pitDepth - 28);
         }
 
-        // Animated goo drips / blobs from edges and bottom (ellipses/rects with vertical sin offset, slow ooze)
+        // Animated water bubbles / blobs
         const dripBase = frame * 0.014 + flowPhase;
-        ctx.fillStyle = 'rgba(255, 102, 187, 0.75)';
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.75)';
         for (let d = 0; d < 5; d++) {
           const dPhase = dripBase + d * 0.9 + (d % 3) * 1.6;
-          const vy = Math.sin(dPhase) * 7.5 + Math.sin(dPhase * 1.6) * 3.2; // downward ooze/drip offset
+          const vy = Math.sin(dPhase) * 7.5 + Math.sin(dPhase * 1.6) * 3.2;
           const dx = sx + 3 + ((d * 13 + (gap.wx % 17)) % (gw - 8));
           const dy = floorTop + 9 + vy + (d % 2) * 1.5;
           const dw = 2.8 + Math.sin(dPhase * 0.7) * 0.7;
@@ -2680,8 +2810,8 @@
           ctx.ellipse(dx, dy, dw, Math.max(1.5, dh), 0, 0, Math.PI * 2);
           ctx.fill();
         }
-        // Extra bottom-hanging drips / blobs (from pit bottom edges)
-        ctx.fillStyle = 'rgba(255, 136, 204, 0.55)';
+        // Extra bottom-hanging bubbles
+        ctx.fillStyle = 'rgba(136, 238, 255, 0.55)';
         for (let d = 0; d < 3; d++) {
           const dPhase = dripBase * 0.8 + d * 1.4;
           const vy = Math.sin(dPhase + 0.8) * 5.0 + 2;
@@ -2692,9 +2822,9 @@
           ctx.fill();
         }
 
-        // Bubbles / highlights in brighter pink (pulsing size/alpha with sin(frame); seeded stable positions)
+        // Surface bubbles (pulsing)
         const bubblePhase = (frame * 0.065) % (Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 136, 204, 0.8)';
+        ctx.fillStyle = 'rgba(136, 238, 255, 0.8)';
         const numBubs = Math.max(4, Math.floor(gw / 22));
         for (let b = 0; b < numBubs && b < 8; b++) {
           const seed = (gap.wx * 0.77 + b * 19.3) % 83;
@@ -2709,8 +2839,8 @@
         }
         ctx.globalAlpha = 1.0;
 
-        // Flowing highlights / subtle pulsing surface sheen (brighter pink accents, downward bias)
-        ctx.fillStyle = 'rgba(255, 170, 220, 0.35)';
+        // Flowing highlights / subtle pulsing surface sheen
+        ctx.fillStyle = 'rgba(170, 240, 255, 0.35)';
         const sheenT = frame * 0.026 + gap.wx * 0.009;
         for (let f = 0; f < 2; f++) {
           const fx = sx + 6 + (((f * 31 + sheenT * 0.7) % (gw - 12)));
@@ -2719,25 +2849,25 @@
         }
       }
 
-      // Slime puddles (splats from purple slimeballs; short lived ~5s, bubble, deadly to touch)
+      // Water puddles (splats from blue ink/water orbs; short lived ~5s, bubble, deadly to touch)
       for (let pud of slimePuddles) {
         const sx = pud.wx - scrollX;
         if (sx < -40 || sx > W + 40) continue;
         const alpha = Math.max(0.05, pud.life / 300);
         const pw = (pud.size || 18) * 1.1;
         ctx.globalAlpha = alpha;
-        // main splat puddle (bubbling purple goo on floor)
-        ctx.fillStyle = '#6622aa';
+        // main splat puddle (blue water on floor)
+        ctx.fillStyle = '#1a4a6e';
         ctx.beginPath();
         ctx.ellipse(sx, GROUND_Y - 1, pw, 5, 0, 0, Math.PI * 2);
         ctx.fill();
         // lighter edge
-        ctx.fillStyle = 'rgba(170, 100, 220, 0.6)';
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.6)';
         ctx.beginPath();
         ctx.ellipse(sx, GROUND_Y - 1, pw * 0.7, 3, 0, 0, Math.PI * 2);
         ctx.fill();
         // small bubbles in puddle (fading)
-        ctx.fillStyle = '#ff88cc';
+        ctx.fillStyle = '#66ddff';
         for (let b = 0; b < 4; b++) {
           const bp = frame * 0.07 + b * 1.3 + (pud.wx * 0.1);
           const bx = sx - pw * 0.4 + (b % 3) * (pw * 0.35);
@@ -2749,7 +2879,7 @@
         ctx.globalAlpha = 1.0;
       }
 
-      // Erupting purple slimeballs (from slime pits; twice size, bubbling)
+      // Erupting blue water/ink orbs (from water pits; twice size, bubbling)
       for (let dart of poisonDarts) {
         const dsx = dart.wx - scrollX;
         const dsy = dart.y;
@@ -2757,20 +2887,20 @@
 
         const r = 9 + Math.sin(frame * 0.18 + dsx) * 1.2; // twice size, pulsing
 
-        // Outer purple/magenta glow (bubbling slime)
-        ctx.fillStyle = 'rgba(170, 80, 220, 0.35)';
+        // Outer aqua glow
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.35)';
         ctx.beginPath();
         ctx.arc(dsx, dsy, r + 5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main slimeball body (deep purple-pink)
-        ctx.fillStyle = '#9933cc';
+        // Main water-orb body (deep blue-aqua)
+        ctx.fillStyle = '#2277aa';
         ctx.beginPath();
         ctx.arc(dsx, dsy, r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bubbling highlights inside (lighter pink-purple bubbles, animated)
-        ctx.fillStyle = '#ff88cc';
+        // Bubbling highlights inside (lighter aqua bubbles, animated)
+        ctx.fillStyle = '#66ddff';
         for (let b = 0; b < 3; b++) {
           const bp = frame * 0.12 + b * 2.3 + dsx;
           const bx = dsx + Math.sin(bp) * (r * 0.4);
@@ -2781,14 +2911,14 @@
         }
 
         // Hot core (brighter)
-        ctx.fillStyle = '#cc99ff';
+        ctx.fillStyle = '#88eeff';
         ctx.beginPath();
         ctx.arc(dsx - 1, dsy - 1, r * 0.35, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // === ROCKY OUTCROPS & LAVA VENTS (midground pillars with flowing lava) ===
-      // + burned trees mixed in for lava/volcano background (charred trunks, jagged branches, ember glows)
+      // === ROCKY OUTCROPS & CORAL VENTS (midground pillars with glowing aqua) ===
+      // + kelp-tree variants mixed in for underwater background
       for (let tree of alienTrees) {
         const sx = tree.wx - scrollX * tree.parallax;
         if (sx < -60 || sx > W + 60) continue;
@@ -2796,15 +2926,15 @@
         const s = tree.scale;
         const ty = tree.y;
 
-        // Burned tree variant (roughly 1/3 of formations, pseudo-random per tree for variety)
+        // Kelp/stump variant (roughly 1/3 of formations)
         const isBurned = ((tree.wx * 31) | 0) % 3 === 0;
         if (isBurned) {
-          // charred trunk (dark, fits lava world)
-          ctx.fillStyle = '#1a140f';
+          // dark kelp trunk
+          ctx.fillStyle = '#0a1a28';
           ctx.fillRect(sx - 2 * s, ty, 5 * s, 36 * s);
 
-          // jagged burnt branches (no leaves, dark lines)
-          ctx.strokeStyle = '#120d0a';
+          // jagged kelp fronds
+          ctx.strokeStyle = '#0d2840';
           ctx.lineWidth = 1.3 * s;
           ctx.beginPath();
           ctx.moveTo(sx + 0.5 * s, ty + 6 * s); ctx.lineTo(sx + 10 * s, ty + 1 * s);
@@ -2813,17 +2943,17 @@
           ctx.moveTo(sx, ty + 28 * s); ctx.lineTo(sx - 6 * s, ty + 24 * s);
           ctx.stroke();
 
-          // glowing embers on branch tips (pulsing orange - lava/volcano theme)
+          // glowing aqua tips
           const eA = 0.35 + 0.45 * Math.sin(frame * 0.12 + tree.wx);
-          ctx.fillStyle = `rgba(255, 110, 25, ${eA})`;
+          ctx.fillStyle = `rgba(102, 221, 255, ${eA})`;
           ctx.fillRect(sx + 9 * s, ty, 2 * s, 1.5 * s);
           ctx.fillRect(sx - 7.5 * s, ty + 6 * s, 1.5 * s, 1 * s);
           ctx.fillRect(sx + 10 * s, ty + 16 * s, 1.8 * s, 1.2 * s);
 
-          // wider charred base + faint rising ash
-          ctx.fillStyle = '#0f0b08';
+          // wider base + faint rising bubbles
+          ctx.fillStyle = '#061218';
           ctx.fillRect(sx - 3.5 * s, ty + 32 * s, 8 * s, 6 * s);
-          ctx.strokeStyle = 'rgba(55, 50, 45, 0.25)';
+          ctx.strokeStyle = 'rgba(51, 170, 204, 0.25)';
           ctx.lineWidth = 0.7;
           ctx.beginPath();
           ctx.moveTo(sx - 0.5 * s, ty + 4 * s);
@@ -2833,43 +2963,43 @@
           continue; // done, skip the rock pillar draw
         }
 
-        // Main vertical rock pillar / jagged column (basalt)
-        ctx.fillStyle = '#2f2925';
+        // Main vertical rock pillar / jagged column (deep blue stone)
+        ctx.fillStyle = '#1a3048';
         ctx.fillRect(sx, ty, 5 * s, 38 * s);
         // Ledges / strata
-        ctx.fillStyle = '#25201c';
+        ctx.fillStyle = '#0d2840';
         ctx.fillRect(sx - 4 * s, ty + 1 * s, 12 * s, 2.8 * s);
         ctx.fillRect(sx - 4 * s, ty + 24 * s, 12 * s, 2.8 * s);
 
         // Side rock spur
-        ctx.fillStyle = '#26211d';
+        ctx.fillStyle = '#152838';
         ctx.fillRect(sx + 8 * s, ty + 3 * s, 4 * s, 30 * s);
 
-        // Small outcrop / lava vent housing
-        ctx.fillStyle = '#382f28';
+        // Small outcrop / aqua vent housing
+        ctx.fillStyle = '#1a4a6e';
         ctx.fillRect(sx - 7 * s, ty + 9 * s, 8 * s, 9 * s);
         // Vent / crack lines 
-        ctx.fillStyle = '#201a16';
+        ctx.fillStyle = '#0a1a28';
         ctx.fillRect(sx - 5.5 * s, ty + 11 * s, 6 * s, 1.2 * s);
         ctx.fillRect(sx - 5.5 * s, ty + 15 * s, 6 * s, 1.2 * s);
 
-        // Lava glow from vent / crack (pulsing stronger)
+        // Aqua glow from vent / crack (pulsing)
         const ledPhase = (frame + Math.floor(Math.abs(tree.wx) % 53)) % 47;
         const lavaGlow = (ledPhase > 10 && ledPhase < 32) ? 0.75 : 0.18;
-        ctx.fillStyle = `rgba(255, 105, 35, ${lavaGlow})`;
+        ctx.fillStyle = `rgba(51, 170, 204, ${lavaGlow})`;
         ctx.fillRect(sx - 4 * s, ty + 12 * s, 2.2 * s, 2 * s);
-        ctx.fillStyle = `rgba(255, 135, 50, ${lavaGlow * 0.7})`;
+        ctx.fillStyle = `rgba(102, 221, 255, ${lavaGlow * 0.7})`;
         ctx.fillRect(sx - 3.2 * s, ty + 17 * s, 1.4 * s, 1.3 * s);
 
-        // Flowing lava streak down the rock face
-        ctx.strokeStyle = `rgba(240, 100, 28, ${0.6 + 0.35 * Math.sin(frame * 0.09 + tree.wx)})`;
+        // Flowing water streak down the rock face
+        ctx.strokeStyle = `rgba(51, 170, 204, ${0.6 + 0.35 * Math.sin(frame * 0.09 + tree.wx)})`;
         ctx.lineWidth = 1.4;
         ctx.beginPath();
         ctx.moveTo(sx + 2 * s, ty + 8 * s);
         ctx.lineTo(sx + 1.5 * s, ty + 20 * s);
         ctx.lineTo(sx + 3 * s, ty + 32 * s);
         ctx.stroke();
-        ctx.strokeStyle = `rgba(255, 155, 55, ${0.35 + 0.25 * Math.sin(frame * 0.13 + tree.wx * 0.7)})`;
+        ctx.strokeStyle = `rgba(136, 238, 255, ${0.35 + 0.25 * Math.sin(frame * 0.13 + tree.wx * 0.7)})`;
         ctx.lineWidth = 0.9;
         ctx.beginPath();
         ctx.moveTo(sx + 0.5 * s, ty + 10 * s);
@@ -2877,19 +3007,19 @@
         ctx.stroke();
         ctx.lineWidth = 1;
 
-        // Lava pooling at base of rock
-        ctx.fillStyle = 'rgba(155, 42, 14, 0.7)';
+        // Water pooling at base of rock
+        ctx.fillStyle = 'rgba(26, 90, 140, 0.7)';
         ctx.beginPath();
         ctx.ellipse(sx + 2 * s, ty + 39 * s, 7 * s, 2.2 * s, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = `rgba(235, 95, 25, ${0.45 + 0.3 * Math.sin(frame * 0.1)})`;
+        ctx.fillStyle = `rgba(102, 221, 255, ${0.45 + 0.3 * Math.sin(frame * 0.1)})`;
         ctx.beginPath();
         ctx.ellipse(sx + 2 * s, ty + 38 * s, 4 * s, 1.1 * s, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Very subtle rising volcanic gas wisps (grey, not neon)
+        // Very subtle rising bubble wisps
         const steamT = frame * 0.021 + ((tree.wx * 5) % 21);
-        ctx.strokeStyle = `rgba(85, 80, 75, ${0.09 + 0.06 * Math.sin(steamT)})`;
+        ctx.strokeStyle = `rgba(102, 200, 230, ${0.09 + 0.06 * Math.sin(steamT)})`;
         ctx.lineWidth = 1.0;
         const steamX = sx - 1.5 * s;
         ctx.beginPath();
@@ -2898,31 +3028,31 @@
         ctx.stroke();
       }
 
-      // === VERTICAL PATROLLING ALIENS (long tail, up/down movement) ===
+      // === VERTICAL PATROLLING AQUA ALIENS (long tail, up/down movement) ===
       for (let e of verticalEnemies) {
         const sx = e.wx - scrollX;
         const sy = e.y;
         if (sx < -40 || sx > W + 40) continue;
 
-        // Body (purple alien)
-        ctx.fillStyle = '#5a2a7a';
+        // Body (aqua alien)
+        ctx.fillStyle = '#1a4a6e';
         ctx.beginPath();
         ctx.ellipse(sx, sy, 13, 11, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Head
-        ctx.fillStyle = '#7a3a9a';
+        ctx.fillStyle = '#2277aa';
         ctx.beginPath();
         ctx.arc(sx + 5, sy - 6, 7, 0, Math.PI * 2);
         ctx.fill();
 
         // Eyes (warning lights)
-        ctx.fillStyle = '#88ddee';
+        ctx.fillStyle = '#88eeff';
         ctx.fillRect(sx + 7, sy - 8, 2, 2);
         ctx.fillRect(sx + 11, sy - 7, 2, 2);
 
         // Long tail (waving)
-        ctx.strokeStyle = '#4a1a5a';
+        ctx.strokeStyle = '#0d2840';
         ctx.lineWidth = 3.5;
         ctx.beginPath();
         ctx.moveTo(sx - 8, sy + 4);
@@ -2931,14 +3061,14 @@
         ctx.stroke();
 
         ctx.lineWidth = 2;
-        ctx.strokeStyle = '#6a3a7a';
+        ctx.strokeStyle = '#33aacc';
         ctx.beginPath();
         ctx.moveTo(sx - 8, sy + 4);
         ctx.quadraticCurveTo(sx - 20, sy + 10 + tailWave * 0.3, sx - 30, sy + 16 + tailWave * 0.8);
         ctx.stroke();
       }
 
-      // === OVAL TRAMPOLINES (scorched rock bounce pads before tall walls) ===
+      // === OVAL TRAMPOLINES (ice-blue bounce pads before tall walls) ===
       for (let t of trampolines) {
         const sx = t.wx - scrollX;
         if (sx < -50 || sx > W + 50) continue;
@@ -2946,19 +3076,19 @@
         const tw = t.width;
         const ty = GROUND_Y - 3;
 
-        // Soft heat glow under the rock pad
-        ctx.fillStyle = 'rgba(210, 85, 30, 0.22)';
+        // Soft aqua glow under the pad
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.22)';
         ctx.beginPath();
         ctx.ellipse(sx + tw / 2, ty + 4, tw / 2 + 8, 7, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main oval rock bounce pad (charred with lava rim)
-        ctx.fillStyle = '#3a3129';
+        // Main oval rock bounce pad (deep blue with aqua rim)
+        ctx.fillStyle = '#1a3a55';
         ctx.beginPath();
         ctx.ellipse(sx + tw / 2, ty, tw / 2, 5, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Lava edge highlight
-        ctx.fillStyle = 'rgba(220, 90, 25, 0.6)';
+        // Aqua edge highlight
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.6)';
         ctx.beginPath();
         ctx.ellipse(sx + tw / 2, ty - 1, tw / 2 - 1, 2.2, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -2970,17 +3100,16 @@
         ctx.fill();
 
         // Subtle edge ring
-        ctx.strokeStyle = '#119977';
+        ctx.strokeStyle = '#33aacc';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.ellipse(sx + tw / 2, ty, tw / 2, 5, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // === PINK SNAKE-LIKE FLOWER CEILING HAZARDS (L5 biosphere theme; draw after ground/high bg but before platforms/player for proper layering) ===
-      // Stem #44aa66 or darker; flower petals #ff88cc / #ff77cc / #cc66ee bright dangerous pink. Snake curve via wiggle sin offset on segments.
-      // From ceiling (small y) down as thick segmented vine; head flower (circle + 5 petals); subtle vein/glow + slight petal/head anim.
-      // No parallax (or very light); animated with frame.
+      // === BLUE-GREEN SEAWEED / AQUA FROND CEILING HAZARDS (L6 watery theme) ===
+      // Stem teal/dark; frond tips aqua/cyan. Snake curve via wiggle sin offset on segments.
+      // From ceiling (small y) down as thick segmented vine; head frond (circle + 5 petals); subtle vein/glow + slight anim.
       for (let f of ceilingFlowers) {
         const sx = f.wx - scrollX;
         if (sx < -60 || sx > W + 60) continue; // offscreen cull
@@ -2999,8 +3128,8 @@
           points.push({ x: sx + woff, y: ly });
         }
 
-        // Thick stem vine (dark green #44aa66 theme match to flora stems; use stroke for smooth curve)
-        ctx.strokeStyle = '#2f7a4a'; // slightly darker stem
+        // Thick stem vine (blue-green seaweed)
+        ctx.strokeStyle = '#1a5a55';
         ctx.lineWidth = 9.5;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
@@ -3012,7 +3141,7 @@
         ctx.stroke();
 
         // Lighter inner stem highlight
-        ctx.strokeStyle = '#4aa86b';
+        ctx.strokeStyle = '#2a8870';
         ctx.lineWidth = 4.5;
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
@@ -3021,8 +3150,8 @@
         }
         ctx.stroke();
 
-        // Pink vein glow line (subtle dangerous highlight)
-        ctx.strokeStyle = 'rgba(255, 136, 204, 0.45)';
+        // Aqua vein glow line (subtle dangerous highlight)
+        ctx.strokeStyle = 'rgba(102, 221, 255, 0.45)';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         ctx.moveTo(points[0].x + 1, points[0].y);
@@ -3031,20 +3160,20 @@
         }
         ctx.stroke();
 
-        // Flower head at tip (glow + layered petals + center)
+        // Frond head at tip (glow + layered fronds + center)
         const tip = points[points.length - 1];
         const headPhase = frame * 0.04 + f.wigglePhase;
         const petalPulse = 0.85 + 0.15 * Math.sin(headPhase * 1.6);
         const headRot = Math.sin(headPhase) * 0.25;
 
-        // Outer soft glow (pink danger aura)
-        ctx.fillStyle = 'rgba(255, 136, 204, 0.22)';
+        // Outer soft glow (aqua danger aura)
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.22)';
         ctx.beginPath();
         ctx.arc(tip.x, tip.y, 13, 0, Math.PI * 2);
         ctx.fill();
 
-        // Petals (5 main + smaller offsets; bright pink #ff88cc / #ff77cc)
-        ctx.fillStyle = '#ff88cc';
+        // Fronds (5 main + smaller offsets; bright aqua)
+        ctx.fillStyle = '#33aacc';
         for (let p = 0; p < 5; p++) {
           const pa = (p * (Math.PI * 2 / 5)) + headRot + (p % 2 ? 0.15 : -0.1);
           const px = tip.x + Math.cos(pa) * (7.5 * petalPulse);
@@ -3053,7 +3182,7 @@
           ctx.ellipse(px, py, 5.5 * petalPulse, 3.2 * petalPulse, pa + 0.4, 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.fillStyle = '#ff77cc';
+        ctx.fillStyle = '#66ddff';
         for (let p = 0; p < 5; p++) {
           const pa = (p * (Math.PI * 2 / 5)) + headRot + 0.6 + (p % 2 ? 0.1 : -0.15);
           const px = tip.x + Math.cos(pa) * (5 * petalPulse);
@@ -3063,24 +3192,24 @@
           ctx.fill();
         }
 
-        // Center bulb (dangerous purple-pink)
-        ctx.fillStyle = '#cc66ee';
+        // Center bulb (dangerous cyan)
+        ctx.fillStyle = '#2277aa';
         ctx.beginPath();
         ctx.arc(tip.x, tip.y, 4.2, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = 'rgba(255, 170, 220, 0.7)';
+        ctx.fillStyle = 'rgba(170, 240, 255, 0.7)';
         ctx.beginPath();
         ctx.arc(tip.x - 1, tip.y - 1, 1.8, 0, Math.PI * 2);
         ctx.fill();
 
         // Ceiling attach nub (small stem from top)
-        ctx.fillStyle = '#2f7a4a';
+        ctx.fillStyle = '#1a5a55';
         ctx.fillRect(sx - 2, 0, 4, baseY + 2);
-        ctx.fillStyle = '#4aa86b';
+        ctx.fillStyle = '#2a8870';
         ctx.fillRect(sx - 1, 0, 2, baseY + 1);
       }
 
-      // === FLOATING PLATFORMS (bubblegum pink with bubble texture; thicker, L/R sway + up/down float) ===
+      // === FLOATING PLATFORMS (ice-blue / coral-reef aqua with bubble texture; thicker, L/R sway + up/down float) ===
       for (let p of platforms) {
         const sway = (p.swayAmp || 0) * Math.sin((frame * 0.021) + (p.swayPhase || 0));
         const floatY = (p.floatAmp || 0) * Math.sin((frame * 0.018) + (p.floatPhase || 0));
@@ -3092,25 +3221,25 @@
         ctx.fillStyle = 'rgba(0,0,0,0.32)';
         ctx.fillRect(sx + 3, py + p.height + 3, p.width - 6, 5);
 
-        // main platform body (bubblegum pink; variation based on moving L/R sway)
-        ctx.fillStyle = ((p.swayAmp || 0) > 0.04 ? '#ff77cc' : '#ff88cc');
+        // main platform body (ice-blue / aqua; variation based on moving L/R sway)
+        ctx.fillStyle = ((p.swayAmp || 0) > 0.04 ? '#33aacc' : '#2277aa');
         ctx.fillRect(sx, py, p.width, p.height);
 
-        // lighter pink top highlight (bubblegum sheen, no lava)
-        ctx.fillStyle = 'rgba(255, 187, 221, 0.65)';
+        // lighter aqua top highlight (ice sheen)
+        ctx.fillStyle = 'rgba(136, 238, 255, 0.65)';
         ctx.fillRect(sx, py, p.width, 2);
 
         // subtle inner top highlight
-        ctx.fillStyle = 'rgba(255, 200, 230, 0.4)';
+        ctx.fillStyle = 'rgba(170, 240, 255, 0.4)';
         ctx.fillRect(sx + 3, py + 2, p.width - 6, 1);
 
-        // underside detail (deeper pink)
-        ctx.fillStyle = '#552244';
+        // underside detail (deeper blue)
+        ctx.fillStyle = '#0d2840';
         ctx.fillRect(sx + 2, py + p.height - 3, p.width - 4, 2);
 
         // Bubble texture: several small semi-transparent ellipses/circles scattered on surface
         // (random but seeded by wx/phase for stable positions per platform; pulsing size/alpha with sin(frame))
-        ctx.fillStyle = '#ffbbdd';
+        ctx.fillStyle = '#88eeff';
         const numBubbles = 5;
         for (let i = 0; i < numBubbles; i++) {
           // seeded pseudo-random pos using wx + phase + i (stable, no rand in draw)
@@ -3127,8 +3256,8 @@
         }
         ctx.globalAlpha = 1.0;
 
-        // subtle bubble rim highlights (brighter pink accents)
-        ctx.fillStyle = 'rgba(255, 200, 230, 0.5)';
+        // subtle bubble rim highlights (brighter aqua accents)
+        ctx.fillStyle = 'rgba(170, 240, 255, 0.5)';
         for (let i = 0; i < 2; i++) {
           const seed2 = (p.wx * 1.1 + i * 47) % 61;
           const bx2 = sx + 6 + (seed2 % (p.width - 12));
@@ -3140,7 +3269,7 @@
         }
       }
 
-      // === FRIENDLY NPC (pink octagon with blue eyes, middle of level, bounces and speech bubble on approach) ===
+      // === FRIENDLY NPC (aqua/teal octagon with cyan eyes, middle of level) ===
       if (friendlyNPC) {
         const bob = Math.sin(friendlyNPC.bouncePhase || 0) * 5;
         const npcX = friendlyNPC.wx - scrollX;
@@ -3149,9 +3278,9 @@
         const size = 34; // slightly larger than player (26)
         const r = size / 2;
 
-        // Pink octagon (8-sided approx for "octagon")
-        ctx.fillStyle = '#ff88dd';
-        ctx.strokeStyle = '#cc5599';
+        // Aqua octagon (8-sided approx for "octagon")
+        ctx.fillStyle = '#33aacc';
+        ctx.strokeStyle = '#1a6a88';
         ctx.lineWidth = 2;
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
@@ -3165,8 +3294,8 @@
         ctx.fill();
         ctx.stroke();
 
-        // Blue eyes
-        ctx.fillStyle = '#4488ff';
+        // Cyan eyes
+        ctx.fillStyle = '#88eeff';
         ctx.beginPath();
         ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
         ctx.fill();
@@ -3182,20 +3311,20 @@
           const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
           const boxY = Math.max(12, drawY - 55);
 
-          ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
+          ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
           ctx.fillRect(boxX, boxY, boxW, boxH);
-          ctx.strokeStyle = '#aaddff';
+          ctx.strokeStyle = '#66ddff';
           ctx.lineWidth = 1.6;
           ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-          ctx.fillStyle = '#ccddff';
+          ctx.fillStyle = '#aaddff';
           ctx.font = '11px Segoe UI, Arial';
           ctx.textAlign = 'center';
           ctx.fillText('Hey, are you here to solve the mystery?', boxX + boxW / 2, boxY + 14);
-          ctx.fillText('The pink slime is dangerous!', boxX + boxW / 2, boxY + 28);
+          ctx.fillText('The deep water pits are deadly!', boxX + boxW / 2, boxY + 28);
 
           // Pointer line from bubble to NPC
-          ctx.strokeStyle = '#88bbdd';
+          ctx.strokeStyle = '#66bbdd';
           ctx.lineWidth = 1.3;
           ctx.beginPath();
           ctx.moveTo(boxX + boxW / 2, boxY + boxH);
@@ -3204,8 +3333,8 @@
         }
       }
 
-      // === OCTOPOPP NPCs (pink octagon with blue eyes; start + halfway dialogues; same bubble mechanic)
-      // Start NPC (very beginning of level 5)
+      // === OCTOPOPP NPCs (aqua/teal octagon with cyan eyes; start + halfway dialogues)
+      // Start NPC (very beginning of level 6)
       if (octopoppStart) {
         const bob = Math.sin(octopoppStart.bouncePhase || 0) * 5;
         const npcX = octopoppStart.wx - scrollX;
@@ -3215,9 +3344,9 @@
         const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
         if (isOnScreen) {
-          // Pink octagon
-          ctx.fillStyle = '#ff88dd';
-          ctx.strokeStyle = '#cc5599';
+          // Aqua octagon
+          ctx.fillStyle = '#33aacc';
+          ctx.strokeStyle = '#1a6a88';
           ctx.lineWidth = 2;
           ctx.beginPath();
           for (let i = 0; i < 8; i++) {
@@ -3229,32 +3358,31 @@
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
-          // Blue eyes
-          ctx.fillStyle = '#4488ff';
+          // Cyan eyes
+          ctx.fillStyle = '#88eeff';
           ctx.beginPath();
           ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
           ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
           ctx.fill();
-          // Speech bubble if approached (exact text)
-          // Disappears when NPC off screen (npcX check)
+          // Speech bubble if approached
           if (octopoppStart.approached && npcX > -50 && npcX < W + 50) {
             const boxW = 240;
             const boxH = 42;
             const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
             const boxY = Math.max(12, drawY - 58);
-            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
+            ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
             ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#aaddff';
+            ctx.strokeStyle = '#66ddff';
             ctx.lineWidth = 1.6;
             ctx.strokeRect(boxX, boxY, boxW, boxH);
-            ctx.fillStyle = '#ccddff';
+            ctx.fillStyle = '#aaddff';
             ctx.font = '11px Segoe UI, Arial';
             ctx.textAlign = 'center';
             ctx.fillText('There\'s a great mystery.', boxX + boxW / 2, boxY + 14);
             ctx.fillText('Why is all the neon floating away?', boxX + boxW / 2, boxY + 30);
-            ctx.strokeStyle = '#88bbdd';
+            ctx.strokeStyle = '#66bbdd';
             ctx.lineWidth = 1.3;
             ctx.beginPath();
             ctx.moveTo(boxX + boxW / 2, boxY + boxH);
@@ -3263,7 +3391,7 @@
           }
         }
       }
-      // Mid NPC (halfway through level 5)
+      // Mid NPC (halfway through level 6)
       if (octopoppMid) {
         const bob = Math.sin(octopoppMid.bouncePhase || 0) * 5;
         const npcX = octopoppMid.wx - scrollX;
@@ -3273,9 +3401,9 @@
         const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
         if (isOnScreen) {
-          // Pink octagon
-          ctx.fillStyle = '#ff88dd';
-          ctx.strokeStyle = '#cc5599';
+          // Aqua octagon
+          ctx.fillStyle = '#33aacc';
+          ctx.strokeStyle = '#1a6a88';
           ctx.lineWidth = 2;
           ctx.beginPath();
           for (let i = 0; i < 8; i++) {
@@ -3287,31 +3415,30 @@
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
-          // Blue eyes
-          ctx.fillStyle = '#4488ff';
+          // Cyan eyes
+          ctx.fillStyle = '#88eeff';
           ctx.beginPath();
           ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
           ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
           ctx.fill();
-          // Speech bubble if approached (exact text)
-          // Disappears when NPC off screen (npcX check)
+          // Speech bubble if approached
           if (octopoppMid.approached && npcX > -50 && npcX < W + 50) {
             const boxW = 230;
             const boxH = 38;
             const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
             const boxY = Math.max(12, drawY - 55);
-            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
+            ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
             ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#aaddff';
+            ctx.strokeStyle = '#66ddff';
             ctx.lineWidth = 1.6;
             ctx.strokeRect(boxX, boxY, boxW, boxH);
-            ctx.fillStyle = '#ccddff';
+            ctx.fillStyle = '#aaddff';
             ctx.font = '11px Segoe UI, Arial';
             ctx.textAlign = 'center';
             ctx.fillText('The only way to save us is to stop the neon leak!', boxX + boxW / 2, boxY + 22);
-            ctx.strokeStyle = '#88bbdd';
+            ctx.strokeStyle = '#66bbdd';
             ctx.lineWidth = 1.3;
             ctx.beginPath();
             ctx.moveTo(boxX + boxW / 2, boxY + boxH);
@@ -3321,7 +3448,7 @@
         }
       }
 
-      // draw obstacles (triangles) - pink biosphere living organic/crystal hazards that patrol + wiggle L/R as if alive (reskinned; no lava)
+      // draw obstacles (triangles) - blue crystal/coral hazards that patrol + wiggle L/R
       for (let o of obstacles) {
         const currWX = getTriangleCurrentWX(o);
         const sx = currWX - scrollX;
@@ -3341,8 +3468,8 @@
         ctx.closePath();
         ctx.fill();
 
-        // main triangle (hazard) - pink biosphere organic/crystal (reskinned; no lava)
-        ctx.fillStyle = '#2a1f2b';
+        // main triangle (hazard) - blue crystal/coral
+        ctx.fillStyle = '#0d2840';
         ctx.beginPath();
         ctx.moveTo(drawX, GROUND_Y - th);
         ctx.lineTo(drawX - tw / 2, GROUND_Y + 0.5);
@@ -3350,13 +3477,13 @@
         ctx.closePath();
         ctx.fill();
 
-        // NEW vein (center pulsing pink/magenta living detail)
-        ctx.fillStyle = `rgba(255,136,204, ${0.32 + 0.22*Math.sin(frame*0.09 + (o.wx||0))})`;
+        // center pulsing aqua crystal vein
+        ctx.fillStyle = `rgba(102,221,255, ${0.32 + 0.22*Math.sin(frame*0.09 + (o.wx||0))})`;
         ctx.fillRect(drawX-1.5, GROUND_Y - th*0.72 , 3, th*0.48);
 
-        // pulsing bio glow top lip / edge (pink biosphere)
+        // pulsing aqua glow top lip / edge
         const lipAlpha = 0.55 + 0.35 * Math.sin(frame * 0.1 + (o.wx || 0));
-        ctx.fillStyle = `rgba(255, 119, 204, ${lipAlpha})`;
+        ctx.fillStyle = `rgba(51, 170, 204, ${lipAlpha})`;
         ctx.beginPath();
         ctx.moveTo(drawX, GROUND_Y - th);
         ctx.lineTo(drawX - tw / 2 + 1, GROUND_Y - 1);
@@ -3364,8 +3491,8 @@
         ctx.closePath();
         ctx.fill();
 
-        // NEW soft highlight (thin pink rim after lip for living organic detail)
-        ctx.strokeStyle = 'rgba(255,136,204,0.28)';
+        // soft highlight (thin aqua rim)
+        ctx.strokeStyle = 'rgba(102,221,255,0.28)';
         ctx.lineWidth=1.1;
         ctx.beginPath();
         ctx.moveTo(drawX, GROUND_Y - th + 2);
@@ -3374,26 +3501,27 @@
         ctx.closePath();
         ctx.stroke();
 
-        // pink crystal cracks / small vents on the face (animated glow)
-        ctx.fillStyle = `rgba(255, 136, 204, 0.6)`;
+        // aqua crystal cracks on the face (animated glow)
+        ctx.fillStyle = `rgba(102, 221, 255, 0.6)`;
         const crackY = GROUND_Y - th * 0.55 + Math.sin(frame * 0.07 + o.wx) * 2;
         ctx.fillRect(drawX - 4, crackY, 8, 1.5);
         ctx.fillRect(drawX - 2, GROUND_Y - th * 0.3, 4, 1);
 
-        // top edge (cracked rock)
-        ctx.strokeStyle = '#552244';
+        // top edge
+        ctx.strokeStyle = '#1a4a6e';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         ctx.moveTo(drawX, GROUND_Y - th);
         ctx.lineTo(drawX - tw / 2 + 2, GROUND_Y - 0.5);
         ctx.stroke();
 
-        // small accent / ember line
-        ctx.fillStyle = '#4a2233';
+        // small accent line
+        ctx.fillStyle = '#004466';
         ctx.fillRect(drawX - 1.5, GROUND_Y - th + 5, 3, 1.5);
       }
 
-      // === GLOWING PURPLE BLOBS (biosphere melting chasers - slow, squashable from above, shoot projectiles) ===
+      // === AQUA BIO-SHOOTERS (fins + tentacles - slow, squashable from above, shoot ink/water orbs) ===
+      // Hitbox remains s.wx / s.y / s.w / s.h — visual only rewrite
       for (let s of specials) {
         const sx = s.wx - scrollX;
         const sy = s.y;
@@ -3402,6 +3530,9 @@
         const cx = sx + s.w / 2;
         const cy = sy + s.h / 2 + 2;
         const radius = s.h / 2 - 2;
+        const pulse = 0.7 + Math.sin(frame * 0.12 + s.wx) * 0.35;
+        const swim = Math.sin(frame * 0.08 + s.wx * 0.02) * 2.2;
+        const tentWiggle = Math.sin(frame * 0.11 + s.wx * 0.015);
 
         // soft shadow
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -3409,75 +3540,132 @@
         ctx.ellipse(cx + 2, GROUND_Y + 2, radius * 0.9, 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Soft outer purple/magenta glow (pulsing - glowing alien biosphere effect)
-        const pulse = 0.7 + Math.sin(frame * 0.12 + s.wx) * 0.35;
-        ctx.fillStyle = `rgba(170, 80, 200, ${0.16 * pulse})`;
+        // Soft outer aqua glow
+        ctx.fillStyle = `rgba(51, 170, 204, ${0.18 * pulse})`;
         ctx.beginPath();
         ctx.ellipse(cx, cy, radius + 9 + Math.sin(frame * 0.09) * 2.5, radius * 1.15 + 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Secondary inner glow layer (brighter pink-purple)
-        ctx.fillStyle = `rgba(204, 102, 238, ${0.22 * pulse})`;
+        // Secondary inner glow
+        ctx.fillStyle = `rgba(102, 221, 255, ${0.2 * pulse})`;
         ctx.beginPath();
         ctx.ellipse(cx, cy - 1, radius + 3 + Math.sin(frame * 0.11) * 1.5, radius * 1.05, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main blob body - organic purple/pink with slight vertical melt squish (tall to respect original h)
-        const meltPhase = s.wx * 0.015 + frame * 0.075;
-        const melt = Math.sin(meltPhase) * 2.8;
-        const blobH = radius * 1.18 + melt * 0.4; // slight melt stretch on height
-        ctx.fillStyle = '#3a1a2a';
+        // Side fins (left / right triangular fins — aqua-biological)
+        ctx.fillStyle = '#1a5a88';
         ctx.beginPath();
-        ctx.ellipse(cx, cy + melt * 0.25, radius * 0.98, blobH, 0, 0, Math.PI * 2);
+        ctx.moveTo(cx - radius * 0.55, cy);
+        ctx.lineTo(cx - radius * 1.35 - swim * 0.3, cy - 6 + tentWiggle * 2);
+        ctx.lineTo(cx - radius * 0.4, cy + 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx + radius * 0.55, cy);
+        ctx.lineTo(cx + radius * 1.35 + swim * 0.3, cy - 5 - tentWiggle * 2);
+        ctx.lineTo(cx + radius * 0.4, cy + 8);
+        ctx.closePath();
+        ctx.fill();
+        // Fin highlights
+        ctx.fillStyle = '#33aacc';
+        ctx.beginPath();
+        ctx.moveTo(cx - radius * 0.5, cy + 1);
+        ctx.lineTo(cx - radius * 1.1, cy - 2 + tentWiggle);
+        ctx.lineTo(cx - radius * 0.42, cy + 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx + radius * 0.5, cy + 1);
+        ctx.lineTo(cx + radius * 1.1, cy - 1 - tentWiggle);
+        ctx.lineTo(cx + radius * 0.42, cy + 5);
+        ctx.closePath();
         ctx.fill();
 
-        // Secondary blob lobe (left side, offset for blobby shape)
-        ctx.fillStyle = '#4a2233';
+        // Main body — deep blue oval (respects tall hitbox via radius from s.h)
+        ctx.fillStyle = '#0d2840';
         ctx.beginPath();
-        ctx.ellipse(cx - 4.5, cy - 1 + melt * 0.6, radius * 0.72, radius * 0.92 + melt * 0.3, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy + swim * 0.15, radius * 0.92, radius * 1.12, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Right + lower drip lobe (melting organic feel)
+        // Mid body lobe (teal)
+        ctx.fillStyle = '#1a4a6e';
         ctx.beginPath();
-        ctx.ellipse(cx + 4, cy + 3 + melt * 0.8, radius * 0.65, radius * 0.78 + melt * 0.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx - 2, cy - 2 + swim * 0.2, radius * 0.72, radius * 0.95, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bright glowing core (vibrant purple-pink, pulsing)
-        ctx.fillStyle = '#cc66ee';
+        // Belly / lower body (lighter aqua)
+        ctx.fillStyle = '#2277aa';
         ctx.beginPath();
-        ctx.ellipse(cx - 1, cy - 2 + melt * 0.15, radius * 0.42, radius * 0.48, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx + 1, cy + 4 + swim * 0.25, radius * 0.58, radius * 0.7, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hotter inner core highlight
-        ctx.fillStyle = '#ff88cc';
+        // Dorsal fin on top
+        ctx.fillStyle = '#0a3a5a';
         ctx.beginPath();
-        ctx.arc(cx - 2, cy - 3, radius * 0.22, 0, Math.PI * 2);
+        ctx.moveTo(cx - 4, cy - radius * 0.85);
+        ctx.lineTo(cx, cy - radius * 1.35 - Math.abs(swim) * 0.4);
+        ctx.lineTo(cx + 5, cy - radius * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#33aacc';
+        ctx.beginPath();
+        ctx.moveTo(cx - 1, cy - radius * 0.9);
+        ctx.lineTo(cx + 0.5, cy - radius * 1.2);
+        ctx.lineTo(cx + 2, cy - radius * 0.88);
+        ctx.closePath();
         ctx.fill();
 
-        // Melting surface drips / vents (animated pink goo-like drips that bob downward)
-        ctx.fillStyle = 'rgba(255, 136, 204, 0.75)';
-        for (let d = 0; d < 2; d++) {
-          const dPhase = frame * 0.09 + s.wx * 0.02 + d * 2.1;
-          const dripY = cy + radius * 0.55 + Math.sin(dPhase) * 3.5 + d * 3;
-          const dripW = 2.8 + (d % 2);
+        // Tentacles at base (3 wavy strokes, canvas geometry)
+        for (let t = 0; t < 3; t++) {
+          const baseX = cx - 7 + t * 7;
+          const tw = tentWiggle * (t === 1 ? -1.2 : 1) * (2 + t * 0.4);
+          ctx.strokeStyle = t === 1 ? '#1a6a88' : '#0d4060';
+          ctx.lineWidth = 3.2 - t * 0.3;
+          ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.ellipse(cx - 5 + d * 9, dripY, dripW, 4.5 + Math.sin(dPhase * 1.3) * 1.2, 0, 0, Math.PI * 2);
+          ctx.moveTo(baseX, cy + radius * 0.75);
+          ctx.quadraticCurveTo(
+            baseX + tw * 3, cy + radius * 0.95 + 6 + Math.sin(frame * 0.1 + t) * 2,
+            baseX + tw * 5, cy + radius * 1.15 + 10 + Math.abs(swim)
+          );
+          ctx.stroke();
+          // tip sucker / bulb
+          ctx.fillStyle = '#33aacc';
+          ctx.beginPath();
+          ctx.arc(baseX + tw * 5, cy + radius * 1.15 + 10 + Math.abs(swim), 2.2, 0, Math.PI * 2);
           ctx.fill();
         }
+        ctx.lineWidth = 1;
 
-        // Rising vapor / bubble accents (melting "bubbles" drifting upward, pink-purple)
-        ctx.fillStyle = 'rgba(204, 102, 238, 0.65)';
+        // Bright glowing core (aqua, pulsing)
+        ctx.fillStyle = '#33aacc';
+        ctx.beginPath();
+        ctx.ellipse(cx - 1, cy - 3 + swim * 0.1, radius * 0.38, radius * 0.42, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye (single bio eye)
+        ctx.fillStyle = '#88eeff';
+        ctx.beginPath();
+        ctx.arc(cx + 3, cy - 6, radius * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0a1628';
+        ctx.beginPath();
+        ctx.arc(cx + 3.5, cy - 6, radius * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rising bubbles near body
+        ctx.fillStyle = 'rgba(136, 238, 255, 0.65)';
         for (let e = 0; e < 3; e++) {
           const ePhase = frame * 0.065 + e * 1.7 + s.wx * 0.01;
           const ex = cx + Math.sin(ePhase) * (radius * 0.7 + 2);
-          const ey = cy - 6 - ((ePhase * 1.8) % (radius * 1.1)); // slow rise with wrap for continuous melt vapor
+          const ey = cy - 6 - ((ePhase * 1.8) % (radius * 1.1));
           ctx.beginPath();
           ctx.arc(ex, ey, 1.1 + (e % 2) * 0.6, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // === MONSTER SLIMEBALLS (bubbling purple from glowing blobs/enemies; twice size)
+      // === MONSTER INK / WATER ORBS (blue-aqua from bio-shooters; twice size)
       for (let pr of projectiles) {
         const sx = pr.wx - scrollX;
         const sy = pr.y;
@@ -3485,20 +3673,20 @@
 
         const r = 8 + Math.sin(frame * 0.22 + sx) * 0.8; // twice size
 
-        // Outer purple slime glow
-        ctx.fillStyle = 'rgba(160, 70, 210, 0.3)';
+        // Outer aqua glow
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.3)';
         ctx.beginPath();
         ctx.arc(sx, sy, r + 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main bubbling slimeball body (purple-pink)
-        ctx.fillStyle = '#aa66ff';
+        // Main water/ink orb body
+        ctx.fillStyle = '#2277aa';
         ctx.beginPath();
         ctx.arc(sx, sy, r, 0, Math.PI * 2);
         ctx.fill();
 
         // Bubbles inside (pulsing lighter)
-        ctx.fillStyle = '#ff77cc';
+        ctx.fillStyle = '#66ddff';
         for (let b = 0; b < 3; b++) {
           const bp = frame * 0.15 + b * 2.1 + sx;
           const bx = sx + Math.sin(bp) * r * 0.35;
@@ -3509,7 +3697,7 @@
         }
 
         // Core
-        ctx.fillStyle = '#dd99ff';
+        ctx.fillStyle = '#88eeff';
         ctx.beginPath();
         ctx.arc(sx - 0.5, sy - 0.5, r * 0.3, 0, Math.PI * 2);
         ctx.fill();
@@ -3640,23 +3828,23 @@
           }
         }
 
-        // Glowing "Neon Control Zone" building (replaces usual background monster; golden glow, open door with light)
+        // Glowing "Hydro Control Zone" building (blue theme; open door with light)
         const bx = lx + 48;
         const by = baseY;
         const bPulse = Math.sin(frame * 0.22) * 1.8 + 1.2;
-        // Aura glow (golden)
-        ctx.fillStyle = 'rgba(255, 200, 60, 0.22)';
+        // Aura glow (aqua)
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.22)';
         ctx.fillRect(bx - 8, by - 185, 58, 165);
-        ctx.fillStyle = 'rgba(255, 220, 100, 0.35)';
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.28)';
         ctx.fillRect(bx - 4, by - 178, 50, 155);
-        // Building body (dark metallic with gold trim)
-        ctx.fillStyle = '#0f1a2a';
+        // Building body (dark blue metallic with cyan trim)
+        ctx.fillStyle = '#0a1a2c';
         ctx.fillRect(bx, by - 170, 42, 145);
-        ctx.strokeStyle = '#ffcc66';
+        ctx.strokeStyle = '#33aacc';
         ctx.lineWidth = 2.5;
         ctx.strokeRect(bx, by - 170, 42, 145);
         // Glowing panels / windows
-        ctx.fillStyle = 'rgba(255, 230, 120, 0.65)';
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.65)';
         for (let wy = 0; wy < 3; wy++) {
           ctx.fillRect(bx + 6, by - 155 + wy * 38, 10, 8);
           ctx.fillRect(bx + 24, by - 155 + wy * 38, 10, 8);
@@ -3667,22 +3855,22 @@
         ctx.fillStyle = 'rgba(120, 200, 255, 0.75)';
         ctx.fillRect(bx + 16, by - 53, 10, 51);
         // Sign / label
-        ctx.fillStyle = '#ffdd88';
+        ctx.fillStyle = '#88eeff';
         ctx.font = 'bold 10px Segoe UI, Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Neon Control Zone', bx + 21, by - 178);
+        ctx.fillText('Hydro Control Zone', bx + 21, by - 178);
         // Extra glow on text
-        ctx.fillStyle = 'rgba(255, 220, 80, 0.5)';
-        ctx.fillText('Neon Control Zone', bx + 21, by - 178);
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.5)';
+        ctx.fillText('Hydro Control Zone', bx + 21, by - 178);
 
-        // Golden floating pyramid NPC emerges from door if approached (blocks further progress)
+        // Ice-blue floating pyramid NPC emerges from door if approached (blocks further progress)
         if (endPyramid) {
           const bob = Math.sin(endPyramid.phase || 0) * 5;
           const npcX = endPyramid.wx - scrollX;
           const drawY = endPyramid.y - bob;
-          // Golden pyramid body
-          ctx.fillStyle = '#ffcc55';
-          ctx.strokeStyle = '#ddaa33';
+          // Ice-blue pyramid body
+          ctx.fillStyle = '#66ddff';
+          ctx.strokeStyle = '#33aacc';
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(npcX - 20, drawY + 14);
@@ -3700,7 +3888,7 @@
           ctx.ellipse(npcX + 7, drawY - 6, 6, 4.5, 0, 0, Math.PI * 2);
           ctx.fill();
           // Dark pupils (wide-eyed look)
-          ctx.fillStyle = '#112244';
+          ctx.fillStyle = '#0a1628';
           ctx.beginPath();
           ctx.arc(npcX - 7, drawY - 6, 2, 0, Math.PI * 2);
           ctx.fill();
@@ -3714,17 +3902,17 @@
             const boxH = 48;
             const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
             const boxY = Math.max(12, drawY - 72);
-            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
+            ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
             ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#aaddff';
+            ctx.strokeStyle = '#66ddff';
             ctx.lineWidth = 1.6;
             ctx.strokeRect(boxX, boxY, boxW, boxH);
-            ctx.fillStyle = '#ccddff';
+            ctx.fillStyle = '#aaddff';
             ctx.font = '11px Segoe UI, Arial';
             ctx.textAlign = 'center';
             ctx.fillText('There\'s so much chaos in here!', boxX + boxW / 2, boxY + 14);
             ctx.fillText('I cant let you in right now, get to the next level!', boxX + boxW / 2, boxY + 30);
-            ctx.strokeStyle = '#88bbdd';
+            ctx.strokeStyle = '#66bbdd';
             ctx.lineWidth = 1.3;
             ctx.beginPath();
             ctx.moveTo(boxX + boxW / 2, boxY + boxH);
@@ -3734,7 +3922,7 @@
         }
       }
 
-      // === END SLIMEBALLS (near-exit hazard; bubbling purple, twice size; repurposed visuals)
+      // === END WATER ORBS (near-exit hazard; blue-aqua, twice size; repurposed visuals)
       for (let fb of endFireballs) {
         const sx = fb.wx - scrollX;
         const sy = fb.y;
@@ -3742,20 +3930,20 @@
 
         const r = 9; // twice size base
 
-        // Outer purple glow
-        ctx.fillStyle = 'rgba(170, 80, 220, 0.3)';
+        // Outer aqua glow
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.3)';
         ctx.beginPath();
         ctx.arc(sx + 4, sy + 1.5, r + 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main slimeball
-        ctx.fillStyle = '#aa66ff';
+        // Main water orb
+        ctx.fillStyle = '#2277aa';
         ctx.beginPath();
         ctx.arc(sx + 4, sy + 2, r, 0, Math.PI * 2);
         ctx.fill();
 
         // Bubbles
-        ctx.fillStyle = '#ff88cc';
+        ctx.fillStyle = '#66ddff';
         for (let b = 0; b < 2; b++) {
           const bp = frame * 0.1 + b * 3 + sx;
           const bx = sx + 4 + Math.sin(bp) * 3;
@@ -3766,7 +3954,7 @@
         }
 
         // Core
-        ctx.fillStyle = '#cc99ff';
+        ctx.fillStyle = '#88eeff';
         ctx.beginPath();
         ctx.arc(sx + 5, sy + 1, 2.5, 0, Math.PI * 2);
         ctx.fill();
@@ -3966,6 +4154,52 @@
         ctx.restore();
       }
 
+      // === AIR BUBBLES (draw before player; large pass-through oxygen pockets) ===
+      for (let b of airBubbles) {
+        const bx = b.wx - scrollX;
+        const by = b.y;
+        // cull off-screen
+        if (bx + b.r < -20 || bx - b.r > W + 20 || by + b.r < -20 || by - b.r > H + 20) continue;
+
+        const pulse = 0.92 + Math.sin(frame * 0.06 + b.bobPhase) * 0.06;
+        const r = b.r * pulse;
+
+        ctx.save();
+        // Soft outer glow
+        ctx.shadowColor = 'rgba(100, 220, 255, 0.55)';
+        ctx.shadowBlur = 18;
+        const grad = ctx.createRadialGradient(bx - r * 0.25, by - r * 0.3, r * 0.08, bx, by, r);
+        grad.addColorStop(0, 'rgba(200, 245, 255, 0.22)');
+        grad.addColorStop(0.45, 'rgba(80, 190, 230, 0.12)');
+        grad.addColorStop(0.85, 'rgba(40, 140, 200, 0.08)');
+        grad.addColorStop(1, 'rgba(30, 100, 160, 0.02)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(bx, by, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rim
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = 'rgba(160, 230, 255, 0.55)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(bx, by, r * 0.98, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Specular highlight (top-left)
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(bx - r * 0.28, by - r * 0.32, r * 0.18, r * 0.12, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+        // Smaller secondary highlight
+        ctx.fillStyle = 'rgba(220, 250, 255, 0.28)';
+        ctx.beginPath();
+        ctx.arc(bx + r * 0.22, by + r * 0.18, r * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       // draw player cube
       const px = player.wx - scrollX;
       const py = player.y;
@@ -4040,6 +4274,47 @@
         ctx.beginPath();
         ctx.ellipse(cx, cy, player.w / 2 + 6 + pulse, player.h / 2 + 8 + pulse, 0, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.restore();
+      }
+
+      // === OXYGEN METER (above player cube; visible while playing) ===
+      if (gameState === 'playing') {
+        const o2Ratio = Math.max(0, Math.min(1, oxygen / OXYGEN_MAX));
+        const barW = 34;
+        const barH = 5;
+        const barX = px + player.w / 2 - barW / 2;
+        const barY = py - 14;
+        const pulseLow = o2Ratio < 0.28 ? (0.65 + 0.35 * Math.sin(frame * 0.28)) : 1;
+
+        ctx.save();
+        // Track
+        ctx.fillStyle = 'rgba(8, 24, 40, 0.75)';
+        ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+        // Fill color: cyan → amber → red as oxygen drops
+        let fillCol;
+        if (o2Ratio > 0.5) fillCol = '#44ddff';
+        else if (o2Ratio > 0.28) fillCol = '#ffcc55';
+        else fillCol = '#ff5566';
+        ctx.globalAlpha = pulseLow;
+        ctx.fillStyle = fillCol;
+        ctx.shadowColor = fillCol;
+        ctx.shadowBlur = o2Ratio < 0.28 ? 8 : 4;
+        ctx.fillRect(barX, barY, barW * o2Ratio, barH);
+
+        // Outline
+        ctx.globalAlpha = 0.85;
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(160, 220, 255, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+        // O2 label
+        ctx.globalAlpha = 0.9;
+        ctx.font = '700 8px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = o2Ratio < 0.28 ? '#ff8899' : '#aaddff';
+        ctx.fillText('O2', px + player.w / 2, barY - 3);
         ctx.restore();
       }
 
@@ -4140,7 +4415,7 @@
         ctx.fillText(String(neonScore).padStart(3, '0'), W - 18, 104);
 
         // Level Progress bar (fills as player approaches the ending)
-        const progress = Math.min(1, Math.max(0, player.wx / 6740));
+        const progress = Math.min(1, Math.max(0, player.wx / 8088));
         const barY = 8;
         const barW = 180;
         const barH = 5;
@@ -4170,16 +4445,17 @@
 
         ctx.font = '13px Consolas, monospace';
         ctx.fillStyle = '#5a8fb8';
-        ctx.fillText('VOLCANO HAZARD PROTOCOL', W / 2, H / 2 - 26);
+        ctx.fillText('DEEP WATER HAZARD PROTOCOL', W / 2, H / 2 - 26);
 
         ctx.font = '13px Segoe UI, Arial';
         ctx.fillStyle = '#6699bb';
         ctx.fillText('ARROW KEYS OR A/D  —  MOVE', W / 2, H / 2 + 18);
         ctx.fillText('SPACE  —  JUMP TRIANGLES + MONSTERS', W / 2, H / 2 + 36);
+        ctx.fillText('SWIM THROUGH AIR BUBBLES  —  REFILL O2', W / 2, H / 2 + 54);
 
         ctx.font = '12px Consolas, monospace';
         ctx.fillStyle = '#447799';
-        ctx.fillText('PRESS SPACE OR CLICK TO START', W / 2, H / 2 + 72);
+        ctx.fillText('PRESS SPACE OR CLICK TO START', W / 2, H / 2 + 88);
       }
 
       if (gameState === 'over') {
@@ -4240,18 +4516,10 @@
       }
     }
 
-    // Show/hide Level 5 replay link based on game state
+    // Show/hide Level 6 replay link based on game state
     // NOTE: intentionally not called every frame anymore (DOM getElement+style in rAF was contributing to micro-lag/jank).
     function updateLevel3LinkVisibility() {
       const container = document.getElementById('level3-link-container');
-      if (container) {
-        container.style.display = (gameState === 'complete') ? 'block' : 'none';
-      }
-    }
-
-    // Show/hide Next Level (L6) link based on game state
-    function updateNextLevelLinkVisibility() {
-      const container = document.getElementById('next-level-link-container');
       if (container) {
         container.style.display = (gameState === 'complete') ? 'block' : 'none';
       }
@@ -4279,15 +4547,6 @@
         gameState = 'playing';
       }
       updateLevel3LinkVisibility();
-      updateNextLevelLinkVisibility();
-    }
-
-    // Save cumulative score when proceeding to Level 6 (so it carries over)
-    function saveCumulativeForNextLevel() {
-      try {
-        const finalForThisLevel = baseScore + score;
-        localStorage.setItem('neonDashCumulativeScore', String(finalForThisLevel));
-      } catch(e){}
     }
 
     function init() {
@@ -4297,7 +4556,6 @@
       } catch(e) { baseScore = 0; }
       resetGame();
       updateLevel3LinkVisibility();
-      updateNextLevelLinkVisibility();
 
       // keyboard
       window.addEventListener('keydown', (e) => {
@@ -4320,7 +4578,6 @@
           resetGame();
           gameState = 'playing';
           updateLevel3LinkVisibility();
-          updateNextLevelLinkVisibility();
         }
       });
 
@@ -4351,14 +4608,8 @@
       // kick off loop
       gameLoop();
 
-      // Attach handler to next-level link to persist cumulative score (like previous levels)
-      const nextLinkEl = document.getElementById('next-level-link');
-      if (nextLinkEl) {
-        nextLinkEl.addEventListener('click', saveCumulativeForNextLevel);
-      }
-
       // subtle console note
-      console.log('%c[NEON DASH LEVEL 5] Arrow keys / A D to move, Space to jump. Complete to unlock Level 6 (Deep Water).', 'color:#ff88cc');
+      console.log('%c[NEON DASH LEVEL 6] Arrow keys / A D to move, Space to jump. Avoid the water pits and aqua hazards. (Watery underwater theme)', 'color:#33aacc');
     }
 
     // boot

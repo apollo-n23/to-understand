@@ -3392,17 +3392,42 @@
         }
       }
 
-      // === SHIELD POWERUP (small glowing chrome-cyan shield icon) ===
+      // === SHIELD POWERUP (diamond core + glowing bubble shield) ===
       if (powerUp) {
         const pux = powerUp.wx - scrollX;
         const puy = powerUp.y;
         const pulse = Math.sin(frame * 0.18) * 2.2;
 
         ctx.save();
+
+        // Soft cyan bubble shield around diamond (reads as "shield" at game scale)
+        const bubbleR = 14 + pulse * 0.35;
+        ctx.shadowColor = '#44ccff';
+        ctx.shadowBlur = 12 + pulse * 0.8;
+        const bubbleGrad = ctx.createRadialGradient(pux - 2, puy - 3, 1, pux, puy, bubbleR);
+        bubbleGrad.addColorStop(0, 'rgba(120, 230, 255, 0.28)');
+        bubbleGrad.addColorStop(0.55, 'rgba(60, 180, 255, 0.12)');
+        bubbleGrad.addColorStop(1, 'rgba(40, 150, 255, 0.03)');
+        ctx.fillStyle = bubbleGrad;
+        ctx.beginPath();
+        ctx.arc(pux, puy, bubbleR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(130, 230, 255, 0.8)';
+        ctx.lineWidth = 1.7;
+        ctx.beginPath();
+        ctx.arc(pux, puy, bubbleR, 0, Math.PI * 2);
+        ctx.stroke();
+        // Glass highlight arc
+        ctx.strokeStyle = 'rgba(210, 250, 255, 0.55)';
+        ctx.lineWidth = 1.15;
+        ctx.shadowBlur = 3;
+        ctx.beginPath();
+        ctx.arc(pux - 1.5, puy - 2, bubbleR * 0.7, -Math.PI * 0.9, -Math.PI * 0.2);
+        ctx.stroke();
+
+        // Diamond core (glowing cyan/chrome shield emblem)
         ctx.shadowColor = '#66bbdd';
         ctx.shadowBlur = 14 + pulse * 0.7;
-
-        // Glowing cyan/chrome shield
         const s = 9 + pulse * 0.25;
 
         ctx.fillStyle = '#5599bb';
@@ -3429,45 +3454,84 @@
         ctx.restore();
       }
 
-      // === ICE POWERUP CUBE (glowing floating ice blaster, single-use early spawn) ===
+      // === ICE POWERUP (snowflake icon, rapid white/blue glow — visual only) ===
       if (icePowerUp) {
-        const icx = icePowerUp.wx - scrollX;
-        const icy = icePowerUp.y;
-        const pulse = Math.sin(frame * 0.2) * 1.5 + 1;
+        // Center on former 12×12 cube so hitbox/tutorial pointer stay aligned
+        const icx = icePowerUp.wx - scrollX + 6;
+        const icy = icePowerUp.y + 6;
+        // Fast white ↔ blue oscillation (soft dreamy neon, not harsh)
+        const t = frame * 0.48;
+        const blend = 0.5 + 0.5 * Math.sin(t); // 0 = blue, 1 = white
+        const r = Math.floor(140 + 115 * blend);
+        const g = Math.floor(190 + 65 * blend);
+        const b = 255;
+        const glowColor = `rgb(${r},${g},${b})`;
+        const pulse = 0.65 + 0.35 * Math.sin(t * 1.15);
+        const size = 7.2;
+
         ctx.save();
-        ctx.shadowColor = '#aaddff';
-        ctx.shadowBlur = 16 + pulse * 1.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
 
-        // Outer frosty glow
-        ctx.fillStyle = 'rgba(170, 220, 255, 0.25)';
-        ctx.fillRect(icx - 6, icy - 6, 20, 20);
-
-        // Main ice cube body (light blue/white 3d facets)
-        ctx.fillStyle = '#ccffff';
-        ctx.fillRect(icx, icy, 12, 12);
-        ctx.fillStyle = '#88ccff';
-        ctx.fillRect(icx + 2, icy + 2, 8, 8); // inner depth
-
-        // Top left bevel highlight (crystal shine)
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(icx + 1, icy + 1, 4, 2);
-        ctx.fillRect(icx + 1, icy + 1, 2, 4);
-
-        // Edge lines for 3d cube look
-        ctx.strokeStyle = '#66aadd';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(icx, icy, 12, 12);
+        // Soft outer halo
+        ctx.globalAlpha = 0.12 + 0.1 * pulse;
+        ctx.fillStyle = glowColor;
         ctx.beginPath();
-        ctx.moveTo(icx, icy + 4);
-        ctx.lineTo(icx + 12, icy + 4);
-        ctx.moveTo(icx + 4, icy);
-        ctx.lineTo(icx + 4, icy + 12);
+        ctx.arc(icx, icy, size + 5.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Snowflake arms + glow
+        ctx.globalAlpha = 0.78 + 0.22 * pulse;
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 10 + pulse * 12;
+        ctx.strokeStyle = glowColor;
+        ctx.lineWidth = 1.35;
+        ctx.beginPath();
+        for (let a = 0; a < 6; a++) {
+          const ang = a * Math.PI / 3;
+          const cos = Math.cos(ang);
+          const sin = Math.sin(ang);
+          // main arm
+          ctx.moveTo(icx, icy);
+          ctx.lineTo(icx + cos * size, icy + sin * size);
+          // mid branches
+          const mx = icx + cos * size * 0.52;
+          const my = icy + sin * size * 0.52;
+          const br = size * 0.34;
+          ctx.moveTo(mx, my);
+          ctx.lineTo(mx + Math.cos(ang + 0.85) * br, my + Math.sin(ang + 0.85) * br);
+          ctx.moveTo(mx, my);
+          ctx.lineTo(mx + Math.cos(ang - 0.85) * br, my + Math.sin(ang - 0.85) * br);
+          // tip V
+          const tx = icx + cos * size * 0.78;
+          const ty = icy + sin * size * 0.78;
+          const tip = size * 0.22;
+          ctx.moveTo(tx, ty);
+          ctx.lineTo(tx + Math.cos(ang + 0.7) * tip, ty + Math.sin(ang + 0.7) * tip);
+          ctx.moveTo(tx, ty);
+          ctx.lineTo(tx + Math.cos(ang - 0.7) * tip, ty + Math.sin(ang - 0.7) * tip);
+        }
         ctx.stroke();
 
-        // Small pulsing snow glints
-        ctx.fillStyle = `rgba(255,255,255,${0.5 + 0.4 * Math.sin(frame * 0.3)})`;
-        ctx.fillRect(icx + 3 + Math.sin(frame * 0.15) * 1.5, icy + 5, 2, 1);
-        ctx.fillRect(icx + 7, icy + 9 + Math.cos(frame * 0.22) * 1.2, 1.5, 2);
+        // Bright core (reads at small size)
+        ctx.shadowBlur = 8 + pulse * 6;
+        ctx.fillStyle = `rgba(255,255,255,${0.55 + 0.4 * blend})`;
+        ctx.beginPath();
+        ctx.arc(icx, icy, 1.7 + pulse * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Soft white rim pass for dreamy contrast on blue frames
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 0.35 + 0.45 * blend;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 0.85;
+        ctx.beginPath();
+        for (let a = 0; a < 6; a++) {
+          const ang = a * Math.PI / 3;
+          ctx.moveTo(icx, icy);
+          ctx.lineTo(icx + Math.cos(ang) * size * 0.72, icy + Math.sin(ang) * size * 0.72);
+        }
+        ctx.stroke();
 
         ctx.restore();
       }

@@ -1991,17 +1991,42 @@
         }
       }
 
-      // === SHIELD POWERUP (small glowing orange shield icon) ===
+      // === SHIELD POWERUP (diamond core + glowing bubble shield) ===
       if (powerUp) {
         const pux = powerUp.wx - scrollX;
         const puy = powerUp.y;
         const pulse = Math.sin(frame * 0.18) * 2.2;
 
         ctx.save();
+
+        // Soft cyan bubble shield around diamond (reads as "shield" at game scale)
+        const bubbleR = 14 + pulse * 0.35;
+        ctx.shadowColor = '#44ccff';
+        ctx.shadowBlur = 12 + pulse * 0.8;
+        const bubbleGrad = ctx.createRadialGradient(pux - 2, puy - 3, 1, pux, puy, bubbleR);
+        bubbleGrad.addColorStop(0, 'rgba(120, 230, 255, 0.28)');
+        bubbleGrad.addColorStop(0.55, 'rgba(60, 180, 255, 0.12)');
+        bubbleGrad.addColorStop(1, 'rgba(40, 150, 255, 0.03)');
+        ctx.fillStyle = bubbleGrad;
+        ctx.beginPath();
+        ctx.arc(pux, puy, bubbleR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(130, 230, 255, 0.8)';
+        ctx.lineWidth = 1.7;
+        ctx.beginPath();
+        ctx.arc(pux, puy, bubbleR, 0, Math.PI * 2);
+        ctx.stroke();
+        // Glass highlight arc
+        ctx.strokeStyle = 'rgba(210, 250, 255, 0.55)';
+        ctx.lineWidth = 1.15;
+        ctx.shadowBlur = 3;
+        ctx.beginPath();
+        ctx.arc(pux - 1.5, puy - 2, bubbleR * 0.7, -Math.PI * 0.9, -Math.PI * 0.2);
+        ctx.stroke();
+
+        // Diamond core (glowing orange shield emblem)
         ctx.shadowColor = '#ffaa44';
         ctx.shadowBlur = 14 + pulse * 0.7;
-
-        // Glowing orange shield
         const s = 9 + pulse * 0.25;
 
         ctx.fillStyle = '#ff8833';
