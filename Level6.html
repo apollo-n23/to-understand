@@ -125,11 +125,27 @@
     const OXYGEN_MAX = 100;
     const OXYGEN_DRAIN = 0.17;
     const OXYGEN_REFILL = 1.15;
-    const MAX_AIR_BUBBLES = 12;
+    // ~20% fewer / less frequent air bubbles (still useful for oxygen)
+    const MAX_AIR_BUBBLES = 10;
     const AIR_BUBBLE_R_MIN = 42;
     const AIR_BUBBLE_R_MAX = 78;
-    const AIR_BUBBLE_SPAWN_MIN = 14;
-    const AIR_BUBBLE_SPAWN_SPAN = 12;
+    const AIR_BUBBLE_SPAWN_MIN = 17;
+    const AIR_BUBBLE_SPAWN_SPAN = 14;
+    // Underwater player physics (noticeably slower fall than other levels)
+    const WATER_GRAVITY = 0.34;
+    const WATER_GRAVITY_PIT = 0.16;
+    const WATER_MAX_FALL = 5.6;
+    const WATER_JUMP_VY = -10.9;
+
+    // Hydro Control Zone building (original width 42 → 3× = 126; 200% wider)
+    const HYDRO_BUILD_OFF = 48;   // world offset right of ladder center
+    const HYDRO_BUILD_W = 126;
+    const HYDRO_BUILD_H = 170;
+    const HYDRO_DOOR_OFF = 46;    // door x within building (clear walk-in entrance)
+    const HYDRO_DOOR_W = 34;
+    const HYDRO_DOOR_H = 58;
+    const SHOP_SHIELD_COST = 20; // framework: shield carryover
+    const SHOP_ICE_COST = 25;    // framework: ice blast carryover
 
     let player = { wx: 90, y: 0, vx: 0, vy: 0, w: 26, h: 26 };
     let obstacles = [];
@@ -152,17 +168,28 @@
     let specials = [];
     let backgroundElements = [];
     let flyingShips = [];
+    let fishClusters = [];  // pure decorative bg fish schools (no collision/oxygen/damage)
     let projectiles = [];
     let levelExit = null;
     let powerUp = null;
-    let endPyramid = null;  // Floating pyramid NPC for door block at Hydro Control Zone building
+    let endPyramid = null;  // Floating pyramid NPC beside Hydro Control Zone entrance (non-blocking)
     let icePowerUp = null;
     let hasIceBlast = false;
+    // Neon shop cutscene (door → blackout → counter) + permanent powerup carryover
+    let shopPhase = null;       // null | 'fade' | 'approach' | 'browse'
+    let shopTimer = 0;
+    let shopCubeX = 0;
+    let shopMessage = '';
+    let shopMsgTimer = 0;
+    let shopVisited = false;
+    let ownedCarryShield = false; // permanent carryover for next levels (localStorage)
+    let ownedCarryIce = false;
     let lowWalls = [];
     let trampolines = [];
     let endFireballs = [];
     let neonOrbs = [];
     let neonScore = 0;
+    let neonAtLevelStart = 0;  // cumulative neon loaded at init; restored on retry
     let shieldSpawnIndex = 0;
     let iceSpawnIndex = 0;
     let waterGaps = [];
@@ -191,14 +218,18 @@
     // (Water/acid vat tutorial removed - players remember from Level 2)
 
     // Note: endBoss / bossDefeated removed - end of level now functions like levels 1-3 (direct ladder+portal spawn)
+    // Single mid-level friendly NPC (approach bubble talker)
     let friendlyNPC = null;
 
-    // Octopopp NPCs (start of level + halfway) - two separate instances for dialogues, same bubble mechanic as level2
-    let octopoppStart = null;
-    let octopoppMid = null;
+    // Neon gas pipes from the ground (vent upward stream; touch gas for O2 + speed boost)
+    let neonPipes = [];
+    let lastNeonPipeSpawn = 0;
+    let neonBoostUntil = 0; // frame until neon gas speed/glow boost ends (~600 frames ≈ 10s)
 
     const keys = {};
     let wasAirborne = true;
+    // Death sequence: fade cube to dark grey, then slowly float toward surface
+    let deathAnim = null; // { timer, greyT, y, wx } | null
 
     // === NEON DASH DREAMY SFX ENGINE (shared across all levels) ===
     // Aligned per final overseer for continuity (9yo sci-fi daydream universe)
@@ -425,25 +456,159 @@
       try { localStorage.setItem('voidCubeBest', String(best)); } catch (e) {}
     }
 
+    // Permanent powerup carryover + cumulative neon (shop / next-level readiness)
+    function loadCarryover() {
+      try {
+        ownedCarryShield = localStorage.getItem('neonDashOwnedShield') === '1';
+        ownedCarryIce = localStorage.getItem('neonDashOwnedIce') === '1';
+      } catch (e) {
+        ownedCarryShield = false;
+        ownedCarryIce = false;
+      }
+    }
+    function saveOwnedPowerups() {
+      try {
+        if (ownedCarryShield) localStorage.setItem('neonDashOwnedShield', '1');
+        if (ownedCarryIce) localStorage.setItem('neonDashOwnedIce', '1');
+      } catch (e) {}
+    }
+    function saveNeonScore() {
+      const v = Math.max(0, neonScore | 0);
+      try {
+        localStorage.setItem('neonDashCumulativeNeon', String(v));
+      } catch (e) {}
+      // Keep retry baseline in sync so post-shop/complete restarts use the new balance
+      neonAtLevelStart = v;
+    }
+    function getHydroDoorWorld() {
+      if (!levelExit) return null;
+      const bx = levelExit.wx + HYDRO_BUILD_OFF;
+      return {
+        bx,
+        by: levelExit.baseY,
+        doorL: bx + HYDRO_DOOR_OFF,
+        doorR: bx + HYDRO_DOOR_OFF + HYDRO_DOOR_W,
+        doorMid: bx + HYDRO_DOOR_OFF + HYDRO_DOOR_W * 0.5
+      };
+    }
+    function enterShop() {
+      shopVisited = true;
+      shopPhase = 'fade';
+      shopTimer = 0;
+      shopCubeX = 70;
+      shopMessage = '';
+      shopMsgTimer = 0;
+      gameState = 'shop';
+      // Oxygen drain paused automatically (updateAirBubblesAndOxygen only when playing)
+      playBuildingHum();
+    }
+    function buyShopItem(which) {
+      if (gameState !== 'shop' || shopPhase !== 'browse') return;
+      if (which === 'shield') {
+        if (ownedCarryShield) {
+          shopMessage = 'SHIELD ALREADY OWNED (CARRYOVER)';
+          shopMsgTimer = 90;
+          return;
+        }
+        if (neonScore < SHOP_SHIELD_COST) {
+          shopMessage = 'NOT ENOUGH NEON — NEED ' + SHOP_SHIELD_COST;
+          shopMsgTimer = 90;
+          return;
+        }
+        neonScore -= SHOP_SHIELD_COST;
+        ownedCarryShield = true;
+        player.hasShield = true;
+        saveOwnedPowerups();
+        saveNeonScore();
+        playPowerup('shield');
+        shopMessage = 'SHIELD PURCHASED — CARRIES TO NEXT LEVELS';
+        shopMsgTimer = 100;
+        return;
+      }
+      if (which === 'ice') {
+        if (ownedCarryIce) {
+          shopMessage = 'ICE BLAST ALREADY OWNED (CARRYOVER)';
+          shopMsgTimer = 90;
+          return;
+        }
+        if (neonScore < SHOP_ICE_COST) {
+          shopMessage = 'NOT ENOUGH NEON — NEED ' + SHOP_ICE_COST;
+          shopMsgTimer = 90;
+          return;
+        }
+        neonScore -= SHOP_ICE_COST;
+        ownedCarryIce = true;
+        hasIceBlast = true;
+        saveOwnedPowerups();
+        saveNeonScore();
+        playPowerup('ice');
+        shopMessage = 'ICE BLAST PURCHASED — CARRIES TO NEXT LEVELS';
+        shopMsgTimer = 100;
+      }
+    }
+    function leaveShop() {
+      if (gameState !== 'shop') return;
+      saveNeonScore();
+      saveOwnedPowerups();
+      shopPhase = null;
+      shopTimer = 0;
+      shopMessage = '';
+      gameState = 'complete';
+      playPortal();
+      updateLevel3LinkVisibility();
+    }
+    function updateShop() {
+      frame++;
+      shopTimer++;
+      if (shopMsgTimer > 0) shopMsgTimer--;
+      if (shopPhase === 'fade') {
+        if (shopTimer >= 32) {
+          shopPhase = 'approach';
+          shopTimer = 0;
+          shopCubeX = 70;
+        }
+        return;
+      }
+      if (shopPhase === 'approach') {
+        shopCubeX += 3.4;
+        if (shopCubeX >= 350) {
+          shopCubeX = 350;
+          shopPhase = 'browse';
+          shopTimer = 0;
+        }
+      }
+    }
+    // Canvas hit regions for shop clicks (updated each drawShop)
+    let shopUiHit = { shield: null, ice: null, leave: null };
+
     function resetGame() {
       player = { wx: 90, y: 0, vx: 0, vy: 0, w: 26, h: 26, hasShield: false, hasIceBlast: false, isClimbing: false, invulnUntil: 0, drowningStart: 0 };
+      deathAnim = null;
       obstacles = [];
       particles = [];
       platforms = [];
       specials = [];
       backgroundElements = [];
       flyingShips = [];
+      fishClusters = [];
       projectiles = [];
       levelExit = null;
       powerUp = null;
       icePowerUp = null;
       endPyramid = null;
       hasIceBlast = false;
+      shopPhase = null;
+      shopTimer = 0;
+      shopCubeX = 0;
+      shopMessage = '';
+      shopMsgTimer = 0;
+      shopVisited = false;
+      loadCarryover();
       lowWalls = [];
       trampolines = [];
       endFireballs = [];
       neonOrbs = [];
-      neonScore = 0;
+      neonScore = neonAtLevelStart;  // fair retry: keep neon earned before this level
       shieldSpawnIndex = 0;
       iceSpawnIndex = 0;
       waterGaps = [];
@@ -474,8 +639,9 @@
       frame = 0;
       // boss state removed for L6 (no active boss mechanic)
       friendlyNPC = null;
-      octopoppStart = null;
-      octopoppMid = null;
+      neonPipes = [];
+      lastNeonPipeSpawn = 0;
+      neonBoostUntil = 0;
       // baseScore is NOT reset here - it carries from previous levels via localStorage
       // seed a couple early obstacles
       obstacles.push({ wx: 340, h: 26, patrolAmp: 0 });
@@ -487,11 +653,11 @@
       specials.push({ wx: 680, y: GROUND_Y - 64, w: 30, h: 64, nextShot: frame + 55 + Math.random() * 40 });
       player.y = GROUND_Y - player.h;
 
-      // Seed 4–5 large air bubbles near the start so oxygen play is immediate
-      const seedCount = 4 + Math.floor(Math.random() * 2);
+      // Seed 3–4 large air bubbles near the start (~20% fewer; oxygen still immediate)
+      const seedCount = 3 + Math.floor(Math.random() * 2);
       for (let i = 0; i < seedCount; i++) {
         airBubbles.push(makeAirBubble(
-          player.wx + 90 + i * 95 + Math.random() * 40,
+          player.wx + 90 + i * 100 + Math.random() * 40,
           90 + Math.random() * (GROUND_Y - 160)
         ));
       }
@@ -499,35 +665,36 @@
 
       initBackgroundElements();
       initFlyingShips();
+      initFishClusters();
     }
 
     function initBackgroundElements() {
-      // Distant coral blooms + midground seaweed stalks (underwater palette; aqua/teal/blue-green)
+      // Distant large dark seaweed + midground kelp stalks (deep-ocean black-green palette)
       backgroundElements = [];
       const spread = 12500;
       const startX = -600;
 
-      for (let i = 0; i < 14; i++) {
-        const wx = startX + (i / 14) * spread + (Math.random() - 0.5) * 260;
+      for (let i = 0; i < 16; i++) {
+        const wx = startX + (i / 16) * spread + (Math.random() - 0.5) * 260;
         const r = Math.random();
 
         if (r < 0.72) {
-          // Large coral bloom stem with layered fronds + glowing center (parallax + phase sway preserved)
+          // Large seaweed bloom: taller, darker, scaled up
           backgroundElements.push({
             type: 'largeBloom',
             wx: wx,
             y: GROUND_Y - 8 - Math.random() * 32,
-            scale: 0.9 + Math.random() * 1.25,
+            scale: 1.45 + Math.random() * 1.55,
             parallax: 0.055 + Math.random() * 0.035,
             phase: Math.random() * Math.PI * 2
           });
         } else {
-          // Closer midground seaweed stalk cluster with small fronds / leaves
+          // Closer midground seaweed stalk cluster — larger dark kelp
           backgroundElements.push({
             type: 'midStalk',
             wx: wx + (Math.random() - 0.5) * 120,
             y: GROUND_Y - 22 - Math.random() * 18,
-            scale: 0.6 + Math.random() * 0.9,
+            scale: 1.15 + Math.random() * 1.25,
             parallax: 0.09 + Math.random() * 0.025,
             phase: Math.random() * Math.PI * 2
           });
@@ -548,6 +715,75 @@
           parallax: 0.038 + Math.random() * 0.022
         });
       }
+    }
+
+    // Decorative fish schools only — never collide, never affect oxygen/damage/score
+    function makeFishCluster(wx, y, dir) {
+      const count = 4 + Math.floor(Math.random() * 6); // 4–9 fish
+      const members = [];
+      for (let i = 0; i < count; i++) {
+        members.push({
+          ox: (Math.random() - 0.5) * 78,
+          oy: (Math.random() - 0.5) * 46,
+          scale: 0.32 + Math.random() * 0.95,
+          phase: Math.random() * Math.PI * 2,
+          speedMul: 0.75 + Math.random() * 0.55
+        });
+      }
+      return {
+        wx: wx,
+        y: y,
+        vx: dir * (0.35 + Math.random() * 0.55),
+        parallax: 0.035 + Math.random() * 0.035,
+        phase: Math.random() * Math.PI * 2,
+        members: members
+      };
+    }
+
+    function initFishClusters() {
+      fishClusters = [];
+      // Seed 2–3 schools scattered ahead/around start
+      const n = 2 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < n; i++) {
+        const dir = Math.random() < 0.62 ? -1 : 1;
+        const wx = (typeof scrollX === 'number' ? scrollX : 0) + 120 + i * 420 + Math.random() * 280;
+        const y = 70 + Math.random() * 210;
+        fishClusters.push(makeFishCluster(wx, y, dir));
+      }
+    }
+
+    function updateFishClusters() {
+      // Pure visual: slow swim + occasional off-screen re-spawn. No gameplay hooks.
+      for (let c of fishClusters) {
+        c.wx += c.vx;
+        // gentle vertical drift within the school lane
+        c.y += Math.sin(frame * 0.012 + c.phase) * 0.12;
+      }
+      // Respawn schools that have left the view (far left or far right)
+      for (let i = 0; i < fishClusters.length; i++) {
+        const c = fishClusters[i];
+        const sx = c.wx - scrollX * c.parallax;
+        if (sx < -220 || sx > W + 260) {
+          const fromRight = Math.random() < 0.58;
+          const dir = fromRight ? -1 : 1;
+          const nwx = fromRight
+            ? (scrollX + W + 80 + Math.random() * 340)
+            : (scrollX - 140 - Math.random() * 200);
+          const ny = 65 + Math.random() * 220;
+          fishClusters[i] = makeFishCluster(nwx, ny, dir);
+        }
+      }
+      // From time to time, add an extra school if few are active (cap at 4)
+      if (fishClusters.length < 4 && frame % 280 === 0 && Math.random() < 0.55) {
+        const fromRight = Math.random() < 0.65;
+        const dir = fromRight ? -1 : 1;
+        const nwx = fromRight
+          ? (scrollX + W + 100 + Math.random() * 280)
+          : (scrollX - 160 - Math.random() * 180);
+        fishClusters.push(makeFishCluster(nwx, 70 + Math.random() * 210, dir));
+      }
+      // Soft cap
+      if (fishClusters.length > 4) fishClusters.length = 4;
     }
 
     function spawnDust(x, y, count, leftBias) {
@@ -862,22 +1098,84 @@
       return amp;
     }
 
+    function updateDeathAnim() {
+      if (!deathAnim) {
+        deathAnim = {
+          timer: 0,
+          greyT: 0,
+          y: player.y,
+          wx: player.wx
+        };
+      }
+      deathAnim.timer++;
+      // Fade toward dark grey over ~45 frames
+      deathAnim.greyT = Math.min(1, deathAnim.timer / 45);
+      // After brief fade, slowly float upward toward surface
+      if (deathAnim.timer > 12) {
+        const t = deathAnim.timer - 12;
+        const rise = 0.55 + Math.min(1.65, t * 0.018);
+        deathAnim.y -= rise;
+        // Soft bob while rising
+        if (deathAnim.y < 22) deathAnim.y = 22;
+      }
+      // Rising air wisps from the body during float
+      if (deathAnim.timer % 3 === 0 && deathAnim.y > 28) {
+        particles.push({
+          x: deathAnim.wx + player.w / 2 + (Math.random() - 0.5) * 16,
+          y: deathAnim.y + player.h * 0.55 + (Math.random() - 0.5) * 6,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: -0.85 - Math.random() * 1.0,
+          life: 26 + Math.random() * 22,
+          c: (Math.random() < 0.5) ? '#88ddee' : '#4499bb',
+          size: 1.3 + Math.random() * 2.1
+        });
+      }
+      // Keep death particles alive/moving while frozen world
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.c === '#1a4a6e' || p.c === '#33aacc') {
+          p.vy *= 0.985;
+          p.vx *= 0.97;
+        } else {
+          p.vy += 0.08;
+        }
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    }
+
     function update() {
+      // Death sequence continues after game over (grey fade + surface float)
+      if (gameState === 'over') {
+        updateDeathAnim();
+        return;
+      }
+      // Neon shop cutscene (oxygen/world paused)
+      if (gameState === 'shop') {
+        updateShop();
+        return;
+      }
       if (gameState !== 'playing') return;
 
       frame++;
 
       // movement input with smoothing + slight auto-advance bias
+      // Neon gas boost: higher max run for ~10s after touching a vent stream
+      const neonBoostActive = frame < neonBoostUntil;
+      const maxRun = neonBoostActive ? 7.4 : 5.4;
+      const minRun = neonBoostActive ? -4.4 : -3.2;
       let ax = 0;
       if (keys['ArrowLeft'] || keys['a'] || keys['A']) ax -= 1;
       if (keys['ArrowRight'] || keys['d'] || keys['D']) ax += 1;
 
-      player.vx = player.vx * 0.78 + ax * 5.4 * 0.22;
+      player.vx = player.vx * 0.78 + ax * maxRun * 0.22;
 
-      // gentle forward bias so the run keeps going
-      if (ax >= 0) player.vx += 0.055;
+      // gentle forward bias so the run keeps going (slightly stronger while boosted)
+      if (ax >= 0) player.vx += neonBoostActive ? 0.085 : 0.055;
 
-      player.vx = Math.max(-3.2, Math.min(5.4, player.vx));
+      player.vx = Math.max(minRun, Math.min(maxRun, player.vx));
       player.wx += player.vx;
 
       // Ice blast detonation (down arrow) - single use, kills onscreen enemies/triangles/projectiles
@@ -1042,9 +1340,11 @@
         }
       }
 
-      // === INVISIBLE BARRIER AT LEVEL END (prevents running past the ladder) ===
+      // === INVISIBLE BARRIER AT LEVEL END (allow door entry into Hydro Control; stop past door) ===
       if (levelExit) {
-        const maxWX = levelExit.wx + 14;
+        const door = getHydroDoorWorld();
+        // Walk past ladder into doorway center so shop trigger can fire
+        const maxWX = door ? (door.doorMid - player.w * 0.35) : (levelExit.wx + 14);
         if (player.wx > maxWX) {
           player.wx = maxWX;
           player.vx = 0;
@@ -1075,6 +1375,7 @@
         if (t >= 1) {
           player.isClimbing = false;
           gameState = 'complete';
+          saveNeonScore(); // persist cumulative neon even if shop skipped
           playPortal();
           updateLevel3LinkVisibility();  // explicit on transition (perf: no longer in every gameLoop frame)
 
@@ -1098,12 +1399,13 @@
         return; // skip normal gameplay (spawns, collisions, etc.) during climb sequence
       }
 
-      // vertical physics
-      let gravity = 0.47;
+      // vertical physics — underwater: lower gravity + terminal velocity (sink, don't plummet)
+      let gravity = WATER_GRAVITY;
       if (overWaterGap) {
-        gravity = 0.22; // slightly slower fall through toxic vat than through air
+        gravity = WATER_GRAVITY_PIT; // even slower sink through water pits
       }
       player.vy += gravity;
+      if (player.vy > WATER_MAX_FALL) player.vy = WATER_MAX_FALL;
       player.y += player.vy;
 
       // === Robust landing resolution (fixes invisible platform floating bug) ===
@@ -1168,11 +1470,11 @@
           const feet = player.y + player.h;
           // Only boost when landing on or crossing the trampoline from above
           if (feet >= tTop - 2 && player.vy >= 0) {
-            player.vy = -19.5;   // Much stronger upward boost than normal jump
+            player.vy = -16.8;   // Strong boost (tuned for lower water gravity)
             landed = true;
             player.y = tTop - player.h - 1;
             playTrampoline();
-            // Fun bounce particles
+            // Fun bounce particles (aqua bubbles)
             for (let i = 0; i < 7; i++) {
               particles.push({
                 x: player.wx + 8 + (Math.random() - 0.5) * 18,
@@ -1189,16 +1491,46 @@
       }
 
       // Land sound after full landing resolution (ground + platforms + trampoline)
+      // Soft water-land: quieter impact, fewer silt particles (underwater, not dusty)
       if (landed && wasAirborne) {
         playLand();
+        spawnDust(player.wx + 8, player.y + player.h + 1, 2, false);
       }
       wasAirborne = !landed;
 
-      // jump (only when on ground or a platform)
+      // Soft upward bubble trail + water drag while sinking / airborne
+      if (!landed) {
+        if (player.vy > 0.35 && (frame % 3) === 0) {
+          // Rising bubbles slip past as cube sinks
+          particles.push({
+            x: player.wx + player.w / 2 + (Math.random() - 0.5) * 12,
+            y: player.y + player.h * 0.75 + Math.random() * 4,
+            vx: (Math.random() - 0.5) * 0.4 + player.vx * 0.08,
+            vy: -0.6 - Math.random() * 0.85,
+            life: 14 + Math.random() * 16,
+            c: (Math.random() < 0.55) ? '#99dde8' : '#66bbcc',
+            size: 1.1 + Math.random() * 1.6
+          });
+        }
+        if ((frame % 5) === 0) {
+          // Light water-drag motes
+          particles.push({
+            x: player.wx + player.w / 2 + (Math.random() - 0.5) * 18,
+            y: player.y + player.h / 2 + (Math.random() - 0.5) * 10,
+            vx: -player.vx * 0.15 + (Math.random() - 0.5) * 0.5,
+            vy: -0.15 - Math.random() * 0.35,
+            life: 10 + Math.random() * 12,
+            c: '#3a7a9a',
+            size: 1.0 + Math.random() * 1.2
+          });
+        }
+      }
+
+      // jump (only when on ground or a platform) — slightly floatier underwater impulse
       if ((keys[' '] || keys['Spacebar']) && landed && player.vy >= -0.1) {
-        player.vy = -11.8;
+        player.vy = WATER_JUMP_VY;
         jumpCount++;
-        spawnDust(player.wx + 8, player.y + player.h + 1, 7, true);
+        spawnDust(player.wx + 8, player.y + player.h + 1, 3, true); // reduced silt (water, not dust)
         playJump();
         wasAirborne = true;
         keys[' '] = false; // one-shot
@@ -1395,7 +1727,7 @@
         alienTrees.push({
           wx: treeWX,
           y: GROUND_Y - 35 - Math.random() * 25,
-          scale: 0.7 + Math.random() * 0.6,
+          scale: 1.05 + Math.random() * 0.85, // larger dark seaweed / rock flora
           parallax: 0.07 + Math.random() * 0.03
         });
       }
@@ -1781,6 +2113,9 @@
         }
       }
 
+      // Decorative fish schools (background only — no collisions / oxygen / damage)
+      updateFishClusters();
+
       // Move projectiles (now small fireballs with fading smoke trail)
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const pr = projectiles[i];
@@ -2101,33 +2436,71 @@
         }
       }
 
-      // Friendly NPC update (bounce and approach detection)
+      // Friendly NPC update (bounce and approach detection) — single mid-level instance
       if (friendlyNPC) {
         friendlyNPC.bouncePhase = frame * 0.15;
         const dx = Math.abs((player.wx + player.w * 0.5) - friendlyNPC.wx);
         const dy = Math.abs((player.y + player.h * 0.5) - (friendlyNPC.y - 17));
         if (dx < 80 && dy < 60) {
+          if (!friendlyNPC.approached) playNPCApproach();
           friendlyNPC.approached = true;
         }
       }
 
-      // Octopopp update for bounce (happy idle) + approach detection (duplicated for start/mid)
-      if (octopoppStart) {
-        octopoppStart.bouncePhase = frame * 0.15;
-        const dx = Math.abs((player.wx + player.w * 0.5) - octopoppStart.wx);
-        const dy = Math.abs((player.y + player.h * 0.5) - (octopoppStart.y - 17));
-        if (dx < 80 && dy < 60) {
-          octopoppStart.approached = true;
-          playNPCApproach();
+      // === NEON GAS PIPES: spawn, cull, gas-stream collision (O2 refill + speed/glow boost) ===
+      if (gameState === 'playing' && !levelExit) {
+        // Occasional exposed pipes ahead of the player
+        if (frame - lastNeonPipeSpawn > 150 && Math.random() < 0.035) {
+          const spawnWX = Math.max(player.wx + 300, scrollX + W + 30) + Math.random() * 180;
+          let safe = true;
+          for (let g of waterGaps) {
+            if (spawnWX + 14 > g.wx && spawnWX - 14 < g.wx + g.width) { safe = false; break; }
+          }
+          if (safe) {
+            for (let t of trampolines) {
+              if (spawnWX + 14 > t.wx && spawnWX - 14 < t.wx + (t.width || 40)) { safe = false; break; }
+            }
+          }
+          if (safe) {
+            for (let w of lowWalls) {
+              if (Math.abs(spawnWX - w.wx) < 50) { safe = false; break; }
+            }
+          }
+          // Avoid stacking pipes too close
+          if (safe) {
+            for (let p of neonPipes) {
+              if (Math.abs(spawnWX - p.wx) < 90) { safe = false; break; }
+            }
+          }
+          if (safe) {
+            neonPipes.push({
+              wx: spawnWX,
+              pipeH: 16 + Math.random() * 12,   // metallic stub height above ground
+              streamH: 85 + Math.random() * 55, // upward neon gas plume height
+              phase: Math.random() * Math.PI * 2
+            });
+            lastNeonPipeSpawn = frame;
+          }
         }
       }
-      if (octopoppMid) {
-        octopoppMid.bouncePhase = frame * 0.15;
-        const dx = Math.abs((player.wx + player.w * 0.5) - octopoppMid.wx);
-        const dy = Math.abs((player.y + player.h * 0.5) - (octopoppMid.y - 17));
-        if (dx < 80 && dy < 60) {
-          octopoppMid.approached = true;
-          playNPCApproach();
+      // Cull pipes far behind camera
+      if (neonPipes.length) {
+        neonPipes = neonPipes.filter(p => p.wx > scrollX - 80);
+      }
+      // Gas stream touch: thin vertical AABB above each pipe (gas only — pipe base is non-blocking)
+      // Oxygen top-up applied after updateAirBubblesAndOxygen so same-frame drain cannot cancel it
+      for (let p of neonPipes) {
+        const gasHalfW = 7;
+        const gasLeft = p.wx - gasHalfW;
+        const gasRight = p.wx + gasHalfW;
+        const gasBottom = GROUND_Y - p.pipeH + 4;
+        const gasTop = gasBottom - p.streamH;
+        if (player.wx + player.w > gasLeft && player.wx < gasRight &&
+            player.y + player.h > gasTop && player.y < gasBottom) {
+          // Speed + glow boost ~10 seconds at 60fps (refreshes while standing in stream)
+          neonBoostUntil = frame + 600;
+          // Mark for oxygen full top-up after drain step
+          player._neonGasO2 = true;
         }
       }
 
@@ -2213,6 +2586,7 @@
         poisonClouds = poisonClouds.filter(c => !(Math.abs(c.wx - ladderCenter) < safeMargin && c.y > GROUND_Y - 420));
         poisonDarts = poisonDarts.filter(d => !(Math.abs(d.wx - ladderCenter) < safeMargin && d.y > GROUND_Y - 420));
         slimePuddles = slimePuddles.filter(p => Math.abs(p.wx - ladderCenter) >= safeMargin);
+        neonPipes = neonPipes.filter(p => Math.abs(p.wx - ladderCenter) >= safeMargin);
         if (powerUp && Math.abs(powerUp.wx - ladderCenter) < safeMargin && powerUp.y > GROUND_Y - 420) {
           powerUp = null;
         }
@@ -2221,29 +2595,51 @@
         }
       }
 
-      // Hydro Control Zone glowing building door approach: spawn pyramid NPC if player approaches door instead of ladder
+      // Hydro Control Zone: pyramid NPC emerges beside entrance (does NOT block doorway)
       if (levelExit && !endPyramid && gameState === 'playing' && !player.isClimbing) {
-        const doorX = levelExit.wx + 55;  // door position to the side of ladder
-        const distToDoor = Math.abs(player.wx + player.w * 0.5 - doorX);
-        const nearDoor = distToDoor < 70 && (player.y + player.h) >= GROUND_Y - 30;
-        if (nearDoor) {
-          endPyramid = {
-            wx: doorX + 15,
-            y: GROUND_Y - 70,
-            phase: Math.random() * Math.PI * 2,
-            approached: true  // emerges and shows bubble immediately
-          };
-          playPyramidEmerge();
-          playPyramidChat();
-          playBuildingHum();
+        const door = getHydroDoorWorld();
+        if (door) {
+          const distToDoor = Math.abs(player.wx + player.w * 0.5 - door.doorMid);
+          const nearDoor = distToDoor < 100 && (player.y + player.h) >= GROUND_Y - 30;
+          if (nearDoor) {
+            // Place NPC left of door so the entrance stays clear
+            endPyramid = {
+              wx: door.doorL - 30,
+              y: GROUND_Y - 70,
+              phase: Math.random() * Math.PI * 2,
+              approached: true
+            };
+            playPyramidEmerge();
+            playPyramidChat();
+            playBuildingHum();
+          }
         }
       }
 
-      // Block player from proceeding past door into the building (must use ladder to finish)
-      if (endPyramid && !player.isClimbing && levelExit && player.wx > levelExit.wx + 25) {
-        player.wx = levelExit.wx + 25;
-        player.vx = Math.min(player.vx || 0, 0);
-        playBlock();
+      // Keep approach bubble active while near the plant NPC
+      if (endPyramid && levelExit && gameState === 'playing') {
+        endPyramid.phase = (endPyramid.phase || 0) + 0.07;
+        const dx = Math.abs((player.wx + player.w * 0.5) - endPyramid.wx);
+        if (dx < 110) {
+          if (!endPyramid.approached) {
+            endPyramid.approached = true;
+            playPyramidChat();
+          }
+        }
+      }
+
+      // Walk into open doorway → neon shop cutscene (once per run)
+      if (levelExit && gameState === 'playing' && !player.isClimbing && !shopVisited) {
+        const door = getHydroDoorWorld();
+        if (door) {
+          const pL = player.wx;
+          const pR = player.wx + player.w;
+          const onGround = (player.y + player.h) >= GROUND_Y - 22;
+          // Body overlap with doorway opening
+          if (onGround && pR > door.doorL + 8 && pL < door.doorR - 4) {
+            enterShop();
+          }
+        }
       }
 
       // Climb the exit ladder with UP key (starts visible climb - level ends only at portal)
@@ -2276,32 +2672,10 @@
         iceSpawnIndex++;
       }
 
-      // Friendly NPC (aqua octagon, middle of the extended level)
-      if (!friendlyNPC && player.wx > 4848 && player.wx < 5340) {
-        const rand = Math.random();
+      // Single friendly NPC at mid-level (~half of end distance 8088 ≈ wx 4040)
+      if (!friendlyNPC && player.wx > 3600 && player.wx < 4300) {
         friendlyNPC = {
-          wx: player.wx + 180 + rand * 50,
-          y: GROUND_Y - 50,
-          bouncePhase: 0,
-          approached: false
-        };
-      }
-
-      // Spawn Octopopp at the VERY START of level 6 (early, fixed position ahead of player)
-      if (!octopoppStart && player.wx > 100) {
-        octopoppStart = {
-          wx: 175,
-          y: GROUND_Y - 50,
-          bouncePhase: 0,
-          approached: false
-        };
-      }
-
-      // Spawn Octopopp HALFWAY through level 6 (scaled ~*1.2 for ~8088 length)
-      if (!octopoppMid && player.wx > 3840 && player.wx < 4320) {
-        const rand = Math.random();
-        octopoppMid = {
-          wx: player.wx + 120 + rand * 40,
+          wx: 4040,
           y: GROUND_Y - 50,
           bouncePhase: 0,
           approached: false
@@ -2324,6 +2698,11 @@
 
       // Oxygen drain / air bubble drift+spawn (climb early-return freezes oxygen automatically)
       updateAirBubblesAndOxygen();
+      // Neon gas stream: full oxygen top-up after drain so it sticks while in the plume
+      if (player._neonGasO2) {
+        oxygen = OXYGEN_MAX;
+        player._neonGasO2 = false;
+      }
     }
 
     function draw() {
@@ -2332,76 +2711,69 @@
       const _now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       if (_now - lastFpsTime >= 500) { fps = Math.round(fpsFrameCount * 1000 / (_now - lastFpsTime)); fpsFrameCount = 0; lastFpsTime = _now; }
 
-      // === DEEP BLUE WATER COLUMN + SURFACE CAUSTIC GLOW ===
-      // Layered deep blues / aqua tints (underwater atmosphere)
-      ctx.fillStyle = '#0a1628';
-      ctx.fillRect(0, 0, W, 210);
-      ctx.fillStyle = '#0d2840';
-      ctx.fillRect(0, 70, W, 170);
-      ctx.fillStyle = '#1a4a6e';
-      ctx.fillRect(0, 150, W, 200);
-      // Diffuse water bands / depth haze
-      ctx.fillStyle = 'rgba(34, 119, 170, 0.22)';
-      ctx.fillRect(0, 30, W, 65);
-      ctx.fillStyle = 'rgba(51, 170, 204, 0.12)';
-      ctx.fillRect(0, 120, W, 85);
-      // Near-seabed murk
-      ctx.fillStyle = 'rgba(10, 40, 70, 0.28)';
-      ctx.fillRect(0, 270, W, 170);
+      // === DEEP OCEAN WATER COLUMN (no surface sun — deep blue depth gradient) ===
+      // Near-black navy at top → deep blues mid → dark murk toward seabed
+      ctx.fillStyle = '#030a14';
+      ctx.fillRect(0, 0, W, 120);
+      ctx.fillStyle = '#061428';
+      ctx.fillRect(0, 80, W, 140);
+      ctx.fillStyle = '#0a1e38';
+      ctx.fillRect(0, 160, W, 160);
+      ctx.fillStyle = '#0c2744';
+      ctx.fillRect(0, 240, W, 120);
+      // Soft depth bands / open-water haze
+      ctx.fillStyle = 'rgba(18, 55, 95, 0.20)';
+      ctx.fillRect(0, 0, W, 100);
+      ctx.fillStyle = 'rgba(12, 40, 75, 0.18)';
+      ctx.fillRect(0, 90, W, 110);
+      ctx.fillStyle = 'rgba(6, 22, 48, 0.32)';
+      ctx.fillRect(0, 200, W, 120);
+      // Near-seabed darkness (deep water pressure murk)
+      ctx.fillStyle = 'rgba(2, 10, 24, 0.55)';
+      ctx.fillRect(0, 280, W, 160);
 
-      // Pale blue-white surface light / underwater caustic glow (2x size rings + rays)
-      const sunBaseX = 760;
-      const sunX = sunBaseX - ((scrollX * 0.007) % 220);
-      const sunY = 82;
-
-      // Soft base atmospheric glow (blue-aqua, larger for 2x scale)
-      ctx.fillStyle = 'rgba(51, 170, 204, 0.10)';
-      ctx.beginPath(); ctx.arc(sunX, sunY, 140, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(136, 238, 255, 0.16)';
-      ctx.beginPath(); ctx.arc(sunX, sunY, 70, 0, Math.PI * 2); ctx.fill();
-
-      // Shimmering concentric rings (caustic light rings)
-      // Each ring: slight radius offset (shimmer) + alpha flicker via sin(frame * rate + phase); aqua/blue alternating
-      const ringRadii = [44, 60, 80, 102, 126, 148];
-      for (let i = 0; i < ringRadii.length; i++) {
-        const phase = i * 0.87;
-        const shimmer = Math.sin(frame * 0.027 + phase) * 2.4;
-        let alpha = 0.13 + Math.sin(frame * 0.046 + phase * 1.35) * 0.17;
-        alpha = Math.max(0.06, Math.min(0.36, alpha));
-        const col = (i % 2 === 0) ? '102, 221, 255' : '51, 170, 204'; // #66ddff / #33aacc
-        ctx.strokeStyle = `rgba(${col}, ${alpha})`;
-        ctx.lineWidth = (i % 3 === 0) ? 2.1 : 1.35;
+      // Soft god-ray shafts from above (caustic-like light, NO sun disc / rings / core)
+      const rayOriginX = 420 - ((scrollX * 0.012) % 180);
+      for (let r = 0; r < 7; r++) {
+        const baseX = rayOriginX + r * 95 + Math.sin(frame * 0.008 + r * 0.9) * 18;
+        const sway = Math.sin(frame * 0.011 + r * 1.3) * 12;
+        let alpha = 0.04 + Math.sin(frame * 0.018 + r * 0.7) * 0.035;
+        alpha = Math.max(0.02, Math.min(0.09, alpha));
+        ctx.fillStyle = `rgba(60, 140, 200, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(sunX, sunY, ringRadii[i] + shimmer, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.moveTo(baseX - 6, 0);
+        ctx.lineTo(baseX + 10, 0);
+        ctx.lineTo(baseX + 38 + sway, 320);
+        ctx.lineTo(baseX - 28 + sway * 0.6, 320);
+        ctx.closePath();
+        ctx.fill();
       }
-
-      // Core surface light (pale blue-white layered)
-      ctx.fillStyle = '#88eeff';
-      ctx.beginPath(); ctx.arc(sunX, sunY, 30, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#66ddff';
-      ctx.beginPath(); ctx.arc(sunX - 5, sunY - 5, 15, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#eeffff';
-      ctx.beginPath(); ctx.arc(sunX - 7, sunY - 7, 7, 0, Math.PI * 2); ctx.fill();
-
-      // Beaming caustic rays (6 thin aqua beams, slow rotation + length shimmer)
-      ctx.strokeStyle = 'rgba(102, 221, 255, 0.28)';
-      ctx.lineWidth = 1.7;
-      const numBeams = 6;
-      for (let r = 0; r < numBeams; r++) {
-        const ang = (r * (Math.PI * 2 / numBeams) + frame * 0.0011) % (Math.PI * 2);
-        const lenShimmer = Math.sin(frame * 0.032 + r * 1.15) * 7 + 16;
-        const startR = 33;
-        const endR = 33 + 82 + lenShimmer;
+      // Secondary thinner shafts
+      for (let r = 0; r < 5; r++) {
+        const baseX = rayOriginX + 40 + r * 130 + Math.sin(frame * 0.014 + r) * 22;
+        const alpha = 0.025 + Math.sin(frame * 0.022 + r * 1.1) * 0.02;
+        ctx.strokeStyle = `rgba(100, 190, 230, ${Math.max(0.015, alpha)})`;
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.moveTo(sunX + Math.cos(ang) * startR, sunY + Math.sin(ang) * startR);
-        ctx.lineTo(sunX + Math.cos(ang) * endR, sunY + Math.sin(ang) * endR);
+        ctx.moveTo(baseX, 0);
+        ctx.lineTo(baseX + Math.sin(frame * 0.01 + r) * 20, 280);
         ctx.stroke();
       }
       ctx.lineWidth = 1;
 
-      // Very subtle drifting bubble/silt specks high in water (reduced 8->5)
-      ctx.fillStyle = 'rgba(136, 238, 255, 0.22)';
+      // Soft caustic shimmer patches (rippling light on deep water — no disc)
+      for (let i = 0; i < 6; i++) {
+        const cx = ((i * 157 + frame * 0.35 + scrollX * 0.02) % (W + 120)) - 40;
+        const cy = 40 + (i * 37) % 160 + Math.sin(frame * 0.02 + i) * 8;
+        const pulse = 0.04 + Math.sin(frame * 0.03 + i * 1.4) * 0.035;
+        ctx.fillStyle = `rgba(80, 170, 220, ${Math.max(0.02, pulse)})`;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 28 + i * 3, 6 + (i % 3), frame * 0.004 + i, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Very subtle drifting bubble/silt specks high in water
+      ctx.fillStyle = 'rgba(100, 180, 220, 0.16)';
       for (let i = 0; i < 5; i++) {
         const ax = ((i * 131 + frame * 0.18) % (W + 100)) - 50;
         const ay = 22 + ((i * 17) % 48) + Math.sin(frame * 0.022 + i) * 3.2;
@@ -2415,112 +2787,117 @@
 
         const cy = cloud.y;
 
-        // Soft blue silt body
-        ctx.fillStyle = 'rgba(26, 74, 110, 0.42)';
+        // Soft deep-blue silt body
+        ctx.fillStyle = 'rgba(14, 40, 70, 0.48)';
         ctx.beginPath();
         ctx.ellipse(csx, cy, cloud.width / 2, 9, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Brighter aqua inner glow
-        ctx.fillStyle = 'rgba(51, 170, 204, 0.22)';
+        // Dimmer aqua inner glow
+        ctx.fillStyle = 'rgba(40, 110, 150, 0.18)';
         ctx.beginPath();
         ctx.ellipse(csx - 2, cy - 5, cloud.width / 2.1, 6, 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // === DISTANT BACKGROUND SCENERY: CORAL BLOOMS + SEAWEED STALKS (parallax) ===
-      // Drawn far back with strong parallax; animated frond sway + glow pulse (underwater)
-      // Perf: alpha hoisted once (batch), reduced paths (stems via rects + few leaf triangles + frond ellipses), sway via phase
-      ctx.globalAlpha = 0.82;
+      // === DISTANT BACKGROUND SCENERY: LARGE DARK SEAWEED (parallax) ===
+      // Tall black-green kelp / seaweed; animated frond sway; scaled up for deep-ocean look
+      ctx.globalAlpha = 0.88;
       for (let b of backgroundElements) {
         const sx = b.wx - scrollX * b.parallax;
-        if (sx < -90 || sx > W + 90) continue;
+        if (sx < -140 || sx > W + 140) continue;
 
         const s = b.scale || 1;
         const baseY = b.y;
         const phase = (b.phase || 0) + frame * 0.031;
-        const floralPulse = Math.sin(phase * 1.3); // reuse sin for frond sway + bloom glow pulse
+        const floralPulse = Math.sin(phase * 1.3);
 
         if (b.type === 'largeBloom') {
-          // Large coral bloom: tall blue-green stem, swaying aqua fronds, soft teal leaves, glowing cyan center
-          const stemH = 56 * s;
-          const stemX = sx - 1.8 * s;
-          ctx.fillStyle = '#1a6a66';
-          ctx.fillRect(stemX, baseY - stemH, 3.6 * s, stemH);
-          // Sway offset for animated fronds/leaves (uses existing phase hook)
-          const sway = Math.sin(phase) * 3.2 * s;
-          const p = 1.0 + floralPulse * 0.12; // light frond pulse
-          // Leaves (alternating sides, simple triangle-ish paths, low count for perf)
-          ctx.fillStyle = '#227766';
-          // leaf 1 lower left
+          // Large dark seaweed: tall black-green stem, wide swaying fronds
+          const stemH = 78 * s;
+          const stemX = sx - 2.6 * s;
+          ctx.fillStyle = '#061410';
+          ctx.fillRect(stemX, baseY - stemH, 5.2 * s, stemH);
+          // Slight stem highlight edge
+          ctx.fillStyle = '#0c2820';
+          ctx.fillRect(stemX + 1.2 * s, baseY - stemH, 1.4 * s, stemH);
+          const sway = Math.sin(phase) * 5.5 * s;
+          const p = 1.0 + floralPulse * 0.1;
+          // Broad dark seaweed leaves (alternating sides)
+          ctx.fillStyle = '#0a2418';
           ctx.beginPath();
-          ctx.moveTo(stemX + 1.5*s, baseY - 18*s);
-          ctx.lineTo(stemX - 13*s + sway*0.4, baseY - 24*s);
-          ctx.lineTo(stemX + 1.5*s, baseY - 30*s);
-          ctx.closePath(); ctx.fill();
-          // leaf 2 right
-          ctx.beginPath();
-          ctx.moveTo(stemX + 2*s, baseY - 32*s);
-          ctx.lineTo(stemX + 15*s + sway*0.5, baseY - 28*s);
+          ctx.moveTo(stemX + 2*s, baseY - 22*s);
+          ctx.lineTo(stemX - 22*s + sway*0.45, baseY - 30*s);
           ctx.lineTo(stemX + 2*s, baseY - 40*s);
           ctx.closePath(); ctx.fill();
-          // leaf 3 left higher
+          ctx.fillStyle = '#0d2e1c';
           ctx.beginPath();
-          ctx.moveTo(stemX + 1.2*s, baseY - 42*s);
-          ctx.lineTo(stemX - 11*s + sway*0.6, baseY - 46*s);
-          ctx.lineTo(stemX + 1.2*s, baseY - 50*s);
+          ctx.moveTo(stemX + 3*s, baseY - 42*s);
+          ctx.lineTo(stemX + 24*s + sway*0.55, baseY - 36*s);
+          ctx.lineTo(stemX + 3*s, baseY - 54*s);
           ctx.closePath(); ctx.fill();
-          // Coral head position (gentle sway)
-          const hx = sx + sway * 0.7;
-          const hy = baseY - 58 * s;
-          // Outer soft aqua glow layer
-          ctx.fillStyle = 'rgba(102, 221, 255, 0.45)';
-          ctx.beginPath(); ctx.ellipse(hx, hy, 14 * s * p, 8 * s * p, 0, 0, Math.PI * 2); ctx.fill();
-          // Layered fronds (aqua/teal blues, offset for bloom shape)
-          ctx.fillStyle = '#33aacc';
-          ctx.beginPath(); ctx.ellipse(hx - 4*s, hy - 1*s, 8*s*p, 5*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.ellipse(hx + 4.5*s, hy + 1.5*s, 7.5*s*p, 4.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#2277aa';
-          ctx.beginPath(); ctx.ellipse(hx + 2*s, hy - 5*s, 7*s*p, 4.2*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.ellipse(hx - 5*s, hy + 3*s, 6.5*s*p, 5*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1a5a88';
-          ctx.beginPath(); ctx.ellipse(hx, hy + 1*s, 6*s*p, 3.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
-          // Glowing center bloom (cyan accent + pulse)
-          ctx.fillStyle = `rgba(102, 221, 255, ${0.75 + 0.25 * floralPulse})`;
-          ctx.beginPath(); ctx.ellipse(hx, hy, 4.5 * s * p, 3.2 * s * p, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#88eeff';
-          ctx.beginPath(); ctx.ellipse(hx - 1*s, hy - 0.8*s, 1.8 * s, 1.2 * s, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#081c14';
+          ctx.beginPath();
+          ctx.moveTo(stemX + 2*s, baseY - 56*s);
+          ctx.lineTo(stemX - 20*s + sway*0.65, baseY - 62*s);
+          ctx.lineTo(stemX + 2*s, baseY - 70*s);
+          ctx.closePath(); ctx.fill();
+          // Extra upper frond
+          ctx.fillStyle = '#0a2618';
+          ctx.beginPath();
+          ctx.moveTo(stemX + 2.5*s, baseY - 68*s);
+          ctx.lineTo(stemX + 18*s + sway*0.7, baseY - 74*s);
+          ctx.lineTo(stemX + 2.5*s, baseY - 80*s);
+          ctx.closePath(); ctx.fill();
+          // Dark kelp head (muted olive, no bright cyan glow)
+          const hx = sx + sway * 0.75;
+          const hy = baseY - 82 * s;
+          ctx.fillStyle = 'rgba(20, 50, 35, 0.55)';
+          ctx.beginPath(); ctx.ellipse(hx, hy, 18 * s * p, 11 * s * p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#0d3018';
+          ctx.beginPath(); ctx.ellipse(hx - 5*s, hy - 1*s, 11*s*p, 7*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(hx + 6*s, hy + 2*s, 10*s*p, 6*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#0a2414';
+          ctx.beginPath(); ctx.ellipse(hx + 2*s, hy - 6*s, 9*s*p, 5.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(hx - 6*s, hy + 4*s, 8.5*s*p, 6.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#061810';
+          ctx.beginPath(); ctx.ellipse(hx, hy + 1*s, 8*s*p, 4.5*s*p, 0, 0, Math.PI * 2); ctx.fill();
+          // Very subtle deep-teal core (not bright surface bloom)
+          ctx.fillStyle = `rgba(30, 70, 55, ${0.45 + 0.15 * floralPulse})`;
+          ctx.beginPath(); ctx.ellipse(hx, hy, 5.5 * s * p, 3.8 * s * p, 0, 0, Math.PI * 2); ctx.fill();
         } else if (b.type === 'midStalk') {
-          // Midground seaweed stalk cluster: compact stems, small leaves + aqua glowing mini-fronds (sway anim)
-          const stemH = 36 * s;
-          ctx.fillStyle = '#1a5a55';
-          ctx.fillRect(sx - 1.2 * s, baseY - stemH, 2.4 * s, stemH);
-          const sway = Math.sin(phase * 0.95) * 2.1 * s;
-          const p = 1.0 + floralPulse * 0.15;
-          // Small side leaves
-          ctx.fillStyle = '#228866';
+          // Midground dark seaweed stalks — larger leaves, black-green
+          const stemH = 52 * s;
+          ctx.fillStyle = '#061410';
+          ctx.fillRect(sx - 1.8 * s, baseY - stemH, 3.6 * s, stemH);
+          ctx.fillStyle = '#0a2218';
+          ctx.fillRect(sx - 0.6 * s, baseY - stemH, 1.2 * s, stemH);
+          const sway = Math.sin(phase * 0.95) * 3.4 * s;
+          const p = 1.0 + floralPulse * 0.12;
+          // Side leaves (larger)
+          ctx.fillStyle = '#0a2418';
           ctx.beginPath();
-          ctx.moveTo(sx, baseY - 12*s);
-          ctx.lineTo(sx - 8*s + sway*0.5, baseY - 15*s);
-          ctx.lineTo(sx, baseY - 20*s);
+          ctx.moveTo(sx, baseY - 16*s);
+          ctx.lineTo(sx - 14*s + sway*0.5, baseY - 20*s);
+          ctx.lineTo(sx, baseY - 28*s);
           ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#0d2e1c';
           ctx.beginPath();
-          ctx.moveTo(sx + 0.5*s, baseY - 25*s);
-          ctx.lineTo(sx + 9*s + sway*0.6, baseY - 23*s);
-          ctx.lineTo(sx + 0.5*s, baseY - 30*s);
+          ctx.moveTo(sx + 0.8*s, baseY - 32*s);
+          ctx.lineTo(sx + 16*s + sway*0.6, baseY - 30*s);
+          ctx.lineTo(sx + 0.8*s, baseY - 42*s);
           ctx.closePath(); ctx.fill();
-          // Mini fronds / glowing clusters (2-3)
-          ctx.fillStyle = 'rgba(102, 221, 255, 0.45)';
-          ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 5.5*s*p, 3.5*s*p, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#33aacc';
-          ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 3*s*p, 2.2*s*p, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#004466';
-          ctx.beginPath(); ctx.ellipse(sx + 3*s + sway*0.4, baseY - 37*s, 1.6*s, 1.1*s, 0, 0, Math.PI*2); ctx.fill();
-          // Second small bloom higher/side
-          ctx.fillStyle = 'rgba(51, 170, 204, 0.4)';
-          ctx.beginPath(); ctx.ellipse(sx - 5*s + sway*0.6, baseY - 29*s, 4.2*s*p, 2.8*s*p, 0, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#66ddff';
-          ctx.beginPath(); ctx.ellipse(sx - 5*s + sway*0.6, baseY - 29*s, 2.3*s, 1.6*s, 0, 0, Math.PI*2); ctx.fill();
+          // Dark frond clusters (no bright cyan)
+          ctx.fillStyle = 'rgba(18, 48, 32, 0.7)';
+          ctx.beginPath(); ctx.ellipse(sx + 4*s + sway*0.4, baseY - 52*s, 8*s*p, 5*s*p, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#0a2818';
+          ctx.beginPath(); ctx.ellipse(sx + 4*s + sway*0.4, baseY - 52*s, 4.5*s*p, 3*s*p, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#04100c';
+          ctx.beginPath(); ctx.ellipse(sx + 4*s + sway*0.4, baseY - 52*s, 2.2*s, 1.5*s, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = 'rgba(14, 40, 28, 0.65)';
+          ctx.beginPath(); ctx.ellipse(sx - 7*s + sway*0.6, baseY - 40*s, 6.5*s*p, 4*s*p, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#0a2214';
+          ctx.beginPath(); ctx.ellipse(sx - 7*s + sway*0.6, baseY - 40*s, 3.5*s, 2.2*s, 0, 0, Math.PI*2); ctx.fill();
         }
       }
       ctx.globalAlpha = 1;
@@ -2534,23 +2911,83 @@
         const s = ship.scale;
         const sy = ship.y;
 
-        // Puffy blue silt cloud body (multi layered ellipses)
-        ctx.fillStyle = 'rgba(26, 74, 110, 0.75)';
+        // Puffy deep-blue silt cloud body (multi layered ellipses)
+        ctx.fillStyle = 'rgba(14, 40, 70, 0.8)';
         ctx.beginPath(); ctx.ellipse(sx + 8*s, sy + 2*s, 22*s, 7*s, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(sx + 22*s, sy - 1*s, 18*s, 9*s, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(sx - 2*s, sy + 3*s, 14*s, 6*s, 0, 0, Math.PI*2); ctx.fill();
 
-        // Aqua glow core inside some plumes
+        // Dim aqua core inside some plumes
         if ((Math.floor(ship.wx) % 3) !== 0) {
-          ctx.fillStyle = 'rgba(102, 221, 255, 0.28)';
+          ctx.fillStyle = 'rgba(60, 140, 180, 0.22)';
           ctx.beginPath(); ctx.ellipse(sx + 14*s, sy + 1*s, 6*s, 3*s, 0, 0, Math.PI*2); ctx.fill();
         }
 
         // Faint trailing silt wisps
-        ctx.fillStyle = 'rgba(34, 100, 150, 0.25)';
+        ctx.fillStyle = 'rgba(20, 60, 100, 0.28)';
         ctx.fillRect(sx - 18*s, sy + 1*s, 14*s, 3*s);
       }
       ctx.globalAlpha = 1;
+
+      // === DECORATIVE FISH CLUSTERS (background only — behind platforms/player/enemies) ===
+      // Blue/silver silhouettes; various sizes; slow swim; no gameplay interaction
+      for (let cluster of fishClusters) {
+        const csx = cluster.wx - scrollX * cluster.parallax;
+        if (csx < -160 || csx > W + 160) continue;
+        const dir = cluster.vx >= 0 ? 1 : -1;
+        const schoolBob = Math.sin(frame * 0.02 + cluster.phase) * 2.5;
+
+        for (let m of cluster.members) {
+          const fs = m.scale;
+          const fx = csx + m.ox + Math.sin(frame * 0.028 + m.phase) * 3.5 * m.speedMul;
+          const fy = cluster.y + m.oy + schoolBob + Math.sin(frame * 0.035 + m.phase * 1.3) * 2.2;
+          if (fx < -30 || fx > W + 30) continue;
+
+          const bodyW = 9 * fs;
+          const bodyH = 3.6 * fs;
+          const tailW = 4.5 * fs;
+          const tailFlap = Math.sin(frame * 0.14 + m.phase) * 1.6 * fs;
+
+          ctx.save();
+          ctx.translate(fx, fy);
+          ctx.scale(dir, 1);
+
+          // Soft blue body silhouette
+          ctx.fillStyle = 'rgba(70, 130, 175, 0.55)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, bodyW, bodyH, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Silver belly highlight
+          ctx.fillStyle = 'rgba(170, 200, 220, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(0.5 * fs, 0.6 * fs, bodyW * 0.55, bodyH * 0.45, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Tail fin (flapping)
+          ctx.fillStyle = 'rgba(50, 100, 145, 0.5)';
+          ctx.beginPath();
+          ctx.moveTo(-bodyW * 0.85, 0);
+          ctx.lineTo(-bodyW - tailW, -bodyH * 0.9 + tailFlap);
+          ctx.lineTo(-bodyW - tailW * 0.4, 0);
+          ctx.lineTo(-bodyW - tailW, bodyH * 0.9 - tailFlap);
+          ctx.closePath();
+          ctx.fill();
+          // Tiny dorsal
+          ctx.fillStyle = 'rgba(90, 150, 190, 0.35)';
+          ctx.beginPath();
+          ctx.moveTo(-1 * fs, -bodyH * 0.7);
+          ctx.lineTo(2 * fs, -bodyH * 1.5);
+          ctx.lineTo(4 * fs, -bodyH * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          // Eye speck
+          ctx.fillStyle = 'rgba(200, 230, 245, 0.45)';
+          ctx.beginPath();
+          ctx.arc(bodyW * 0.45, -0.4 * fs, 0.7 * fs, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
 
       // === AQUA SUBMERSIBLE DRONES (gliding high in water column, ptero array reused)
       for (let p of pteros) {
@@ -2655,7 +3092,7 @@
         ctx.lineWidth = 1;
       }
 
-      // === DEEP BLUE SEABED / FLOOR (stone + aqua water seams) ===
+      // === DEEP OCEAN SEABED / FLOOR (dark underwater stone + muted seams) ===
       const floorTop = GROUND_Y - 2;
 
       // Precompute if any water pit visible this frame (cheap loop; skips costly shadow/save when none)
@@ -2666,43 +3103,47 @@
         if (sx + gw >= -20 && sx <= W + 20) { hasVisibleLava = true; break; }
       }
 
-      // Subtle aqua glow from water pits / ground (conditional to avoid save/shadow thrash every frame)
+      // Soft deep-water glow near pits (conditional to avoid save/shadow thrash every frame)
       if (hasVisibleLava) {
         ctx.save();
-        ctx.shadowColor = '#0d2840';
+        ctx.shadowColor = '#061428';
         ctx.shadowBlur = 22;
-        ctx.fillStyle = 'rgba(34, 119, 170, 0.18)';
+        ctx.fillStyle = 'rgba(20, 60, 100, 0.16)';
         ctx.fillRect(0, floorTop - 7, W, 38);
         ctx.shadowBlur = 10;
-        ctx.fillStyle = 'rgba(51, 170, 204, 0.12)';
+        ctx.fillStyle = 'rgba(30, 90, 130, 0.1)';
         ctx.fillRect(0, floorTop - 1, W, 16);
         ctx.restore();
       }
 
-      // Base deep blue stone seabed floor
-      ctx.fillStyle = '#0d1e30';
+      // Near-seabed murk band above floor (deep ocean horizon feel)
+      ctx.fillStyle = 'rgba(4, 14, 28, 0.4)';
+      ctx.fillRect(0, floorTop - 28, W, 28);
+
+      // Base deep navy stone seabed floor
+      ctx.fillStyle = '#060f1c';
       ctx.fillRect(0, floorTop, W, H - floorTop);
 
-      // Rough top edge / lip
-      ctx.fillStyle = '#1a3a55';
+      // Rough top edge / lip (darker underwater rock)
+      ctx.fillStyle = '#0e2438';
       ctx.fillRect(0, floorTop, W, 3.2);
 
       // Cracked stone texture / seams (parallax scroll; reduced iters)
-      ctx.fillStyle = 'rgba(8, 20, 35, 0.55)';
+      ctx.fillStyle = 'rgba(4, 12, 22, 0.65)';
       const mOffset = (scrollX * 1.25) % 62;
       for (let i = -1; i < 11; i++) {
         const mx = i * 62 - mOffset + 12;
         ctx.fillRect(mx, floorTop + 6, 18, 1.6);
       }
       // Secondary cracks
-      ctx.fillStyle = 'rgba(26, 60, 90, 0.35)';
+      ctx.fillStyle = 'rgba(16, 40, 65, 0.4)';
       const mOffset2 = (scrollX * 0.55) % 104;
       for (let i = -1; i < 7; i++) {
         const mx = i * 104 - mOffset2 + 28;
         ctx.fillRect(mx, floorTop + 13, 32, 1.2);
       }
-      // Occasional glowing aqua seams in floor cracks
-      ctx.fillStyle = 'rgba(102, 221, 255, 0.18)';
+      // Occasional muted aqua seams in floor cracks
+      ctx.fillStyle = 'rgba(50, 120, 160, 0.14)';
       const seamOffset = (scrollX * 0.85) % 240;
       for (let i = -1; i < 2; i++) {
         const sx = i * 240 - seamOffset + 55;
@@ -2926,38 +3367,39 @@
         const s = tree.scale;
         const ty = tree.y;
 
-        // Kelp/stump variant (roughly 1/3 of formations)
+        // Kelp/stump variant (roughly 1/3 of formations) — larger darker seaweed
         const isBurned = ((tree.wx * 31) | 0) % 3 === 0;
         if (isBurned) {
-          // dark kelp trunk
-          ctx.fillStyle = '#0a1a28';
-          ctx.fillRect(sx - 2 * s, ty, 5 * s, 36 * s);
+          // tall dark kelp trunk
+          const ks = s * 1.45;
+          ctx.fillStyle = '#040e14';
+          ctx.fillRect(sx - 3 * ks, ty - 8 * ks, 7 * ks, 48 * ks);
 
-          // jagged kelp fronds
-          ctx.strokeStyle = '#0d2840';
-          ctx.lineWidth = 1.3 * s;
+          // jagged dark kelp fronds (larger reach)
+          ctx.strokeStyle = '#0a1c18';
+          ctx.lineWidth = 2.2 * ks;
           ctx.beginPath();
-          ctx.moveTo(sx + 0.5 * s, ty + 6 * s); ctx.lineTo(sx + 10 * s, ty + 1 * s);
-          ctx.moveTo(sx - 0.5 * s, ty + 14 * s); ctx.lineTo(sx - 8 * s, ty + 7 * s);
-          ctx.moveTo(sx + 1 * s, ty + 22 * s); ctx.lineTo(sx + 11 * s, ty + 17 * s);
-          ctx.moveTo(sx, ty + 28 * s); ctx.lineTo(sx - 6 * s, ty + 24 * s);
+          ctx.moveTo(sx + 0.5 * ks, ty + 2 * ks); ctx.lineTo(sx + 16 * ks, ty - 6 * ks);
+          ctx.moveTo(sx - 0.5 * ks, ty + 12 * ks); ctx.lineTo(sx - 14 * ks, ty + 2 * ks);
+          ctx.moveTo(sx + 1 * ks, ty + 22 * ks); ctx.lineTo(sx + 18 * ks, ty + 14 * ks);
+          ctx.moveTo(sx, ty + 32 * ks); ctx.lineTo(sx - 12 * ks, ty + 26 * ks);
           ctx.stroke();
 
-          // glowing aqua tips
-          const eA = 0.35 + 0.45 * Math.sin(frame * 0.12 + tree.wx);
-          ctx.fillStyle = `rgba(102, 221, 255, ${eA})`;
-          ctx.fillRect(sx + 9 * s, ty, 2 * s, 1.5 * s);
-          ctx.fillRect(sx - 7.5 * s, ty + 6 * s, 1.5 * s, 1 * s);
-          ctx.fillRect(sx + 10 * s, ty + 16 * s, 1.8 * s, 1.2 * s);
+          // muted deep-teal tips (not bright surface cyan)
+          const eA = 0.2 + 0.25 * Math.sin(frame * 0.12 + tree.wx);
+          ctx.fillStyle = `rgba(40, 90, 80, ${eA})`;
+          ctx.fillRect(sx + 14 * ks, ty - 7 * ks, 2.5 * ks, 1.8 * ks);
+          ctx.fillRect(sx - 13 * ks, ty + 1 * ks, 2 * ks, 1.4 * ks);
+          ctx.fillRect(sx + 16 * ks, ty + 13 * ks, 2.2 * ks, 1.5 * ks);
 
           // wider base + faint rising bubbles
-          ctx.fillStyle = '#061218';
-          ctx.fillRect(sx - 3.5 * s, ty + 32 * s, 8 * s, 6 * s);
-          ctx.strokeStyle = 'rgba(51, 170, 204, 0.25)';
+          ctx.fillStyle = '#030a10';
+          ctx.fillRect(sx - 5 * ks, ty + 38 * ks, 12 * ks, 8 * ks);
+          ctx.strokeStyle = 'rgba(40, 100, 130, 0.2)';
           ctx.lineWidth = 0.7;
           ctx.beginPath();
-          ctx.moveTo(sx - 0.5 * s, ty + 4 * s);
-          ctx.lineTo(sx + 0.5 * s, ty - 3 * s);
+          ctx.moveTo(sx - 0.5 * ks, ty + 0 * ks);
+          ctx.lineTo(sx + 0.5 * ks, ty - 8 * ks);
           ctx.stroke();
 
           continue; // done, skip the rock pillar draw
@@ -3128,9 +3570,9 @@
           points.push({ x: sx + woff, y: ly });
         }
 
-        // Thick stem vine (blue-green seaweed)
-        ctx.strokeStyle = '#1a5a55';
-        ctx.lineWidth = 9.5;
+        // Thick dark seaweed vine (black-green, larger)
+        ctx.strokeStyle = '#061410';
+        ctx.lineWidth = 13.5;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -3140,9 +3582,9 @@
         }
         ctx.stroke();
 
-        // Lighter inner stem highlight
-        ctx.strokeStyle = '#2a8870';
-        ctx.lineWidth = 4.5;
+        // Dark olive inner stem highlight
+        ctx.strokeStyle = '#0d2a1c';
+        ctx.lineWidth = 6.5;
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
         for (let i = 1; i < points.length; i++) {
@@ -3150,9 +3592,9 @@
         }
         ctx.stroke();
 
-        // Aqua vein glow line (subtle dangerous highlight)
-        ctx.strokeStyle = 'rgba(102, 221, 255, 0.45)';
-        ctx.lineWidth = 2.2;
+        // Subtle deep-teal vein (muted danger, not bright surface cyan)
+        ctx.strokeStyle = 'rgba(40, 90, 70, 0.45)';
+        ctx.lineWidth = 2.6;
         ctx.beginPath();
         ctx.moveTo(points[0].x + 1, points[0].y);
         for (let i = 1; i < points.length; i++) {
@@ -3160,53 +3602,53 @@
         }
         ctx.stroke();
 
-        // Frond head at tip (glow + layered fronds + center)
+        // Larger dark frond head at tip
         const tip = points[points.length - 1];
         const headPhase = frame * 0.04 + f.wigglePhase;
-        const petalPulse = 0.85 + 0.15 * Math.sin(headPhase * 1.6);
+        const petalPulse = 0.9 + 0.15 * Math.sin(headPhase * 1.6);
         const headRot = Math.sin(headPhase) * 0.25;
 
-        // Outer soft glow (aqua danger aura)
-        ctx.fillStyle = 'rgba(102, 221, 255, 0.22)';
+        // Outer soft dark aura
+        ctx.fillStyle = 'rgba(20, 50, 35, 0.28)';
         ctx.beginPath();
-        ctx.arc(tip.x, tip.y, 13, 0, Math.PI * 2);
+        ctx.arc(tip.x, tip.y, 18, 0, Math.PI * 2);
         ctx.fill();
 
-        // Fronds (5 main + smaller offsets; bright aqua)
-        ctx.fillStyle = '#33aacc';
+        // Fronds (5 main + offsets; dark black-green seaweed)
+        ctx.fillStyle = '#0a2418';
         for (let p = 0; p < 5; p++) {
           const pa = (p * (Math.PI * 2 / 5)) + headRot + (p % 2 ? 0.15 : -0.1);
-          const px = tip.x + Math.cos(pa) * (7.5 * petalPulse);
-          const py = tip.y + Math.sin(pa) * (5.5 * petalPulse);
+          const px = tip.x + Math.cos(pa) * (10.5 * petalPulse);
+          const py = tip.y + Math.sin(pa) * (7.5 * petalPulse);
           ctx.beginPath();
-          ctx.ellipse(px, py, 5.5 * petalPulse, 3.2 * petalPulse, pa + 0.4, 0, Math.PI * 2);
+          ctx.ellipse(px, py, 7.5 * petalPulse, 4.4 * petalPulse, pa + 0.4, 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.fillStyle = '#66ddff';
+        ctx.fillStyle = '#0d301c';
         for (let p = 0; p < 5; p++) {
           const pa = (p * (Math.PI * 2 / 5)) + headRot + 0.6 + (p % 2 ? 0.1 : -0.15);
-          const px = tip.x + Math.cos(pa) * (5 * petalPulse);
-          const py = tip.y + Math.sin(pa) * (4 * petalPulse);
+          const px = tip.x + Math.cos(pa) * (7 * petalPulse);
+          const py = tip.y + Math.sin(pa) * (5.5 * petalPulse);
           ctx.beginPath();
-          ctx.ellipse(px, py, 3.8 * petalPulse, 2.2 * petalPulse, pa, 0, Math.PI * 2);
+          ctx.ellipse(px, py, 5.2 * petalPulse, 3.0 * petalPulse, pa, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        // Center bulb (dangerous cyan)
-        ctx.fillStyle = '#2277aa';
+        // Center bulb (dark olive with faint teal)
+        ctx.fillStyle = '#061810';
         ctx.beginPath();
-        ctx.arc(tip.x, tip.y, 4.2, 0, Math.PI * 2);
+        ctx.arc(tip.x, tip.y, 5.8, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = 'rgba(170, 240, 255, 0.7)';
+        ctx.fillStyle = 'rgba(40, 90, 70, 0.55)';
         ctx.beginPath();
-        ctx.arc(tip.x - 1, tip.y - 1, 1.8, 0, Math.PI * 2);
+        ctx.arc(tip.x - 1, tip.y - 1, 2.2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ceiling attach nub (small stem from top)
-        ctx.fillStyle = '#1a5a55';
-        ctx.fillRect(sx - 2, 0, 4, baseY + 2);
-        ctx.fillStyle = '#2a8870';
-        ctx.fillRect(sx - 1, 0, 2, baseY + 1);
+        // Ceiling attach nub (thicker dark stem from top)
+        ctx.fillStyle = '#061410';
+        ctx.fillRect(sx - 3.5, 0, 7, baseY + 2);
+        ctx.fillStyle = '#0a2218';
+        ctx.fillRect(sx - 1.5, 0, 3, baseY + 1);
       }
 
       // === FLOATING PLATFORMS (ice-blue / coral-reef aqua with bubble texture; thicker, L/R sway + up/down float) ===
@@ -3269,7 +3711,7 @@
         }
       }
 
-      // === FRIENDLY NPC (aqua/teal octagon with cyan eyes, middle of level) ===
+      // === FRIENDLY NPC (single mid-level aqua/teal octagon; approach bubble) ===
       if (friendlyNPC) {
         const bob = Math.sin(friendlyNPC.bouncePhase || 0) * 5;
         const npcX = friendlyNPC.wx - scrollX;
@@ -3277,74 +3719,10 @@
         const drawY = npcBaseY - bob;
         const size = 34; // slightly larger than player (26)
         const r = size / 2;
-
-        // Aqua octagon (8-sided approx for "octagon")
-        ctx.fillStyle = '#33aacc';
-        ctx.strokeStyle = '#1a6a88';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < 8; i++) {
-          const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
-          const x = npcX + Math.cos(ang) * r;
-          const y = drawY + Math.sin(ang) * r;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Cyan eyes
-        ctx.fillStyle = '#88eeff';
-        ctx.beginPath();
-        ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Speech bubble if approached
-        // Disappears when NPC off screen (npcX check)
-        if (friendlyNPC.approached && npcX > -50 && npcX < W + 50) {
-          const boxW = 210;
-          const boxH = 38;
-          const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
-          const boxY = Math.max(12, drawY - 55);
-
-          ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
-          ctx.fillRect(boxX, boxY, boxW, boxH);
-          ctx.strokeStyle = '#66ddff';
-          ctx.lineWidth = 1.6;
-          ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-          ctx.fillStyle = '#aaddff';
-          ctx.font = '11px Segoe UI, Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('Hey, are you here to solve the mystery?', boxX + boxW / 2, boxY + 14);
-          ctx.fillText('The deep water pits are deadly!', boxX + boxW / 2, boxY + 28);
-
-          // Pointer line from bubble to NPC
-          ctx.strokeStyle = '#66bbdd';
-          ctx.lineWidth = 1.3;
-          ctx.beginPath();
-          ctx.moveTo(boxX + boxW / 2, boxY + boxH);
-          ctx.lineTo(npcX, drawY - 2);
-          ctx.stroke();
-        }
-      }
-
-      // === OCTOPOPP NPCs (aqua/teal octagon with cyan eyes; start + halfway dialogues)
-      // Start NPC (very beginning of level 6)
-      if (octopoppStart) {
-        const bob = Math.sin(octopoppStart.bouncePhase || 0) * 5;
-        const npcX = octopoppStart.wx - scrollX;
-        const npcBaseY = octopoppStart.y;
-        const drawY = npcBaseY - bob;
-        const size = 34;
-        const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
+
         if (isOnScreen) {
-          // Aqua octagon
+          // Aqua octagon (8-sided)
           ctx.fillStyle = '#33aacc';
           ctx.strokeStyle = '#1a6a88';
           ctx.lineWidth = 2;
@@ -3353,11 +3731,13 @@
             const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
             const x = npcX + Math.cos(ang) * r;
             const y = drawY + Math.sin(ang) * r;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
           }
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
+
           // Cyan eyes
           ctx.fillStyle = '#88eeff';
           ctx.beginPath();
@@ -3366,22 +3746,26 @@
           ctx.beginPath();
           ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
           ctx.fill();
-          // Speech bubble if approached
-          if (octopoppStart.approached && npcX > -50 && npcX < W + 50) {
-            const boxW = 240;
-            const boxH = 42;
+
+          // Speech bubble if approached (disappears when NPC off screen)
+          if (friendlyNPC.approached) {
+            const boxW = 268;
+            const boxH = 34;
             const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
-            const boxY = Math.max(12, drawY - 58);
+            const boxY = Math.max(12, drawY - 52);
+
             ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
             ctx.fillRect(boxX, boxY, boxW, boxH);
             ctx.strokeStyle = '#66ddff';
             ctx.lineWidth = 1.6;
             ctx.strokeRect(boxX, boxY, boxW, boxH);
+
             ctx.fillStyle = '#aaddff';
             ctx.font = '11px Segoe UI, Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('There\'s a great mystery.', boxX + boxW / 2, boxY + 14);
-            ctx.fillText('Why is all the neon floating away?', boxX + boxW / 2, boxY + 30);
+            ctx.fillText('The neon is leaking! we have to stop it!', boxX + boxW / 2, boxY + 21);
+
+            // Pointer line from bubble to NPC
             ctx.strokeStyle = '#66bbdd';
             ctx.lineWidth = 1.3;
             ctx.beginPath();
@@ -3391,61 +3775,67 @@
           }
         }
       }
-      // Mid NPC (halfway through level 6)
-      if (octopoppMid) {
-        const bob = Math.sin(octopoppMid.bouncePhase || 0) * 5;
-        const npcX = octopoppMid.wx - scrollX;
-        const npcBaseY = octopoppMid.y;
-        const drawY = npcBaseY - bob;
-        const size = 34;
-        const r = size / 2;
-        const isOnScreen = npcX >= -50 && npcX <= W + 50;
-        if (isOnScreen) {
-          // Aqua octagon
-          ctx.fillStyle = '#33aacc';
-          ctx.strokeStyle = '#1a6a88';
-          ctx.lineWidth = 2;
+
+      // === NEON GAS PIPES (metallic stubs + thin upward cyan/magenta neon plumes) ===
+      for (let p of neonPipes) {
+        const sx = p.wx - scrollX;
+        if (sx < -40 || sx > W + 40) continue;
+        const pipeH = p.pipeH;
+        const streamH = p.streamH;
+        const pipeTop = GROUND_Y - pipeH;
+        const phase = (p.phase || 0) + frame * 0.12;
+        const pipeW = 12;
+
+        // Metallic pipe body (cylinder-ish rect with rim)
+        ctx.fillStyle = '#6a7585';
+        ctx.fillRect(sx - pipeW / 2, pipeTop, pipeW, pipeH);
+        // Darker left bevel
+        ctx.fillStyle = '#3d4654';
+        ctx.fillRect(sx - pipeW / 2, pipeTop, 3, pipeH);
+        // Lighter right highlight
+        ctx.fillStyle = '#a8b4c4';
+        ctx.fillRect(sx + pipeW / 2 - 3, pipeTop, 2.5, pipeH);
+        // Top rim flange
+        ctx.fillStyle = '#8a96a8';
+        ctx.fillRect(sx - pipeW / 2 - 2, pipeTop - 3, pipeW + 4, 4);
+        ctx.strokeStyle = '#2a3038';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx - pipeW / 2 - 2, pipeTop - 3, pipeW + 4, 4);
+        // Inner dark hole
+        ctx.fillStyle = '#1a1e28';
+        ctx.fillRect(sx - 3, pipeTop - 2, 6, 3);
+
+        // Upward neon gas stream (thin elongated plume + particles)
+        ctx.save();
+        for (let i = 0; i < 10; i++) {
+          const t = i / 10;
+          const y = pipeTop - 2 - t * streamH;
+          const wobble = Math.sin(phase + i * 0.7) * (1.2 + t * 2.5);
+          const w = 2.2 + t * 3.5;
+          const alpha = 0.55 * (1 - t * 0.75);
+          const isMag = (i + Math.floor(frame * 0.08)) % 3 === 0;
+          ctx.fillStyle = isMag
+            ? `rgba(255, 80, 220, ${alpha})`
+            : `rgba(80, 240, 255, ${alpha})`;
           ctx.beginPath();
-          for (let i = 0; i < 8; i++) {
-            const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
-            const x = npcX + Math.cos(ang) * r;
-            const y = drawY + Math.sin(ang) * r;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          }
-          ctx.closePath();
+          ctx.ellipse(sx + wobble, y, w * 0.55, 5 + t * 3, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.stroke();
-          // Cyan eyes
-          ctx.fillStyle = '#88eeff';
-          ctx.beginPath();
-          ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          // Speech bubble if approached
-          if (octopoppMid.approached && npcX > -50 && npcX < W + 50) {
-            const boxW = 230;
-            const boxH = 38;
-            const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
-            const boxY = Math.max(12, drawY - 55);
-            ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#66ddff';
-            ctx.lineWidth = 1.6;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-            ctx.fillStyle = '#aaddff';
-            ctx.font = '11px Segoe UI, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('The only way to save us is to stop the neon leak!', boxX + boxW / 2, boxY + 22);
-            ctx.strokeStyle = '#66bbdd';
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW / 2, boxY + boxH);
-            ctx.lineTo(npcX, drawY - 2);
-            ctx.stroke();
-          }
         }
+        // Core thin bright stream
+        const grad = ctx.createLinearGradient(sx, pipeTop, sx, pipeTop - streamH);
+        grad.addColorStop(0, 'rgba(180, 255, 255, 0.75)');
+        grad.addColorStop(0.45, 'rgba(120, 220, 255, 0.45)');
+        grad.addColorStop(0.75, 'rgba(255, 90, 230, 0.28)');
+        grad.addColorStop(1, 'rgba(255, 120, 240, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(sx - 2.2, pipeTop - streamH, 4.4, streamH);
+        // Soft outer glow
+        ctx.globalAlpha = 0.22 + 0.08 * Math.sin(phase);
+        ctx.fillStyle = '#66eeff';
+        ctx.shadowColor = '#44ddff';
+        ctx.shadowBlur = 12;
+        ctx.fillRect(sx - 5, pipeTop - streamH * 0.85, 10, streamH * 0.7);
+        ctx.restore();
       }
 
       // draw obstacles (triangles) - blue crystal/coral hazards that patrol + wiggle L/R
@@ -3828,42 +4218,154 @@
           }
         }
 
-        // Glowing "Hydro Control Zone" building (blue theme; open door with light)
-        const bx = lx + 48;
+        // Glowing "Hydro Control Zone" building — 3× original width (126px), watery blue theme
+        const bx = lx + HYDRO_BUILD_OFF;
         const by = baseY;
+        const bw = HYDRO_BUILD_W;
+        const bh = HYDRO_BUILD_H;
         const bPulse = Math.sin(frame * 0.22) * 1.8 + 1.2;
-        // Aura glow (aqua)
-        ctx.fillStyle = 'rgba(51, 170, 204, 0.22)';
-        ctx.fillRect(bx - 8, by - 185, 58, 165);
-        ctx.fillStyle = 'rgba(102, 221, 255, 0.28)';
-        ctx.fillRect(bx - 4, by - 178, 50, 155);
-        // Building body (dark blue metallic with cyan trim)
-        ctx.fillStyle = '#0a1a2c';
-        ctx.fillRect(bx, by - 170, 42, 145);
+        // Wide aura glow (aqua)
+        ctx.fillStyle = 'rgba(51, 170, 204, 0.18)';
+        ctx.fillRect(bx - 12, by - bh - 22, bw + 24, bh + 18);
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.22)';
+        ctx.fillRect(bx - 6, by - bh - 12, bw + 12, bh + 6);
+        // Building body (dark blue metallic)
+        ctx.fillStyle = '#081624';
+        ctx.fillRect(bx, by - bh, bw, bh);
+        // Panel grid lines
+        ctx.strokeStyle = 'rgba(40, 90, 120, 0.55)';
+        ctx.lineWidth = 1;
+        for (let px = 1; px < 4; px++) {
+          const gx = bx + (bw * px) / 4;
+          ctx.beginPath();
+          ctx.moveTo(gx, by - bh + 8);
+          ctx.lineTo(gx, by - 4);
+          ctx.stroke();
+        }
+        for (let py = 1; py < 5; py++) {
+          const gy = by - bh + (bh * py) / 5;
+          ctx.beginPath();
+          ctx.moveTo(bx + 4, gy);
+          ctx.lineTo(bx + bw - 4, gy);
+          ctx.stroke();
+        }
+        // Cyan trim / outline
         ctx.strokeStyle = '#33aacc';
         ctx.lineWidth = 2.5;
-        ctx.strokeRect(bx, by - 170, 42, 145);
-        // Glowing panels / windows
-        ctx.fillStyle = 'rgba(102, 221, 255, 0.65)';
-        for (let wy = 0; wy < 3; wy++) {
-          ctx.fillRect(bx + 6, by - 155 + wy * 38, 10, 8);
-          ctx.fillRect(bx + 24, by - 155 + wy * 38, 10, 8);
-        }
-        // Open door with inner light (player can approach but blocked)
-        ctx.fillStyle = '#080808';
-        ctx.fillRect(bx + 14, by - 55, 14, 55);
-        ctx.fillStyle = 'rgba(120, 200, 255, 0.75)';
-        ctx.fillRect(bx + 16, by - 53, 10, 51);
-        // Sign / label
+        ctx.strokeRect(bx, by - bh, bw, bh);
+        // Roofline ledge + antenna
+        ctx.fillStyle = '#0e2438';
+        ctx.fillRect(bx - 4, by - bh - 8, bw + 8, 10);
+        ctx.strokeStyle = '#44ccee';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bx - 4, by - bh - 8, bw + 8, 10);
+        ctx.strokeStyle = '#66ddff';
+        ctx.beginPath();
+        ctx.moveTo(bx + bw * 0.5, by - bh - 8);
+        ctx.lineTo(bx + bw * 0.5, by - bh - 28 - bPulse);
+        ctx.stroke();
         ctx.fillStyle = '#88eeff';
-        ctx.font = 'bold 10px Segoe UI, Arial';
+        ctx.beginPath();
+        ctx.arc(bx + bw * 0.5, by - bh - 28 - bPulse, 3 + bPulse * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        // Vertical pipes on left facade
+        ctx.fillStyle = '#1a3a55';
+        ctx.fillRect(bx + 6, by - bh + 12, 7, bh - 20);
+        ctx.fillRect(bx + 16, by - bh + 28, 5, bh - 36);
+        ctx.strokeStyle = '#33aacc';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx + 6, by - bh + 12, 7, bh - 20);
+        // Pipe joints / valves
+        for (let j = 0; j < 4; j++) {
+          ctx.fillStyle = '#44bbdd';
+          ctx.fillRect(bx + 4, by - bh + 30 + j * 32, 11, 5);
+        }
+        // Glowing windows (multi-column)
+        for (let col = 0; col < 4; col++) {
+          for (let row = 0; row < 3; row++) {
+            const wx = bx + 30 + col * 22;
+            const wy = by - bh + 18 + row * 28;
+            // skip area over door
+            if (row === 2 && col >= 1 && col <= 2) continue;
+            const glow = 0.45 + 0.25 * Math.sin(frame * 0.12 + col + row);
+            ctx.fillStyle = `rgba(100, 220, 255, ${glow})`;
+            ctx.fillRect(wx, wy, 14, 11);
+            ctx.strokeStyle = 'rgba(160, 240, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(wx, wy, 14, 11);
+          }
+        }
+        // Vents (upper right)
+        ctx.fillStyle = '#0a2030';
+        for (let v = 0; v < 3; v++) {
+          const vx = bx + bw - 28;
+          const vy = by - bh + 16 + v * 14;
+          ctx.fillRect(vx, vy, 18, 8);
+          ctx.strokeStyle = '#2a6a88';
+          ctx.strokeRect(vx, vy, 18, 8);
+          ctx.strokeStyle = 'rgba(80, 180, 220, 0.55)';
+          for (let s = 0; s < 3; s++) {
+            ctx.beginPath();
+            ctx.moveTo(vx + 3, vy + 2 + s * 2);
+            ctx.lineTo(vx + 15, vy + 2 + s * 2);
+            ctx.stroke();
+          }
+        }
+        // Side lights (blinking aqua)
+        const lightOn = (Math.sin(frame * 0.18) > -0.2);
+        ctx.fillStyle = lightOn ? '#66eeff' : '#1a4455';
+        ctx.beginPath();
+        ctx.arc(bx + 4, by - bh + 40, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(bx + bw - 4, by - bh + 40, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = (Math.sin(frame * 0.15 + 1) > 0) ? '#44ffcc' : '#1a5544';
+        ctx.beginPath();
+        ctx.arc(bx + 4, by - 50, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Open door with warm-cyan interior light (clear walk-in entrance)
+        const doorX = bx + HYDRO_DOOR_OFF;
+        const doorW = HYDRO_DOOR_W;
+        const doorH = HYDRO_DOOR_H;
+        // Door frame
+        ctx.fillStyle = '#0c2a3e';
+        ctx.fillRect(doorX - 3, by - doorH - 3, doorW + 6, doorH + 3);
+        ctx.strokeStyle = '#55ccee';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(doorX - 3, by - doorH - 3, doorW + 6, doorH + 3);
+        // Dark opening
+        ctx.fillStyle = '#030810';
+        ctx.fillRect(doorX, by - doorH, doorW, doorH);
+        // Inner light spill
+        const doorGlow = 0.55 + 0.2 * Math.sin(frame * 0.2);
+        ctx.fillStyle = `rgba(100, 200, 255, ${doorGlow})`;
+        ctx.fillRect(doorX + 4, by - doorH + 4, doorW - 8, doorH - 8);
+        ctx.fillStyle = `rgba(180, 240, 255, ${doorGlow * 0.7})`;
+        ctx.fillRect(doorX + 9, by - doorH + 10, doorW - 18, doorH - 18);
+        // Door sill
+        ctx.fillStyle = '#1a4a66';
+        ctx.fillRect(doorX - 4, by - 4, doorW + 8, 4);
+        // Signage board
+        ctx.fillStyle = 'rgba(8, 28, 48, 0.92)';
+        ctx.fillRect(bx + bw * 0.5 - 62, by - bh - 22, 124, 16);
+        ctx.strokeStyle = '#66ddff';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(bx + bw * 0.5 - 62, by - bh - 22, 124, 16);
+        ctx.fillStyle = '#88eeff';
+        ctx.font = 'bold 11px Segoe UI, Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Hydro Control Zone', bx + 21, by - 178);
-        // Extra glow on text
-        ctx.fillStyle = 'rgba(102, 221, 255, 0.5)';
-        ctx.fillText('Hydro Control Zone', bx + 21, by - 178);
+        ctx.fillText('Hydro Control Zone', bx + bw * 0.5, by - bh - 10);
+        ctx.fillStyle = 'rgba(102, 221, 255, 0.45)';
+        ctx.fillText('Hydro Control Zone', bx + bw * 0.5, by - bh - 10);
+        // Small "NEON DEPOT" plaque above door
+        ctx.fillStyle = 'rgba(10, 40, 60, 0.9)';
+        ctx.fillRect(doorX - 6, by - doorH - 16, doorW + 12, 11);
+        ctx.fillStyle = '#66ffcc';
+        ctx.font = 'bold 8px Consolas, monospace';
+        ctx.fillText('NEON DEPOT', doorX + doorW * 0.5, by - doorH - 8);
 
-        // Ice-blue floating pyramid NPC emerges from door if approached (blocks further progress)
+        // Ice-blue floating pyramid NPC beside entrance (non-blocking)
         if (endPyramid) {
           const bob = Math.sin(endPyramid.phase || 0) * 5;
           const npcX = endPyramid.wx - scrollX;
@@ -3895,13 +4397,13 @@
           ctx.beginPath();
           ctx.arc(npcX + 7, drawY - 6, 2, 0, Math.PI * 2);
           ctx.fill();
-          // Speech bubble (same mechanic, emerges when player approaches door)
+          // Speech bubble (approach mechanic — invite into plant)
           const onScreen = npcX > -50 && npcX < W + 50;
           if (endPyramid.approached && onScreen) {
-            const boxW = 265;
+            const boxW = 300;
             const boxH = 48;
-            const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
-            const boxY = Math.max(12, drawY - 72);
+            const boxX = Math.max(12, Math.min(W - boxW - 12, npcX - boxW / 2));
+            const boxY = Math.max(12, drawY - 78);
             ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
             ctx.fillRect(boxX, boxY, boxW, boxH);
             ctx.strokeStyle = '#66ddff';
@@ -3910,8 +4412,8 @@
             ctx.fillStyle = '#aaddff';
             ctx.font = '11px Segoe UI, Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('There\'s so much chaos in here!', boxX + boxW / 2, boxY + 14);
-            ctx.fillText('I cant let you in right now, get to the next level!', boxX + boxW / 2, boxY + 30);
+            ctx.fillText("I'm so glad to see you!", boxX + boxW / 2, boxY + 16);
+            ctx.fillText('Please go into the plant to spend your neon!', boxX + boxW / 2, boxY + 34);
             ctx.strokeStyle = '#66bbdd';
             ctx.lineWidth = 1.3;
             ctx.beginPath();
@@ -4200,41 +4702,98 @@
         ctx.restore();
       }
 
-      // draw player cube
-      const px = player.wx - scrollX;
-      const py = player.y;
+      // draw player cube (underwater bob; neon boost glow; death: grey + float to surface)
+      if (gameState === 'over' && !deathAnim) {
+        deathAnim = { timer: 0, greyT: 0, y: player.y, wx: player.wx };
+      }
+      const deathActive = gameState === 'over' && deathAnim;
+      const greyT = deathActive ? deathAnim.greyT : 0;
+      const neonBoostDraw = !deathActive && frame < neonBoostUntil;
+      const waterBob = (gameState === 'playing' && wasAirborne)
+        ? Math.sin(frame * 0.14) * 1.35
+        : (deathActive ? Math.sin(deathAnim.timer * 0.11) * 1.1 : 0);
+      const px = (deathActive ? deathAnim.wx : player.wx) - scrollX;
+      const py = (deathActive ? deathAnim.y : player.y) + waterBob;
 
-      // soft drop shadow
-      ctx.fillStyle = 'rgba(0, 20, 40, 0.45)';
-      ctx.fillRect(px + 5, GROUND_Y - 1, player.w - 3, 5);
+      // soft drop shadow (fade/lift during death float)
+      if (!deathActive || deathAnim.y > GROUND_Y - 80) {
+        const shadowA = deathActive ? Math.max(0, 0.45 * (1 - greyT) * 0.5) : 0.45;
+        ctx.fillStyle = 'rgba(0, 20, 40, ' + shadowA + ')';
+        ctx.fillRect(px + 5, GROUND_Y - 1, player.w - 3, 5);
+      }
 
-      // main cube body (bright cyan)
-      ctx.fillStyle = '#5fd0ff';
+      // Bright neon aura while gas boost is active (suppressed during death)
+      if (neonBoostDraw) {
+        const cx = px + player.w / 2;
+        const cy = py + player.h / 2;
+        const pulse = Math.sin(frame * 0.28) * 2.5;
+        ctx.save();
+        ctx.shadowColor = (Math.floor(frame / 6) % 2 === 0) ? '#66ffff' : '#ff66ee';
+        ctx.shadowBlur = 22 + pulse;
+        ctx.fillStyle = 'rgba(120, 255, 255, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, player.w / 2 + 10 + pulse * 0.4, player.h / 2 + 12 + pulse * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 14;
+        ctx.strokeStyle = 'rgba(255, 100, 230, 0.65)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, player.w / 2 + 7 + pulse * 0.3, player.h / 2 + 9 + pulse * 0.3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Color lerp: bright cyan (or boost cyan) → dark grey on death
+      function lerpChan(a, b, t) { return Math.round(a + (b - a) * t); }
+      // Boost base colors (from C) when neonBoostDraw; normal cyan otherwise
+      const bodyR = lerpChan(neonBoostDraw ? 0x9a : 0x5f, 0x2a, greyT);
+      const bodyG = lerpChan(neonBoostDraw ? 0xf0 : 0xd0, 0x2c, greyT);
+      const bodyB = lerpChan(0xff, 0x30, greyT);
+      const hiR = lerpChan(neonBoostDraw ? 0xe8 : 0xa8, 0x48, greyT);
+      const hiG = lerpChan(0xe8, 0x4a, greyT);
+      const hiB = lerpChan(0xff, 0x4e, greyT);
+      const shR = lerpChan(neonBoostDraw ? 0x44 : 0x1a, 0x14, greyT);
+      const shG = lerpChan(neonBoostDraw ? 0xb8 : 0x8f, 0x16, greyT);
+      const shB = lerpChan(neonBoostDraw ? 0xd8 : 0xb8, 0x18, greyT);
+      const outR = lerpChan(neonBoostDraw ? 0xff : 0x0c, 0x10, greyT);
+      const outG = lerpChan(neonBoostDraw ? 0x66 : 0x3a, 0x12, greyT);
+      const outB = lerpChan(neonBoostDraw ? 0xee : 0x4f, 0x14, greyT);
+
+      ctx.save();
+      if (deathActive) {
+        // Slight dissolve as it nears the surface
+        const nearSurface = deathAnim.y < 60 ? (60 - deathAnim.y) / 50 : 0;
+        ctx.globalAlpha = Math.max(0.35, 1 - nearSurface * 0.45);
+      }
+
+      // main cube body
+      ctx.fillStyle = 'rgb(' + bodyR + ',' + bodyG + ',' + bodyB + ')';
       ctx.fillRect(px, py, player.w, player.h);
 
       // top face highlight (cube shading)
-      ctx.fillStyle = '#a8e8ff';
+      ctx.fillStyle = 'rgb(' + hiR + ',' + hiG + ',' + hiB + ')';
       ctx.fillRect(px + 2, py + 2, player.w - 4, 5);
 
       // left face highlight
       ctx.fillRect(px + 2, py + 2, 4, player.h - 4);
 
       // bottom-right bevel (shadow)
-      ctx.fillStyle = '#1a8fb8';
+      ctx.fillStyle = 'rgb(' + shR + ',' + shG + ',' + shB + ')';
       ctx.fillRect(px + player.w - 5, py + 5, 3, player.h - 6);
       ctx.fillRect(px + 5, py + player.h - 5, player.w - 8, 3);
 
-      // crisp outline
-      ctx.strokeStyle = '#0c3a4f';
-      ctx.lineWidth = 1.5;
+      // crisp outline (hotter neon when boosted)
+      ctx.strokeStyle = 'rgb(' + outR + ',' + outG + ',' + outB + ')';
+      ctx.lineWidth = neonBoostDraw ? 2 : 1.5;
       ctx.strokeRect(px + 0.75, py + 0.75, player.w - 1.5, player.h - 1.5);
 
-      // small "light" dot on cube
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      // small "light" dot on cube (dims on death; brighter when boosted)
+      ctx.fillStyle = 'rgba(255,255,255,' + ((neonBoostDraw ? 0.95 : 0.6) * (1 - greyT * 0.85)) + ')';
       ctx.fillRect(px + 6, py + 5, 2, 2);
+      ctx.restore();
 
       // === VISIBLE ENERGY SHIELD (mario-style power-up - absorbs 1 hit, then grants 5s invulnerability) ===
-      if (player.hasShield) {
+      if (player.hasShield && !deathActive) {
         const cx = px + player.w / 2;
         const cy = py + player.h / 2 + 1;
         const pulse = Math.sin(frame * 0.21) * 1.8;
@@ -4331,7 +4890,7 @@
       ctx.globalAlpha = 1;
 
       // === ICE BLAST INDICATOR (glowing white snowflake that follows player when collected; single use) ===
-      if (hasIceBlast) {
+      if (hasIceBlast && gameState === 'playing') {
         const px = player.wx - scrollX;
         const py = player.y;
         const indX = px + player.w + 14 + Math.sin(frame * 0.13) * 3.5;
@@ -4459,6 +5018,11 @@
       }
 
       if (gameState === 'over') {
+        // UI fades in after float begins so death sequence is visible first
+        const dTimer = deathAnim ? deathAnim.timer : 60;
+        const uiAlpha = Math.min(1, Math.max(0, (dTimer - 28) / 36));
+        ctx.save();
+        ctx.globalAlpha = uiAlpha;
         ctx.fillStyle = 'rgba(3, 6, 12, 0.65)';
         ctx.fillRect(0, 0, W, H);
 
@@ -4482,6 +5046,7 @@
         ctx.font = '12px Segoe UI, Arial';
         ctx.fillStyle = '#5588aa';
         ctx.fillText('PRESS R  OR  CLICK TO RESTART', W / 2, H / 2 + 58);
+        ctx.restore();
       }
 
       if (gameState === 'complete') {
@@ -4513,6 +5078,214 @@
         ctx.font = '12px Segoe UI, Arial';
         ctx.fillStyle = '#5588aa';
         ctx.fillText('PRESS R  OR  CLICK TO PLAY AGAIN', W / 2, H / 2 + 96);
+      }
+
+      // Neon shop cutscene overlay (door entry)
+      if (gameState === 'shop') {
+        drawShop();
+      }
+    }
+
+    function drawShop() {
+      // Black cut first, then interior counter scene
+      if (shopPhase === 'fade') {
+        const a = Math.min(1, shopTimer / 12);
+        ctx.fillStyle = 'rgba(0, 0, 0, ' + a + ')';
+        ctx.fillRect(0, 0, W, H);
+        if (shopTimer > 14) {
+          ctx.fillStyle = 'rgba(100, 200, 255, 0.35)';
+          ctx.font = '12px Consolas, monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('ENTERING HYDRO CONTROL…', W / 2, H / 2);
+        }
+        return;
+      }
+
+      // Interior background (deep aqua plant)
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#041018');
+      grad.addColorStop(0.55, '#0a1e30');
+      grad.addColorStop(1, '#061420');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Ceiling pipes
+      ctx.strokeStyle = '#1a4a66';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(0, 48);
+      ctx.lineTo(W, 48);
+      ctx.stroke();
+      ctx.strokeStyle = '#33aacc';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 8; i++) {
+        const px = 60 + i * 120;
+        ctx.beginPath();
+        ctx.moveTo(px, 48);
+        ctx.lineTo(px, 78);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(80, 200, 255, 0.25)';
+        ctx.beginPath();
+        ctx.arc(px, 86 + Math.sin(frame * 0.1 + i) * 4, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Floor
+      ctx.fillStyle = '#0c2234';
+      ctx.fillRect(0, H - 120, W, 120);
+      ctx.strokeStyle = 'rgba(60, 140, 180, 0.35)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 12; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 90, H - 120);
+        ctx.lineTo(i * 90 - 40, H);
+        ctx.stroke();
+      }
+
+      // Shop counter
+      const counterX = 520;
+      const counterY = H - 200;
+      const counterW = 360;
+      const counterH = 90;
+      ctx.fillStyle = '#0e2a40';
+      ctx.fillRect(counterX, counterY, counterW, counterH);
+      ctx.fillStyle = '#163a55';
+      ctx.fillRect(counterX, counterY, counterW, 14);
+      ctx.strokeStyle = '#44ccee';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(counterX, counterY, counterW, counterH);
+      // Counter neon edge
+      ctx.shadowColor = '#33aacc';
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = 'rgba(100, 220, 255, 0.7)';
+      ctx.strokeRect(counterX + 2, counterY + 2, counterW - 4, 10);
+      ctx.shadowBlur = 0;
+
+      // Sign above counter
+      ctx.fillStyle = 'rgba(8, 30, 48, 0.95)';
+      ctx.fillRect(counterX + 40, counterY - 52, counterW - 80, 36);
+      ctx.strokeStyle = '#66ddff';
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(counterX + 40, counterY - 52, counterW - 80, 36);
+      ctx.font = '700 16px Segoe UI, Arial';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#88eeff';
+      ctx.fillText('NEON DEPOT', counterX + counterW / 2, counterY - 28);
+
+      // Larger player cube approaching / at counter
+      const cubeSize = 48;
+      const cubeY = H - 120 - cubeSize - 4;
+      const bob = Math.sin(frame * 0.12) * 2;
+      const cx = shopCubeX;
+      const cy = cubeY + bob;
+      ctx.fillStyle = '#1a88cc';
+      ctx.fillRect(cx, cy, cubeSize, cubeSize);
+      ctx.fillStyle = '#55ccff';
+      ctx.fillRect(cx + 3, cy + 3, cubeSize - 8, 8);
+      ctx.fillRect(cx + 3, cy + 3, 7, cubeSize - 8);
+      ctx.fillStyle = '#0a4060';
+      ctx.fillRect(cx + cubeSize - 9, cy + 9, 5, cubeSize - 12);
+      ctx.fillRect(cx + 9, cy + cubeSize - 9, cubeSize - 14, 5);
+      ctx.strokeStyle = '#88eeff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx + 1, cy + 1, cubeSize - 2, cubeSize - 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillRect(cx + 10, cy + 10, 4, 4);
+      // Soft ground shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath();
+      ctx.ellipse(cx + cubeSize / 2, H - 118, 22, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Item displays on counter (Shield + Ice Blast)
+      const itemY = counterY + 28;
+      const shieldBox = { x: counterX + 36, y: itemY - 8, w: 140, h: 62 };
+      const iceBox = { x: counterX + 190, y: itemY - 8, w: 140, h: 62 };
+      shopUiHit.shield = shieldBox;
+      shopUiHit.ice = iceBox;
+
+      function drawItemCard(box, title, cost, owned, accent) {
+        ctx.fillStyle = owned ? 'rgba(20, 50, 40, 0.9)' : 'rgba(10, 28, 44, 0.95)';
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+        ctx.font = '700 12px Segoe UI, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = accent;
+        ctx.fillText(title, box.x + box.w / 2, box.y + 18);
+        ctx.font = '11px Consolas, monospace';
+        ctx.fillStyle = '#aaddff';
+        ctx.fillText(owned ? 'OWNED' : (cost + ' NEON'), box.x + box.w / 2, box.y + 36);
+        ctx.font = '10px Segoe UI, Arial';
+        ctx.fillStyle = owned ? '#66ffaa' : '#88bbdd';
+        ctx.fillText(owned ? 'CARRYOVER READY' : 'CLICK / KEY TO BUY', box.x + box.w / 2, box.y + 52);
+      }
+      drawItemCard(shieldBox, 'SHIELD', SHOP_SHIELD_COST, ownedCarryShield, '#66ddff');
+      drawItemCard(iceBox, 'ICE BLAST', SHOP_ICE_COST, ownedCarryIce, '#aaddff');
+      // Mini icons
+      ctx.fillStyle = '#66ddff';
+      ctx.beginPath();
+      ctx.moveTo(shieldBox.x + 16, shieldBox.y + 30);
+      ctx.lineTo(shieldBox.x + 28, shieldBox.y + 18);
+      ctx.lineTo(shieldBox.x + 40, shieldBox.y + 30);
+      ctx.lineTo(shieldBox.x + 28, shieldBox.y + 48);
+      ctx.closePath();
+      ctx.globalAlpha = 0.35;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ccffff';
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(iceBox.x + 14, iceBox.y + 22, 14, 14);
+      ctx.globalAlpha = 1;
+
+      // Neon balance HUD
+      ctx.fillStyle = 'rgba(6, 20, 36, 0.92)';
+      ctx.fillRect(24, 24, 220, 56);
+      ctx.strokeStyle = '#44ccee';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(24, 24, 220, 56);
+      ctx.font = '11px Consolas, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#6699bb';
+      ctx.fillText('NEON BALANCE', 38, 46);
+      ctx.font = '700 22px Consolas, monospace';
+      ctx.fillStyle = '#88ffbb';
+      ctx.fillText(String(neonScore).padStart(3, '0'), 38, 70);
+
+      // Leave button
+      const leaveBox = { x: W / 2 - 90, y: H - 58, w: 180, h: 36 };
+      shopUiHit.leave = leaveBox;
+      ctx.fillStyle = 'rgba(20, 50, 70, 0.95)';
+      ctx.fillRect(leaveBox.x, leaveBox.y, leaveBox.w, leaveBox.h);
+      ctx.strokeStyle = '#66ddff';
+      ctx.lineWidth = 1.8;
+      ctx.strokeRect(leaveBox.x, leaveBox.y, leaveBox.w, leaveBox.h);
+      ctx.font = '700 13px Segoe UI, Arial';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#aaddff';
+      ctx.fillText('LEAVE SHOP', leaveBox.x + leaveBox.w / 2, leaveBox.y + 23);
+
+      // Controls help (browse only)
+      if (shopPhase === 'browse') {
+        ctx.font = '11px Consolas, monospace';
+        ctx.fillStyle = '#447799';
+        ctx.fillText('[1] SHIELD   [2] ICE BLAST   [E / ESC / ENTER] LEAVE', W / 2, H - 72);
+      } else if (shopPhase === 'approach') {
+        ctx.font = '12px Segoe UI, Arial';
+        ctx.fillStyle = '#6699bb';
+        ctx.fillText('Approaching the counter…', W / 2, H - 72);
+      }
+
+      // Feedback message
+      if (shopMsgTimer > 0 && shopMessage) {
+        ctx.fillStyle = 'rgba(8, 24, 40, 0.9)';
+        ctx.fillRect(W / 2 - 210, 100, 420, 32);
+        ctx.strokeStyle = '#66ddff';
+        ctx.strokeRect(W / 2 - 210, 100, 420, 32);
+        ctx.font = '12px Consolas, monospace';
+        ctx.fillStyle = '#cceeff';
+        ctx.fillText(shopMessage, W / 2, 120);
       }
     }
 
@@ -4549,11 +5322,29 @@
       updateLevel3LinkVisibility();
     }
 
+    function handleShopPointer(clientX, clientY) {
+      if (gameState !== 'shop' || shopPhase !== 'browse') return false;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mx = (clientX - rect.left) * scaleX;
+      const my = (clientY - rect.top) * scaleY;
+      function inside(b) {
+        return b && mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h;
+      }
+      if (inside(shopUiHit.shield)) { buyShopItem('shield'); return true; }
+      if (inside(shopUiHit.ice)) { buyShopItem('ice'); return true; }
+      if (inside(shopUiHit.leave)) { leaveShop(); return true; }
+      return false;
+    }
+
     function init() {
       loadBest();
+      loadCarryover();
       try {
         baseScore = parseInt(localStorage.getItem('neonDashCumulativeScore') || '0', 10) || 0;
-      } catch(e) { baseScore = 0; }
+        neonAtLevelStart = parseInt(localStorage.getItem('neonDashCumulativeNeon') || '0', 10) || 0;
+      } catch(e) { baseScore = 0; neonAtLevelStart = 0; }
       resetGame();
       updateLevel3LinkVisibility();
 
@@ -4562,9 +5353,24 @@
         keys[e.key] = true;
         getAudioCtx();
 
+        // Shop controls
+        if (gameState === 'shop') {
+          if (shopPhase === 'browse') {
+            if (e.key === '1') { e.preventDefault(); buyShopItem('shield'); }
+            if (e.key === '2') { e.preventDefault(); buyShopItem('ice'); }
+            if (e.key === 'Escape' || e.key === 'e' || e.key === 'E' || e.key === 'Enter') {
+              e.preventDefault();
+              leaveShop();
+            }
+          }
+          // Block start/restart keys during shop
+          if (e.key === ' ' || e.key === 'Spacebar') e.preventDefault();
+          return;
+        }
+
         if (e.key === ' ' || e.key === 'Spacebar') {
           e.preventDefault();
-          if (gameState !== 'playing') {
+          if (gameState === 'start' || gameState === 'over' || gameState === 'complete') {
             startPlaying();
           }
         }
@@ -4588,10 +5394,15 @@
       // mouse / touch start
       canvas.addEventListener('mousedown', (e) => {
         e.preventDefault();
+        if (handleShopPointer(e.clientX, e.clientY)) return;
+        if (gameState === 'shop') return;
         startPlaying();
       });
       canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        const t = e.changedTouches && e.changedTouches[0];
+        if (t && handleShopPointer(t.clientX, t.clientY)) return;
+        if (gameState === 'shop') return;
         startPlaying();
       }, { passive: false });
 

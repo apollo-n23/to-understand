@@ -146,6 +146,8 @@
     let endFireballs = [];
     let neonOrbs = [];
     let neonScore = 0;
+    let neonAtLevelStart = 0;  // cumulative neon loaded at init; restored on retry
+    let baseScore = 0;  // cumulative distance from prior run segment (usually 0 on L1)
     let shieldSpawnIndex = 0;
     let lastWallWX = 280;
     let lastTrampolineWX = 200;
@@ -385,7 +387,7 @@
       trampolines = [];
       endFireballs = [];
       neonOrbs = [];
-      neonScore = 0;
+      neonScore = neonAtLevelStart;  // fair retry: keep neon earned before this level
       shieldSpawnIndex = 0;
       lastWallWX = 280;
       lastTrampolineWX = 200;
@@ -978,8 +980,8 @@
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // small floor hit dust
             spawnDust(player.wx + player.w / 2, GROUND_Y, 5, false);
-            if (score > best) {
-              best = score;
+            if (baseScore + score > best) {
+              best = baseScore + score;
               saveBest();
             }
             break;
@@ -1018,8 +1020,8 @@
               playDeath('hazard');
               spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
               spawnDust(player.wx + player.w / 2, GROUND_Y, 4, false);
-              if (score > best) {
-                best = score;
+              if (baseScore + score > best) {
+                best = baseScore + score;
                 saveBest();
               }
               break;
@@ -1066,8 +1068,8 @@
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // Remove the projectile that hit
             projectiles.splice(i, 1);
-            if (score > best) {
-              best = score;
+            if (baseScore + score > best) {
+              best = baseScore + score;
               saveBest();
             }
             break;
@@ -1112,8 +1114,8 @@
             playDeath('projectile');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             endFireballs.splice(i, 1);
-            if (score > best) {
-              best = score;
+            if (baseScore + score > best) {
+              best = baseScore + score;
               saveBest();
             }
             break;
@@ -2185,7 +2187,7 @@
         ctx.fillText('DISTANCE', W - 18, 24);
         ctx.font = '700 22px Consolas, monospace';
         ctx.fillStyle = '#aaddff';
-        ctx.fillText(String(score).padStart(5, '0'), W - 18, 48);
+        ctx.fillText(String(baseScore + score).padStart(5, '0'), W - 18, 48);
 
         // small jump counter
         ctx.font = '11px Consolas, monospace';
@@ -2254,9 +2256,9 @@
 
         ctx.font = '15px Consolas, monospace';
         ctx.fillStyle = '#aaddff';
-        ctx.fillText('DISTANCE TRAVELED: ' + String(score).padStart(5, '0'), W / 2, H / 2 + 4);
+        ctx.fillText('DISTANCE TRAVELED: ' + String(baseScore + score).padStart(5, '0'), W / 2, H / 2 + 4);
 
-        if (score === best && score > 0) {
+        if (baseScore + score === best && baseScore + score > 0) {
           ctx.fillStyle = '#ffcc66';
           ctx.fillText('NEW PERSONAL BEST', W / 2, H / 2 + 24);
         } else if (best > 0) {
@@ -2280,7 +2282,7 @@
 
         ctx.font = '15px Consolas, monospace';
         ctx.fillStyle = '#aaddff';
-        ctx.fillText('DISTANCE TRAVELED: ' + String(score).padStart(5, '0'), W / 2, H / 2 + 2);
+        ctx.fillText('DISTANCE TRAVELED: ' + String(baseScore + score).padStart(5, '0'), W / 2, H / 2 + 2);
 
         ctx.font = '13px Segoe UI, Arial';
         ctx.fillStyle = '#88bbdd';
@@ -2290,7 +2292,7 @@
         ctx.fillStyle = '#88ffbb';
         ctx.fillText('NEON COLLECTED: ' + neonScore, W / 2, H / 2 + 48);
 
-        if (score === best) {
+        if (baseScore + score === best) {
           ctx.fillStyle = '#ffcc66';
           ctx.fillText('NEW PERSONAL BEST!', W / 2, H / 2 + 72);
         }
@@ -2332,8 +2334,23 @@
       updateLevel2LinkVisibility();
     }
 
+    function saveCumulativeForNextLevel() {
+      try {
+        const finalForThisLevel = baseScore + score;
+        localStorage.setItem('neonDashCumulativeScore', String(finalForThisLevel));
+        localStorage.setItem('neonDashCumulativeNeon', String(neonScore));
+      } catch(e){}
+    }
+
     function init() {
       loadBest();
+      // L1 starts a campaign: zero bases so a fresh visit does not inherit an old run
+      baseScore = 0;
+      neonAtLevelStart = 0;
+      try {
+        localStorage.setItem('neonDashCumulativeScore', '0');
+        localStorage.setItem('neonDashCumulativeNeon', '0');
+      } catch(e){}
       initStars();
       resetGame();
       updateLevel2LinkVisibility();
@@ -2378,6 +2395,12 @@
           e.preventDefault();
         }
       });
+
+      // Persist cumulative distance + neon when advancing to Level 2
+      const nextLinkEl = document.getElementById('level2-link');
+      if (nextLinkEl) {
+        nextLinkEl.addEventListener('click', saveCumulativeForNextLevel);
+      }
 
       // initial draw
       draw();

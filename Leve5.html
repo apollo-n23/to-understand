@@ -177,6 +177,7 @@
     let endFireballs = [];
     let neonOrbs = [];
     let neonScore = 0;
+    let neonAtLevelStart = 0;  // cumulative neon loaded at init; restored on retry
     let shieldSpawnIndex = 0;
     let iceSpawnIndex = 0;
     let waterGaps = [];
@@ -439,7 +440,7 @@
       trampolines = [];
       endFireballs = [];
       neonOrbs = [];
-      neonScore = 0;
+      neonScore = neonAtLevelStart;  // fair retry: keep neon earned before this level
       shieldSpawnIndex = 0;
       iceSpawnIndex = 0;
       waterGaps = [];
@@ -4287,6 +4288,7 @@
       try {
         const finalForThisLevel = baseScore + score;
         localStorage.setItem('neonDashCumulativeScore', String(finalForThisLevel));
+        localStorage.setItem('neonDashCumulativeNeon', String(neonScore));
       } catch(e){}
     }
 
@@ -4294,7 +4296,8 @@
       loadBest();
       try {
         baseScore = parseInt(localStorage.getItem('neonDashCumulativeScore') || '0', 10) || 0;
-      } catch(e) { baseScore = 0; }
+        neonAtLevelStart = parseInt(localStorage.getItem('neonDashCumulativeNeon') || '0', 10) || 0;
+      } catch(e) { baseScore = 0; neonAtLevelStart = 0; }
       resetGame();
       updateLevel3LinkVisibility();
       updateNextLevelLinkVisibility();
