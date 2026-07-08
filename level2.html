@@ -85,7 +85,7 @@
 </head>
 <body>
   <div class="header">
-    <a href="prompt-builder.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
+    <a href="index.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
     <div class="page-title">NEON DASH LEVEL 2 <span>775 • SIDE-SCROLL SIM</span></div>
   </div>
 
@@ -182,6 +182,9 @@
         try {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) { /* silent fail on old browsers */ }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
       }
       return audioCtx;
     }
@@ -700,6 +703,7 @@
         if (player.wx + player.w > dart.wx - 3 && player.wx < dart.wx + 3 &&
             player.y + player.h > dart.y - 2 && player.y < dart.y + 8) {
           gameState = 'over';
+          playDeath('projectile');
           spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
           poisonDarts.splice(i, 1);
           break;
@@ -799,11 +803,6 @@
         targetY = GROUND_Y - player.h;
         landed = true;
       }
-      // Land sound (only on first contact after being airborne) + track airborne state
-      if (landed && wasAirborne) {
-        playLand();
-      }
-      wasAirborne = !landed;
 
       // Platform support - find the highest (lowest y) surface we are on top of
       for (let p of platforms) {
@@ -870,6 +869,12 @@
         }
       }
 
+      // Land sound after full landing resolution (ground + platforms + trampoline)
+      if (landed && wasAirborne) {
+        playLand();
+      }
+      wasAirborne = !landed;
+
       // jump (only when on ground or a platform)
       if ((keys[' '] || keys['Spacebar']) && landed && player.vy >= -0.1) {
         player.vy = -11.8;
@@ -893,6 +898,7 @@
         // Die only after falling down into the gap for a while (sinking)
         if (frame - player.drowningStart > 65) {
           gameState = 'over';
+          playDeath('lava');
           spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
         }
       }
@@ -1235,6 +1241,7 @@
               vy: (dy / dist) * speed,
               life: 105 + Math.random() * 18
             });
+            playLaser();
           }
           // Randomised fairly slow interval between shots (roughly 1.6s – 3.2s)
           s.nextShot = frame + 95 + Math.random() * 95;
@@ -1387,6 +1394,7 @@
           } else if (player.hasShield) {
             // Shield absorbs exactly one hit, then pops and grants 5 seconds invulnerability
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds at ~60fps
             // Shield pop effect (neon blue)
             for (let k = 0; k < 22; k++) {
@@ -1400,6 +1408,7 @@
             }
           } else {
             gameState = 'over';
+            playDeath('hazard');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // small floor hit dust
             spawnDust(player.wx + player.w / 2, GROUND_Y, 5, false);
@@ -1427,6 +1436,7 @@
               // Fully protected during 5-second post-shield grace period
             } else if (player.hasShield) {
               player.hasShield = false;
+              playShieldPop();
               player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
               for (let k = 0; k < 22; k++) {
                 const ang = Math.random() * Math.PI * 2;
@@ -1439,6 +1449,7 @@
               }
             } else {
               gameState = 'over';
+              playDeath('hazard');
               spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
               spawnDust(player.wx + player.w / 2, GROUND_Y, 4, false);
               if (score > best) {
@@ -1471,6 +1482,7 @@
             projectiles.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1484,6 +1496,7 @@
             projectiles.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // Remove the projectile that hit
             projectiles.splice(i, 1);
@@ -1516,6 +1529,7 @@
             endFireballs.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1529,6 +1543,7 @@
             endFireballs.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             endFireballs.splice(i, 1);
             if (baseScore + score > best) {
@@ -1550,6 +1565,7 @@
         const dy = Math.abs(player.y + 13 - powerUp.y);
         if (dx < 26 && dy < 26) {
           player.hasShield = true;
+          playPowerup('shield');
           player.invulnUntil = 0; // Fresh shield replaces any grace period
 
           // Nice cyan pickup burst
@@ -3098,6 +3114,7 @@
     }
 
     function startPlaying() {
+      getAudioCtx();
       if (gameState === 'start') {
         gameState = 'playing';
       } else if (gameState === 'over' || gameState === 'complete') {

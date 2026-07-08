@@ -91,7 +91,7 @@
 </head>
 <body>
   <div class="header">
-    <a href="prompt-builder.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
+    <a href="index.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
     <div class="page-title">NEON DASH LEVEL 4 <span>ROCK &amp; LAVA • SIDE-SCROLL SIM</span></div>
   </div>
 
@@ -220,6 +220,9 @@
         try {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) { /* silent fail on old browsers */ }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
       }
       return audioCtx;
     }
@@ -599,6 +602,7 @@
     function detonateIceBlast() {
       if (!hasIceBlast) return;
       hasIceBlast = false;
+      playIceBlast();
 
       // Big central ice burst at player
       spawnIceShards(player.wx + 13, player.y + 13, 40);
@@ -715,6 +719,7 @@
 
       // === ACTIVE END BOSS PHYSICS + AI (bouncing foreground boss; only while active) ===
       // Simple platformer physics + chase player + ground bounce. Parallax 1.0 handled in draw (full scrollX).
+      // Boss behaviors/AI/movement/sounds/particles 100% preserved. NEW RULE (boss fight only): the ONLY way to die while endBoss && !bossDefeated && gameState==='playing' (inBossFight) is if boss lands directly on top and crushes (see END BOSS COLLISIONS). All lava, darts, projectiles, enemy hits, boss side-taps suppressed (see guarded death paths).
       if (endBoss && !bossDefeated && gameState === 'playing') {
         const gravity = 0.52;
         endBoss.vy += gravity;
@@ -796,6 +801,10 @@
         player.drowningStart = 0;
       }
 
+      // Clear "in boss fight" flag used to guard ALL non-crush deaths while boss active.
+      // inBossFight === (endBoss exists && !bossDefeated && gameState==='playing')
+      const inBossFight = endBoss && !bossDefeated && gameState === 'playing';
+
       // === VERTICAL ENEMY COLLISION (deadly up/down aliens) ===
       for (let e of verticalEnemies) {
         const ex = e.wx;
@@ -803,9 +812,13 @@
         // Simple AABB for the creature body
         if (player.wx + player.w > ex - 14 && player.wx < ex + 14 &&
             player.y + player.h > ey - 18 && player.y < ey + 18) {
-          gameState = 'over';
-          playDeath('hazard');
-          spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+          if (inBossFight) {
+            // Suppressed during boss fight: ONLY boss crush (direct land on top) kills the player. Vertical enemy contact does nothing (no death, no playDeath).
+          } else {
+            gameState = 'over';
+            playDeath('hazard');
+            spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+          }
           break;
         }
       }
@@ -823,10 +836,13 @@
         const playerBottom = player.y + player.h;
         if (playerRight > pLeft && playerLeft < pRight && playerBottom > pTop && playerTop < pBottom) {
           const now = frame;
-          if (now < player.invulnUntil) {
+          if (inBossFight) {
+            // During boss fight (inBossFight): ptero hit is non-lethal. Only the boss landing directly on top crushes/kills player. No death, no shield pop.
+          } else if (now < player.invulnUntil) {
             // protected
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300;
             for (let k = 0; k < 18; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -839,6 +855,7 @@
             }
           } else {
             gameState = 'over';
+            playDeath('ptero');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
           }
           pteros.splice(i, 1);
@@ -852,11 +869,15 @@
         if (player.wx + player.w > dart.wx - 4 && player.wx < dart.wx + 4 &&
             player.y + player.h > dart.y - 3 && player.y < dart.y + 9) {
           const now = frame;
-          if (now < player.invulnUntil) {
+          if (inBossFight) {
+            // During boss fight: lava fireballs (poisonDarts) non-lethal. Splice/remove only; no death, NO shield pop. (Only boss direct crush kills.)
+            poisonDarts.splice(i, 1);
+          } else if (now < player.invulnUntil) {
             // Fully protected during 5-second post-shield grace period
             poisonDarts.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -870,6 +891,7 @@
             poisonDarts.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('lava');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             poisonDarts.splice(i, 1);
             break;
@@ -954,11 +976,6 @@
         targetY = GROUND_Y - player.h;
         landed = true;
       }
-      // Land sound (only on first contact after being airborne) + track airborne state
-      if (landed && wasAirborne) {
-        playLand();
-      }
-      wasAirborne = !landed;
 
       // Platform support - find the highest (lowest y) surface we are on top of
       // (swaying platforms use animated x position for both physics and visuals)
@@ -1010,6 +1027,7 @@
             player.vy = -19.5;   // Much stronger upward boost than normal jump
             landed = true;
             player.y = tTop - player.h - 1;
+            playTrampoline();
             // Fun bounce particles
             for (let i = 0; i < 7; i++) {
               particles.push({
@@ -1026,6 +1044,12 @@
         }
       }
 
+      // Land sound after full landing resolution (ground + platforms + trampoline)
+      if (landed && wasAirborne) {
+        playLand();
+      }
+      wasAirborne = !landed;
+
       // jump (only when on ground or a platform)
       if ((keys[' '] || keys['Spacebar']) && landed && player.vy >= -0.1) {
         player.vy = -11.8;
@@ -1038,6 +1062,7 @@
 
       // Slow fall and eventual death when falling into lava pits (not solid)
       // Player must fall down the pit; falls slightly slower than sky
+      // NOTE: during inBossFight, player can visually fall/sink (slower grav + no land) but NO death from lava/drowning. drowningStart forced 0 to suppress timer. Only boss crush kills.
       if (overWaterGap && player.y + player.h > GROUND_Y - 2) {
         // already handled slower gravity in vertical physics
         player.vx *= 0.6;
@@ -1048,8 +1073,13 @@
 
         // Die only after falling into the lava for a while (sinking / burning)
         if (frame - player.drowningStart > 65) {
-          gameState = 'over';
-          spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+          if (inBossFight) {
+            player.drowningStart = 0; // prevent timer death during boss fight; visual sink/push ok but no gameState over
+          } else {
+            gameState = 'over';
+            playDeath('lava');
+            spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+          }
         }
       }
 
@@ -1372,6 +1402,7 @@
               vy: (dy / dist) * speed,
               life: 105 + Math.random() * 18
             });
+            playLaser();
           }
           // Randomised fairly slow interval between shots (roughly 1.6s – 3.2s)
           s.nextShot = frame + 95 + Math.random() * 95;
@@ -1433,6 +1464,7 @@
               vy: 2.2 + Math.random() * 0.9,
               life: 95 + Math.random() * 25
             });
+            playPteroSpit();
             // spit embers
             for (let k = 0; k < 5; k++) {
               particles.push({
@@ -1583,6 +1615,7 @@
           } else if (player.hasShield) {
             // Shield absorbs exactly one hit, then pops and grants 5 seconds invulnerability
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds at ~60fps
             // Shield pop effect (neon blue)
             for (let k = 0; k < 22; k++) {
@@ -1595,13 +1628,18 @@
               });
             }
           } else {
-            gameState = 'over';
-            spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
-            // small floor hit dust
-            spawnDust(player.wx + player.w / 2, GROUND_Y, 5, false);
-            if (baseScore + score > best) {
-              best = baseScore + score;
-              saveBest();
+            if (inBossFight) {
+              // During boss fight: ground triangles (obstacles) non-lethal contact. Only boss crush kills.
+            } else {
+              gameState = 'over';
+              playDeath('hazard');
+              spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+              // small floor hit dust
+              spawnDust(player.wx + player.w / 2, GROUND_Y, 5, false);
+              if (baseScore + score > best) {
+                best = baseScore + score;
+                saveBest();
+              }
             }
             break;
           }
@@ -1652,6 +1690,7 @@
               // Fully protected during 5-second post-shield grace period
             } else if (player.hasShield) {
               player.hasShield = false;
+              playShieldPop();
               player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
               for (let k = 0; k < 22; k++) {
                 const ang = Math.random() * Math.PI * 2;
@@ -1663,12 +1702,17 @@
                 });
               }
             } else {
-              gameState = 'over';
-              spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
-              spawnDust(player.wx + player.w / 2, GROUND_Y, 4, false);
-              if (score > best) {
-                best = score;
-                saveBest();
+              if (inBossFight) {
+                // During boss fight: specials (fiery spheres) side/bottom hit non-lethal. Only boss crush kills. (Stomp-on-specials kept above.)
+              } else {
+                gameState = 'over';
+                playDeath('hazard');
+                spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+                spawnDust(player.wx + player.w / 2, GROUND_Y, 4, false);
+                if (score > best) {
+                  best = score;
+                  saveBest();
+                }
               }
               break;
             }
@@ -1678,6 +1722,8 @@
 
       // === END BOSS COLLISIONS (repurposed large red polygonal): stomp 3x to defeat, else crush death ===
       // Stomp check (Mario-style) BEFORE general death collision with boss. Must be before or instead of crush.
+      // CRITICAL NEW RULE (while inBossFight): stomp path (exactly 3 stomps -> bossDefeated, victory particles, endBoss=null, ladder spawn+cleanup) 100% unchanged and only win path.
+      // The crush death path below is now the SOLE way player dies in boss fight (direct land on top). Refined isCrush slightly for "lands directly on top"; side non-crush overlaps are now survivable (no death).
       if (endBoss && !bossDefeated && gameState === 'playing') {
         const bLeft = endBoss.wx - 8;
         const bRight = endBoss.wx + 55;
@@ -1696,6 +1742,7 @@
             // Stomp!
             player.vy = -14;  // strong bounce -12 to -16
             endBoss.stomps = (endBoss.stomps || 0) + 1;
+            playBossStomp();
             spawnExplosion(endBoss.wx + 25, endBoss.y - 10);
             // Red hit / bounce-off particles
             for (let k = 0; k < 12; k++) {
@@ -1780,28 +1827,34 @@
           } else {
             // Crush / land-on / side overlap death (boss lands on player or side hit)
             // spec: AABB or specifically if boss.y + h/2 > player.y + h/2 or vy positive during overlap
+            // REFINED for "lands directly on top": only this path (when isCrush) can set gameState='over' in boss fight. Side taps (!isCrush but overlap) now allow survive.
             const now = frame;
             const bossMidY = endBoss.y - 40; // approx
             const playerMidY = player.y + player.h * 0.5;
-            const isCrush = (endBoss.y + 5 > player.y + player.h * 0.5) || (endBoss.vy > 1 && pBottom > bTop + 10);
-            if (now < player.invulnUntil) {
-              // protected
-            } else if (player.hasShield) {
-              player.hasShield = false;
-              player.invulnUntil = now + 300;
-              for (let k = 0; k < 20; k++) {
-                const ang = Math.random() * Math.PI * 2;
-                const sp = 1.7 + Math.random() * 3.1;
-                particles.push({
-                  x: player.wx + 13, y: player.y + 13,
-                  vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 0.7,
-                  life: 28 + Math.random() * 18, c: '#66ddff', size: 2.0
-                });
+            const isCrush = ((endBoss.vy > 0) || (endBoss.y + 5 > player.y + player.h * 0.35)) && ((endBoss.y + 5 > player.y + player.h * 0.5) || (endBoss.vy > 1 && pBottom > bTop + 10));
+            if (isCrush) {
+              if (now < player.invulnUntil) {
+                // protected
+              } else if (player.hasShield) {
+                player.hasShield = false;
+                playShieldPop();
+                player.invulnUntil = now + 300;
+                for (let k = 0; k < 20; k++) {
+                  const ang = Math.random() * Math.PI * 2;
+                  const sp = 1.7 + Math.random() * 3.1;
+                  particles.push({
+                    x: player.wx + 13, y: player.y + 13,
+                    vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 0.7,
+                    life: 28 + Math.random() * 18, c: '#66ddff', size: 2.0
+                  });
+                }
+              } else {
+                gameState = 'over';
+                playDeath('hazard');
+                spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
               }
-            } else {
-              gameState = 'over';
-              spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             }
+            // else: non-crush side/partial overlap during boss fight — player survives (per new rule)
           }
         }
       }
@@ -1821,11 +1874,19 @@
 
         if (pRight > prLeft && pLeft < prRight && pBottom > prTop && pTop < prBottom) {
           const now = frame;
-          if (now < player.invulnUntil) {
+          if (inBossFight) {
+            // During boss fight (inBossFight): monster projectiles non-lethal (deflect/splice only). Only boss direct land-on-top crush kills.
+            // small visual deflect
+            for (let k = 0; k < 3; k++) {
+              particles.push({ x: pr.wx, y: pr.y, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2, life: 8, c: '#ffaa66', size: 1.2 });
+            }
+            projectiles.splice(i, 1);
+          } else if (now < player.invulnUntil) {
             // Fully protected during 5-second post-shield grace period
             projectiles.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1839,6 +1900,7 @@
             projectiles.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             updateLevel3LinkVisibility();
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // Remove the projectile that hit
@@ -1867,11 +1929,18 @@
 
         if (pRight > fbLeft && pLeft < fbRight && pBottom > fbTop && pTop < fbBottom) {
           const now = frame;
-          if (now < player.invulnUntil) {
+          if (inBossFight) {
+            // During boss fight: boss fireballs (endFireballs) non-lethal. Splice + small deflect particles only. Only the boss landing directly on top can crush/kill.
+            for (let k = 0; k < 4; k++) {
+              particles.push({ x: fb.wx, y: fb.y, vx: (Math.random()-0.5)*1.8, vy: (Math.random()-0.5)*1.8 - 0.5, life: 10, c: '#ff6644', size: 1.4 });
+            }
+            endFireballs.splice(i, 1);
+          } else if (now < player.invulnUntil) {
             // Fully protected during 5-second post-shield grace period
             endFireballs.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1885,6 +1954,7 @@
             endFireballs.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             endFireballs.splice(i, 1);
             if (baseScore + score > best) {
@@ -1906,6 +1976,7 @@
         const dy = Math.abs(player.y + 13 - powerUp.y);
         if (dx < 26 && dy < 26) {
           player.hasShield = true;
+          playPowerup('shield');
           player.invulnUntil = 0; // Fresh shield replaces any grace period
 
           // Nice cyan pickup burst
@@ -1932,6 +2003,7 @@
         const dy = Math.abs(player.y + 13 - icePowerUp.y);
         if (dx < 28 && dy < 28) {
           hasIceBlast = true;
+          playPowerup('ice');
           // Ice/cyan pickup burst
           for (let i = 0; i < 16; i++) {
             const ang = Math.random() * Math.PI * 2;
@@ -3812,6 +3884,7 @@
     }
 
     function startPlaying() {
+      getAudioCtx();
       if (gameState === 'start') {
         gameState = 'playing';
       } else if (gameState === 'over' || gameState === 'complete') {

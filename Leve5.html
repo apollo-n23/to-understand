@@ -85,7 +85,7 @@
 </head>
 <body>
   <div class="header">
-    <a href="prompt-builder.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
+    <a href="index.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
     <div class="page-title">NEON DASH LEVEL 4 <span>ROCK &amp; LAVA • SIDE-SCROLL SIM</span></div>
   </div>
 
@@ -160,6 +160,8 @@
     let verticalEnemies = [];
     let poisonClouds = [];
     let poisonDarts = [];
+    let slimePuddles = [];  // short-lived deadly puddles from splatted purple slimeballs (from pits/enemy spits)
+    let ceilingFlowers = [];  // pink snake-like flower ceiling hazards (L5 biosphere theme; extend slowly from ceiling, whole vine deadly)
     // Purple alien drones (ptero array + lastPteroSpawn reused for reskinned tech/floral theme; glide + laser instead of fire)
     let pteros = [];
     let lastPteroSpawn = 0;
@@ -181,6 +183,7 @@
     let octopoppMid = null;
 
     const keys = {};
+    let wasAirborne = true;
 
     // === NEON DASH DREAMY SFX ENGINE (shared across all levels) ===
     // Aligned per final overseer for continuity (9yo sci-fi daydream universe)
@@ -193,6 +196,9 @@
         try {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) { /* silent fail on old browsers */ }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
       }
       return audioCtx;
     }
@@ -264,6 +270,11 @@
       if (muted) return;
       playTone(780, 95, 'triangle', 0.20, 7, 90);
       setTimeout(() => playTone(1050, 55, 'sine', 0.11, 5, 45), 22);
+    }
+    function playLand() {
+      if (muted) return;
+      playTone(280, 55, 'sine', 0.12, 5, 55);
+      playNoise(48, 0.06, 900, 'lowpass');
     }
     function playCollect(isGreen = false) {
       if (muted) return;
@@ -412,6 +423,8 @@
       verticalEnemies = [];
       poisonClouds = [];
       poisonDarts = [];
+      slimePuddles = [];
+      ceilingFlowers = [];  // clear pink snake flower hazards
       pteros = [];
       lastPteroSpawn = 0;
       // (firstSpecial / green tutorial state cleared removed)
@@ -433,12 +446,12 @@
       octopoppMid = null;
       // baseScore is NOT reset here - it carries from previous levels via localStorage
       // seed a couple early obstacles
-      obstacles.push({ wx: 340, h: 26 });
-      obstacles.push({ wx: 520, h: 33 });
+      obstacles.push({ wx: 340, h: 26, patrolAmp: 0 });
+      obstacles.push({ wx: 520, h: 33, patrolAmp: 0 });
       lastSpawnWX = 520;
-      // seed one floating platform for early play
-      platforms.push({ wx: 295, y: GROUND_Y - 78, width: 62, height: 8 });
-      // seed an early fiery sphere so player can encounter one soon
+      // seed one floating platform for early play (thicker, with props for new sway/float system)
+      platforms.push({ wx: 295, y: GROUND_Y - 78, width: 62, height: 13, swayAmp: 0, swayPhase: 0, floatAmp: 0, floatPhase: 0 });
+      // seed an early glowing purple blob so player can encounter one soon
       specials.push({ wx: 680, y: GROUND_Y - 64, w: 30, h: 64, nextShot: frame + 55 + Math.random() * 40 });
       player.y = GROUND_Y - player.h;
 
@@ -558,6 +571,7 @@
     function detonateIceBlast() {
       if (!hasIceBlast) return;
       hasIceBlast = false;
+      playIceBlast();
 
       // Big central ice burst at player
       spawnIceShards(player.wx + 13, player.y + 13, 40);
@@ -567,6 +581,8 @@
         { arr: obstacles, label: 'triangle' },
         { arr: specials, label: 'enemy' },
         { arr: verticalEnemies, label: 'enemy' },
+        { arr: ceilingFlowers, label: 'hazard' },
+        { arr: slimePuddles, label: 'hazard' },
         { arr: pteros, label: 'enemy' },
         { arr: projectiles, label: 'projectile' },
         { arr: endFireballs, label: 'projectile' },
@@ -586,7 +602,7 @@
     }
 
     function checkCollision(p, o) {
-      const ox = o.wx;
+      const ox = getTriangleCurrentWX(o);
       const oh = o.h;
       const triLeft = ox - 14;
       const triRight = ox + 14;
@@ -626,8 +642,9 @@
       }
       // vs obstacles (ground triangles) - use accurate collision width
       for (let o of obstacles) {
-        const oLeft = o.wx - 14;
-        const oRight = o.wx + 14;
+        const oPatrol = (o.patrolAmp || 0);
+        const oLeft = o.wx - 14 - oPatrol;
+        const oRight = o.wx + 14 + oPatrol;
         const dist = Math.max(0, Math.max(newLeft - oRight, oLeft - newRight));
         if (dist < minSep) return true;
       }
@@ -646,6 +663,50 @@
         if (dist < minSep) return true;
       }
       return false;
+    }
+
+    function getTriangleCurrentWX(o) {
+      if (!o.patrolAmp || o.patrolAmp < 1) return o.wx;
+      const rate = o.patrolRate || 0.006;
+      const t = frame * rate + (o.patrolPhase || 0);
+      return o.wx + o.patrolAmp * Math.sin(t);
+    }
+    function computeSafeTrianglePatrolAmp(baseWX, triHalf, waterGaps, lowWalls, trampolines, obstacles) {
+      // Find nearest left land bound from waterGaps (gRight <= base)
+      let leftBound = -9999;
+      for (let g of waterGaps) {
+        const gRight = g.wx + g.width;
+        if (gRight <= baseWX + 1) leftBound = Math.max(leftBound, gRight);
+      }
+      // Nearest right
+      let rightBound = 99999;
+      for (let g of waterGaps) {
+        const gLeft = g.wx;
+        if (gLeft >= baseWX - 1) rightBound = Math.min(rightBound, gLeft);
+      }
+      const MARGIN = 25;
+      leftBound = leftBound + MARGIN + triHalf;
+      rightBound = rightBound - MARGIN - triHalf;
+      // Also vs other ground hazards conservative (include their patrol if present)
+      for (let o of obstacles) {
+        const op = (o.patrolAmp || 0);
+        const oL = o.wx - 14 - op;
+        const oR = o.wx + 14 + op;
+        if (oR < baseWX) leftBound = Math.max(leftBound, oR + 8);
+        if (oL > baseWX) rightBound = Math.min(rightBound, oL - 8);
+      }
+      for (let w of lowWalls) {
+        const wR = w.wx + (w.width || 20);
+        if (wR < baseWX) leftBound = Math.max(leftBound, wR + 8);
+      }
+      for (let t of trampolines) {
+        const tR = t.wx + (t.width || 40);
+        if (tR < baseWX) leftBound = Math.max(leftBound, tR + 8);
+      }
+      let amp = Math.min(baseWX - leftBound, rightBound - baseWX);
+      amp = Math.min(Math.max(amp, 0), 13);
+      if (amp < 4) amp = 0;
+      return amp;
     }
 
     function update() {
@@ -719,7 +780,39 @@
         if (player.wx + player.w > ex - 14 && player.wx < ex + 14 &&
             player.y + player.h > ey - 18 && player.y < ey + 18) {
           gameState = 'over';
+          playDeath('hazard');
           spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+          break;
+        }
+      }
+
+      // === CEILING FLOWER SNAKE HAZARD COLLISION (whole extended vine deadly; pink biosphere hazard)
+      // Use simple generous AABB over current length (wiggle considered by extra x margin); touch any part of extended vine = die
+      for (let f of ceilingFlowers) {
+        const fTop = f.baseY;
+        const fBottom = f.baseY + f.length;
+        const thick = 18; // vine thickness for hit + wiggle allowance (~ length*0.08 sway)
+        const fLeft = f.wx - thick;
+        const fRight = f.wx + thick;
+        if (player.wx + player.w > fLeft && player.wx < fRight &&
+            player.y + player.h > fTop && player.y < fBottom) {
+          gameState = 'over';
+          playDeath('hazard');
+          spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+          // pink petal burst on flower vine death (theme)
+          for (let k = 0; k < 11; k++) {
+            const ang = Math.random() * Math.PI * 2;
+            const sp = 1.1 + Math.random() * 2.4;
+            particles.push({
+              x: f.wx,
+              y: f.baseY + Math.min(f.length * 0.6, f.length - 10),
+              vx: Math.cos(ang) * sp,
+              vy: Math.sin(ang) * sp - 0.8,
+              life: 16 + Math.random() * 12,
+              c: (Math.random() < 0.6 ? '#ff88cc' : '#ff77cc'),
+              size: 1.6 + Math.random() * 0.8
+            });
+          }
           break;
         }
       }
@@ -741,6 +834,7 @@
             // protected
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300;
             for (let k = 0; k < 18; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -753,6 +847,7 @@
             }
           } else {
             gameState = 'over';
+            playDeath('ptero');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
           }
           pteros.splice(i, 1);
@@ -760,7 +855,7 @@
         }
       }
 
-      // Lava fireball collision (deadly erupting fireballs from lava pits)
+      // Slimeball collision (deadly erupting purple slimeballs from slime pits)
       for (let i = poisonDarts.length - 1; i >= 0; i--) {
         const dart = poisonDarts[i];
         if (player.wx + player.w > dart.wx - 4 && player.wx < dart.wx + 4 &&
@@ -771,6 +866,7 @@
             poisonDarts.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -871,19 +967,21 @@
       }
 
       // Platform support - find the highest (lowest y) surface we are on top of
-      // (swaying platforms use animated x position for both physics and visuals)
+      // (swaying platforms use animated x position for both physics and visuals; floating use y offset)
       for (let p of platforms) {
         const sway = (p.swayAmp || 0) * Math.sin((frame * 0.021) + (p.swayPhase || 0));
-        const platSurface = p.y - player.h;
+        const floatY = (p.floatAmp || 0) * Math.sin((frame * 0.018) + (p.floatPhase || 0));
+        const platSurface = p.y + floatY - player.h;
         const platLeft = p.wx + sway;
         const platRight = p.wx + sway + p.width;
         const pLeft = player.wx;
         const pRight = player.wx + player.w;
 
-        // Proper x overlap + feet near or on the platform top
+        // Proper x overlap + feet near or on the platform top (use animated y)
         if (pRight > platLeft && pLeft < platRight) {
           const feet = player.y + player.h;
-          if (feet >= p.y - 2 && player.y <= p.y + 5) {
+          const yAnim = p.y + floatY;
+          if (feet >= yAnim - 2 && player.y <= yAnim + 5) {
             if (platSurface < targetY) { // higher platform wins
               targetY = platSurface;
               landed = true;
@@ -920,6 +1018,7 @@
             player.vy = -19.5;   // Much stronger upward boost than normal jump
             landed = true;
             player.y = tTop - player.h - 1;
+            playTrampoline();
             // Fun bounce particles
             for (let i = 0; i < 7; i++) {
               particles.push({
@@ -936,11 +1035,19 @@
         }
       }
 
+      // Land sound after full landing resolution (ground + platforms + trampoline)
+      if (landed && wasAirborne) {
+        playLand();
+      }
+      wasAirborne = !landed;
+
       // jump (only when on ground or a platform)
       if ((keys[' '] || keys['Spacebar']) && landed && player.vy >= -0.1) {
         player.vy = -11.8;
         jumpCount++;
         spawnDust(player.wx + 8, player.y + player.h + 1, 7, true);
+        playJump();
+        wasAirborne = true;
         keys[' '] = false; // one-shot
       }
 
@@ -957,6 +1064,7 @@
         // Die only after falling into the lava for a while (sinking / burning)
         if (frame - player.drowningStart > 65) {
           gameState = 'over';
+          playDeath('lava');
           spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
         }
       }
@@ -965,7 +1073,7 @@
       const target = player.wx - 275;
       scrollX += (target - scrollX) * 0.12;  // snappier follow (reduced perceived lag)
 
-      // === SPAWN: triangular ground hazards (spaced out more for longer level) ===
+      // === SPAWN: triangular ground hazards (patrol safely L/R; spaced out more for longer level) ===
       if (player.wx > lastSpawnWX - 140) {
         const gap = 570 + Math.random() * 390;
         const nextWX = lastSpawnWX + gap;
@@ -979,7 +1087,8 @@
         // (Replaces prior weak +/-10 overlap; now robust + also vs other triangles/lowWalls for full consistency.)
         let safe = !wouldBeTooCloseToHazards(triLeft, triRight, 60);
         if (safe) {
-          obstacles.push({ wx: nextWX, h: oh });
+          const amp = computeSafeTrianglePatrolAmp(nextWX, 14, waterGaps, lowWalls, trampolines, obstacles);
+          obstacles.push({ wx: nextWX, h: oh, patrolAmp: amp, patrolPhase: Math.random()*Math.PI*2, patrolRate: 0.0065 });
           lastSpawnWX = nextWX;
         } else {
           // advance anyway to not get stuck
@@ -1018,7 +1127,7 @@
             }
           }
 
-          // Also avoid spawning platforms on acid vats
+          // Also avoid spawning platforms on pink slime pits
           if (canSpawn) {
             for (let g of waterGaps) {
               const pCenter = platWX + platW / 2;
@@ -1031,10 +1140,17 @@
           }
 
           if (canSpawn) {
-            // Some platforms sway slowly side-to-side (rock platforms over lava)
-            const swayAmp = Math.random() < 0.38 ? (22 + Math.random() * 52) : 0;
+            // Some platforms sway slowly side-to-side (biosphere platforms); more now for variety
+            const swayAmp = Math.random() < 0.65 ? (22 + Math.random() * 52) : 0;
             const swayPhase = Math.random() * Math.PI * 2;
-            platforms.push({ wx: platWX, y: platY, width: platW, height: 8, swayAmp, swayPhase });
+            // New: some float up/down (vertical bob) for pink alien biosphere feel; ~28% get float (allow overlap with sway for some that do both)
+            let floatAmp = 0;
+            let floatPhase = 0;
+            if (Math.random() < 0.28) {
+              floatAmp = 18 + Math.random() * 25;
+              floatPhase = Math.random() * Math.PI * 2;
+            }
+            platforms.push({ wx: platWX, y: platY, width: platW, height: 13, swayAmp, swayPhase, floatAmp, floatPhase });
           }
         }
         lastPlatWX = lastPlatWX + 145 + Math.random() * 70;
@@ -1074,7 +1190,7 @@
         lastWallWX = lastWallWX + 320 + Math.random() * 140;
       }
 
-      // === SPAWN: lava pits (full glowing lava pools - deadly if fallen into) ===
+      // === SPAWN: pink slime pits (full oozing goo pools - deadly if fallen into; L5 biosphere reskin) ===
       if (!levelExit && player.wx > 600 && Math.random() < 0.012) {
         const gapW = 60 + Math.random() * 52.5; // ~25% larger, still jumpable
         const gapWX = player.wx + 320 + Math.random() * 180;
@@ -1131,7 +1247,7 @@
         });
       }
 
-      // === SPAWN: special chasing red monster (slightly increased frequency) ===
+      // === SPAWN: special chasing purple blob (glowing melting enemy, slightly increased frequency) ===
       if (frame - lastSpecialFrame > 1380 && Math.random() < 0.039) {
         const spawnWX = Math.max(player.wx + 360, scrollX + W + 40) + Math.random() * 160;
         // Ensure specials do not spawn on acid vats or on trampolines
@@ -1196,6 +1312,52 @@
         window.lastVertEnemySpawn = frame;
       }
 
+      // === SPAWN: pink snake-like flower ceiling hazards (L5 pink biosphere; "from time to time" extend slowly downward to reach player; whole vine deadly) ===
+      // Spawn occasionally ahead (not during end), y near ceiling, initial length 0, maxLength < H/2 (~240), extendRate slow.
+      // WigglePhase for snake curve. Safe guards: avoid close to levelExit/ladder, platforms (x), other verticals/ceilingFlowers.
+      if (!levelExit && frame % 95 === 0 && Math.random() < 0.045) {
+        const spawnWX = player.wx + 380 + Math.random() * 220;
+        const baseY = 28 + Math.random() * 32; // near ceiling, top of screen
+        let safe = true;
+        // Guard vs imminent ladder/end
+        if (levelExit && Math.abs(spawnWX - levelExit.wx) < 130) safe = false;
+        // Avoid overlap with platforms (prevent visual/platform cross + bad spawns)
+        if (safe) {
+          for (let p of platforms) {
+            if (Math.abs(p.wx - spawnWX) < 92) {
+              safe = false;
+              break;
+            }
+          }
+        }
+        // Avoid other high hazards (verticals, pteros, existing ceiling flowers)
+        if (safe) {
+          for (let e of verticalEnemies) {
+            if (Math.abs(e.wx - spawnWX) < 85) { safe = false; break; }
+          }
+        }
+        if (safe) {
+          for (let pr of pteros) {
+            if (Math.abs(pr.wx - spawnWX) < 80) { safe = false; break; }
+          }
+        }
+        if (safe) {
+          for (let cf of ceilingFlowers) {
+            if (Math.abs(cf.wx - spawnWX) < 70) { safe = false; break; }
+          }
+        }
+        if (safe) {
+          ceilingFlowers.push({
+            wx: spawnWX,
+            baseY: baseY,
+            length: 0,
+            maxLength: 160 + Math.random() * 78, // keep < ~H/2 = 260, "just shorter than half of the vertical distance of the screen"
+            extendRate: 0.68 + Math.random() * 0.32,
+            wigglePhase: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
       // === SPAWN: purple alien drones (ptero array reused; gliding high; laser bolt instead of fire)
       // Spawn ~4-6 per level, not too frequent. Use lastPteroSpawn. Spawn from right (mostly) or left.
       // Gliding: slow vx negative, y around 50-100 with sin oscillation for natural glide/bob.
@@ -1240,7 +1402,7 @@
         if (s.y < GROUND_Y - s.h) s.y = GROUND_Y - s.h;
       }
 
-      // === MONSTER GUNFIRE: fireballs from fiery spheres ===
+      // === MONSTER GUNFIRE: projectiles from glowing purple blobs ===
       // Monsters now fire directly toward the player's position at the moment of shooting (non-homing after fired)
       for (let s of specials) {
         if (typeof s.nextShot !== 'number') s.nextShot = frame + 60;
@@ -1278,6 +1440,7 @@
               vy: (dy / dist) * speed,
               life: 105 + Math.random() * 18
             });
+            playLaser();
           }
           // Randomised fairly slow interval between shots (roughly 1.6s – 3.2s)
           s.nextShot = frame + 95 + Math.random() * 95;
@@ -1303,8 +1466,10 @@
       waterGaps = waterGaps.filter(g => g.wx > scrollX - 150);
       alienTrees = alienTrees.filter(t => t.wx > scrollX - 200);
       verticalEnemies = verticalEnemies.filter(e => e.wx > scrollX - 120);
+      ceilingFlowers = ceilingFlowers.filter(f => f.wx > scrollX - 120);
       poisonClouds = poisonClouds.filter(c => c.wx > scrollX - 100);
-      poisonDarts = poisonDarts.filter(d => d.y < GROUND_Y + 80); // lava fireballs can fly up then fall; prune far outliers
+      poisonDarts = poisonDarts.filter(d => d.y < GROUND_Y + 80); // slimeballs can fly up then fall; prune far outliers
+      slimePuddles = slimePuddles.filter(p => p.life > 0 && p.wx > scrollX - 150);
       pteros = pteros.filter(p => p.wx > scrollX - 160 && p.wx < scrollX + W + 160); // offscreen prune left or far right
 
       // Move boss fireballs (they have slight gravity feel)
@@ -1313,12 +1478,30 @@
         fb.wx += fb.vx;
         fb.y += fb.vy;
         fb.vy += 0.035;   // gentle arc downward
-        if (fb.y > GROUND_Y - 10) endFireballs.splice(i, 1);
+        if (fb.y > GROUND_Y - 10) {
+          // splat into puddle if hit ground (slimeball effect)
+          playGooPop();
+          slimePuddles.push({ wx: fb.wx, y: GROUND_Y, life: 300, size: 16 });
+          endFireballs.splice(i, 1);
+        }
+      }
+
+      // Update short-lived slime puddles (fade after ~5s / 300 frames)
+      for (let i = slimePuddles.length - 1; i >= 0; i--) {
+        if (--slimePuddles[i].life <= 0) slimePuddles.splice(i, 1);
       }
 
       // Move vertical enemies (up and down in place)
       for (let e of verticalEnemies) {
         e.y = e.baseY + Math.sin(frame * e.speed + e.phase) * e.amplitude;
+      }
+
+      // Extend pink ceiling snake-flowers slowly (main "tries to get the player" behavior); no full retract, hold at max or pulse lightly
+      for (let f of ceilingFlowers) {
+        if (f.length < f.maxLength) {
+          f.length += f.extendRate;
+        }
+        // (wiggle offset computed live in draw using frame + phase; slight natural extension only)
       }
 
       // Move & animate drones (ptero array reused; glide + y bob; laser bolt instead of downward spit; projectiles reused)
@@ -1339,6 +1522,7 @@
               vy: 2.2 + Math.random() * 0.9,
               life: 95 + Math.random() * 25
             });
+            playPteroSpit();
             // spit embers
             for (let k = 0; k < 5; k++) {
               particles.push({
@@ -1360,7 +1544,7 @@
         }
       }
 
-      // Lava fireball pop-up logic - from time to time a fireball erupts upward from the lava then falls back in (deadly hazard)
+      // Slimeball pop-up logic - from time to time a slimeball erupts upward from the slime pit then falls back in (deadly hazard)
       const popInterval = 240 + Math.random() * 120; // irregular, ~4-6s
       for (let cloud of poisonClouds) {
         if (frame - cloud.lastDart > popInterval) {
@@ -1382,8 +1566,13 @@
         dart.vy += 0.105; // gravity so they arc up and fall back
         dart.wx += (dart.vx || 0) * 0.96;
         dart.y += dart.vy;
-        // remove once they sink back into lava surface or fly too far
-        if (dart.y > GROUND_Y - 2 || dart.life !== undefined && --dart.life <= 0) {
+        // remove once they sink back into slime surface or fly too far; if hit ground, splat into puddle
+        if (dart.y > GROUND_Y - 2 || (dart.life !== undefined && --dart.life <= 0)) {
+          if (dart.y > GROUND_Y - 2) {
+            // splat: create short lived puddle (twice size effect, deadly on touch)
+            playGooPop();
+            slimePuddles.push({ wx: dart.wx, y: GROUND_Y, life: 300, size: 18 });
+          }
           poisonDarts.splice(i, 1);
         }
       }
@@ -1445,7 +1634,14 @@
         pr.wx += pr.vx;
         pr.y += pr.vy;
         pr.life--;
-        // Emit smoke trail particles (fading dark embers/smoke)
+        // if hits ground, splat to puddle instead of just expire
+        if (pr.y > GROUND_Y - 5) {
+          playGooPop();
+          slimePuddles.push({ wx: pr.wx, y: GROUND_Y, life: 300, size: 14 });
+          projectiles.splice(i, 1);
+          continue;
+        }
+        // Emit smoke trail particles (fading dark embers/smoke) - keep for effect, or could reskin but minimal
         if (Math.random() < 0.65) {
           particles.push({
             x: pr.wx - pr.vx * 0.4,
@@ -1487,6 +1683,7 @@
           } else if (player.hasShield) {
             // Shield absorbs exactly one hit, then pops and grants 5 seconds invulnerability
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds at ~60fps
             // Shield pop effect (neon blue)
             for (let k = 0; k < 22; k++) {
@@ -1513,7 +1710,25 @@
         }
       }
 
-      // collisions with fiery spheres (AABB + stomp-from-above check)
+      // Slime puddles collision (short-lived splats on floor are deadly)
+      for (let i = slimePuddles.length - 1; i >= 0; i--) {
+        const pud = slimePuddles[i];
+        const pudLeft = pud.wx - (pud.size || 18) / 2;
+        const pudRight = pud.wx + (pud.size || 18) / 2;
+        const pudTop = GROUND_Y - 6;
+        const pudBottom = GROUND_Y + 2;
+        if (player.wx + player.w > pudLeft && player.wx < pudRight &&
+            player.y + player.h > pudTop && player.y < pudBottom) {
+          gameState = 'over';
+          playDeath('hazard');
+          spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
+          // optional: remove the puddle on touch
+          slimePuddles.splice(i, 1);
+          break;
+        }
+      }
+
+      // collisions with glowing purple blobs (AABB + stomp-from-above check)
       // Mario-style stomp kill if jumping on top (from above while falling)
       for (let i = specials.length - 1; i >= 0; i--) {
         const s = specials[i];
@@ -1531,7 +1746,7 @@
             // Successful Mario jump on top!
             player.vy = -11.5;  // satisfying upward bounce
             spawnExplosion(s.wx + s.w / 2, s.y + 8);
-            // Charred ash death particles + some lava sparks
+            // Melting purple death particles + pink vapor (matches new blob visuals)
             for (let k = 0; k < 14; k++) {
               const ang = Math.random() * Math.PI * 2;
               const sp = 1.3 + Math.random() * 2.9;
@@ -1541,7 +1756,7 @@
                 vx: Math.cos(ang) * sp,
                 vy: Math.sin(ang) * sp - 1.1,
                 life: 20 + Math.random() * 16,
-                c: (Math.random() < 0.65) ? '#8899aa' : '#66ddff',
+                c: (Math.random() < 0.65) ? '#aa66ff' : '#ff88cc',
                 size: 1.5 + Math.random() * 0.9
               });
             }
@@ -1557,6 +1772,7 @@
               // Fully protected during 5-second post-shield grace period
             } else if (player.hasShield) {
               player.hasShield = false;
+              playShieldPop();
               player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
               for (let k = 0; k < 22; k++) {
                 const ang = Math.random() * Math.PI * 2;
@@ -1569,6 +1785,7 @@
               }
             } else {
               gameState = 'over';
+              playDeath('hazard');
               spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
               spawnDust(player.wx + player.w / 2, GROUND_Y, 4, false);
               if (score > best) {
@@ -1581,7 +1798,7 @@
         }
       }
 
-      // collisions with monster projectiles (fireballs)
+      // collisions with monster slimeballs (bubbling purple)
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const pr = projectiles[i];
         const prLeft = pr.wx;
@@ -1601,6 +1818,7 @@
             projectiles.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1614,6 +1832,7 @@
             projectiles.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             updateLevel3LinkVisibility();
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // Remove the projectile that hit
@@ -1627,7 +1846,7 @@
         }
       }
 
-      // Collisions with boss fireballs (must avoid while climbing the ladder to escape)
+      // Collisions with end slimeballs (near exit hazard)
       for (let i = endFireballs.length - 1; i >= 0; i--) {
         const fb = endFireballs[i];
         const fbLeft = fb.wx;
@@ -1647,6 +1866,7 @@
             endFireballs.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1660,6 +1880,7 @@
             endFireballs.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             endFireballs.splice(i, 1);
             if (baseScore + score > best) {
@@ -1681,6 +1902,7 @@
         const dy = Math.abs(player.y + 13 - powerUp.y);
         if (dx < 26 && dy < 26) {
           player.hasShield = true;
+          playPowerup('shield');
           player.invulnUntil = 0; // Fresh shield replaces any grace period
 
           // Nice cyan pickup burst
@@ -1707,6 +1929,7 @@
         const dy = Math.abs(player.y + 13 - icePowerUp.y);
         if (dx < 28 && dy < 28) {
           hasIceBlast = true;
+          playPowerup('ice');
           // Ice/cyan pickup burst
           for (let i = 0; i < 16; i++) {
             const ang = Math.random() * Math.PI * 2;
@@ -1814,7 +2037,7 @@
 
         // Ensure no floating platforms or ANY other objects are touching or overlapping the ending ladder (prevent spawns touching ladder)
         const ladderCenter = levelExit.wx;
-        const safeMargin = 100; // generous padding so nothing visually or physically overlaps the ladder or top platform; covers triangles/obstacles, enemies/specials/verticals/pteros, waterGaps, neonOrbs, powerUps, lowWalls, trampolines, poison*, bg elems, flyingShips, alienTrees
+        const safeMargin = 100; // generous padding so nothing visually or physically overlaps the ladder or top platform; covers triangles/obstacles, enemies/specials/verticals/pteros, waterGaps, neonOrbs, powerUps, lowWalls, trampolines, poison*, bg elems, flyingShips, alienTrees, ceilingFlowers (high y), slimePuddles
         platforms = platforms.filter(p => {
           const platCenter = p.wx + p.width / 2;
           const xDist = Math.abs(platCenter - ladderCenter);
@@ -1829,12 +2052,14 @@
         specials = specials.filter(s => Math.abs(s.wx - ladderCenter) >= safeMargin || (s.y && s.y <= GROUND_Y - 420));
         waterGaps = waterGaps.filter(g => Math.abs(g.wx - ladderCenter) >= safeMargin);
         verticalEnemies = verticalEnemies.filter(e => !(Math.abs(e.wx - ladderCenter) < safeMargin && e.y > GROUND_Y - 420));
+        ceilingFlowers = ceilingFlowers.filter(f => !(Math.abs(f.wx - ladderCenter) < safeMargin && f.baseY < 220)); // high ceiling range
         pteros = pteros.filter(p => Math.abs(p.wx - ladderCenter) >= safeMargin);
         neonOrbs = neonOrbs.filter(o => !(Math.abs(o.wx - ladderCenter) < safeMargin && o.y > GROUND_Y - 420));
         lowWalls = lowWalls.filter(w => Math.abs(w.wx - ladderCenter) >= safeMargin);
         trampolines = trampolines.filter(t => Math.abs(t.wx - ladderCenter) >= safeMargin);
         poisonClouds = poisonClouds.filter(c => !(Math.abs(c.wx - ladderCenter) < safeMargin && c.y > GROUND_Y - 420));
         poisonDarts = poisonDarts.filter(d => !(Math.abs(d.wx - ladderCenter) < safeMargin && d.y > GROUND_Y - 420));
+        slimePuddles = slimePuddles.filter(p => Math.abs(p.wx - ladderCenter) >= safeMargin);
         if (powerUp && Math.abs(powerUp.wx - ladderCenter) < safeMargin && powerUp.y > GROUND_Y - 420) {
           powerUp = null;
         }
@@ -1951,8 +2176,8 @@
       const _now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       if (_now - lastFpsTime >= 500) { fps = Math.round(fpsFrameCount * 1000 / (_now - lastFpsTime)); fpsFrameCount = 0; lastFpsTime = _now; }
 
-      // === GREY SMOGGY SKY (volcanic haze) + ORANGE SUN ===
-      // Layered grey smog for overcast lava atmosphere (no ceiling)
+      // === GREY SMOGGY SKY + PINK-PURPLE BIOSPHERE SUN ===
+      // Layered grey smog for hazy atmosphere (no ceiling)
       ctx.fillStyle = '#2c313a';
       ctx.fillRect(0, 0, W, 210);
       ctx.fillStyle = '#363c47';
@@ -1968,30 +2193,54 @@
       ctx.fillStyle = 'rgba(55, 50, 45, 0.22)';
       ctx.fillRect(0, 270, W, 170);
 
-      // Glowing orange sun (veiled by ash smog, slow drift; reduced glows/rays for perf)
+      // Pink-purple biosphere sun (2x size; deep pink #ff88cc/#ff77cc + purple #cc66ee/#7722bb palette;
+      // surrounded by 6 shimmering concentric rings with pulsing alpha + radius shimmer via sin(frame), plus thin beaming radial rays; magical glowing alien flora sun)
       const sunBaseX = 760;
       const sunX = sunBaseX - ((scrollX * 0.007) % 220);
       const sunY = 82;
-      // Soft outer atmospheric glow (2 layers)
-      ctx.fillStyle = 'rgba(255, 120, 25, 0.10)';
-      ctx.beginPath(); ctx.arc(sunX, sunY, 68, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255, 155, 45, 0.26)';
-      ctx.beginPath(); ctx.arc(sunX, sunY, 32, 0, Math.PI * 2); ctx.fill();
-      // Core sun
-      ctx.fillStyle = '#ff8c2a';
-      ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffc34d';
-      ctx.beginPath(); ctx.arc(sunX - 2.5, sunY - 2.5, 7.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffe07a';
-      ctx.beginPath(); ctx.arc(sunX - 3.5, sunY - 3.5, 3.5, 0, Math.PI * 2); ctx.fill();
-      // Diffused rays through smog (reduced 6->4)
-      ctx.strokeStyle = 'rgba(255, 145, 35, 0.22)';
-      ctx.lineWidth = 1.6;
-      for (let r = 0; r < 4; r++) {
-        const ang = (r * 1.55 + frame * 0.0008) % (Math.PI * 2);
+
+      // Soft base atmospheric glow (pink-purple, larger for 2x scale)
+      ctx.fillStyle = 'rgba(170, 51, 136, 0.08)';
+      ctx.beginPath(); ctx.arc(sunX, sunY, 140, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 136, 204, 0.16)';
+      ctx.beginPath(); ctx.arc(sunX, sunY, 70, 0, Math.PI * 2); ctx.fill();
+
+      // Shimmering concentric rings (6 rings at increasing radii; beaming magical effect)
+      // Each ring: slight radius offset (shimmer) + alpha flicker via sin(frame * rate + phase), different phases; pink/purple alternating
+      const ringRadii = [44, 60, 80, 102, 126, 148];
+      for (let i = 0; i < ringRadii.length; i++) {
+        const phase = i * 0.87;
+        const shimmer = Math.sin(frame * 0.027 + phase) * 2.4;
+        let alpha = 0.13 + Math.sin(frame * 0.046 + phase * 1.35) * 0.17;
+        alpha = Math.max(0.06, Math.min(0.36, alpha));
+        const col = (i % 2 === 0) ? '255, 119, 204' : '204, 102, 238'; // #ff77cc / #cc66ee
+        ctx.strokeStyle = `rgba(${col}, ${alpha})`;
+        ctx.lineWidth = (i % 3 === 0) ? 2.1 : 1.35;
         ctx.beginPath();
-        ctx.moveTo(sunX + Math.cos(ang) * 18, sunY + Math.sin(ang) * 18);
-        ctx.lineTo(sunX + Math.cos(ang) * 52, sunY + Math.sin(ang) * 52);
+        ctx.arc(sunX, sunY, ringRadii[i] + shimmer, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Core sun (2x size, deep pink/purple layered)
+      ctx.fillStyle = '#ff88cc';
+      ctx.beginPath(); ctx.arc(sunX, sunY, 30, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#cc66ee';
+      ctx.beginPath(); ctx.arc(sunX - 5, sunY - 5, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff77cc';
+      ctx.beginPath(); ctx.arc(sunX - 7, sunY - 7, 7, 0, Math.PI * 2); ctx.fill();
+
+      // Beaming radial rays (6 thin pink-purple beams, slow rotation + length shimmer for energy)
+      ctx.strokeStyle = 'rgba(119, 34, 187, 0.27)';
+      ctx.lineWidth = 1.7;
+      const numBeams = 6;
+      for (let r = 0; r < numBeams; r++) {
+        const ang = (r * (Math.PI * 2 / numBeams) + frame * 0.0011) % (Math.PI * 2);
+        const lenShimmer = Math.sin(frame * 0.032 + r * 1.15) * 7 + 16;
+        const startR = 33;
+        const endR = 33 + 82 + lenShimmer;
+        ctx.beginPath();
+        ctx.moveTo(sunX + Math.cos(ang) * startR, sunY + Math.sin(ang) * startR);
+        ctx.lineTo(sunX + Math.cos(ang) * endR, sunY + Math.sin(ang) * endR);
         ctx.stroke();
       }
       ctx.lineWidth = 1;
@@ -2251,10 +2500,10 @@
         ctx.lineWidth = 1;
       }
 
-      // === ROCKY LAVA GROUND / FLOOR (charred stone + molten seams) ===
+      // === ROCKY BIOSPHERE GROUND / FLOOR (charred stone + pink slime influenced seams) ===
       const floorTop = GROUND_Y - 2;
 
-      // Precompute if any lava visible this frame (cheap loop; skips costly shadow/save when none)
+      // Precompute if any pink slime pit visible this frame (cheap loop; skips costly shadow/save when none)
       let hasVisibleLava = false;
       for (let gap of waterGaps) {
         const sx = gap.wx - scrollX;
@@ -2262,20 +2511,20 @@
         if (sx + gw >= -20 && sx <= W + 20) { hasVisibleLava = true; break; }
       }
 
-      // Subtle heat glow from lava pits / ground (conditional to avoid save/shadow thrash every frame)
+      // Subtle heat/pink glow from slime pits / ground (conditional to avoid save/shadow thrash every frame)
       if (hasVisibleLava) {
         ctx.save();
-        ctx.shadowColor = '#5a2a18';
+        ctx.shadowColor = '#3a1a2a';
         ctx.shadowBlur = 22;
-        ctx.fillStyle = 'rgba(75, 38, 22, 0.18)';
+        ctx.fillStyle = 'rgba(74, 34, 51, 0.18)';
         ctx.fillRect(0, floorTop - 7, W, 38);
         ctx.shadowBlur = 10;
-        ctx.fillStyle = 'rgba(90, 45, 25, 0.12)';
+        ctx.fillStyle = 'rgba(90, 45, 80, 0.12)';
         ctx.fillRect(0, floorTop - 1, W, 16);
         ctx.restore();
       }
 
-      // Base charred rocky floor (dark slate / basalt)
+      // Base charred rocky floor (dark slate / basalt, pink biosphere influence)
       ctx.fillStyle = '#2f2a26';
       ctx.fillRect(0, floorTop, W, H - floorTop);
 
@@ -2297,8 +2546,8 @@
         const mx = i * 104 - mOffset2 + 28;
         ctx.fillRect(mx, floorTop + 13, 32, 1.2);
       }
-      // Occasional glowing lava seams in floor cracks (subtle)
-      ctx.fillStyle = 'rgba(200, 75, 25, 0.22)';
+      // Occasional glowing pink slime seams in floor cracks (subtle, no lava orange)
+      ctx.fillStyle = 'rgba(255, 136, 204, 0.18)';
       const seamOffset = (scrollX * 0.85) % 240;
       for (let i = -1; i < 2; i++) {
         const sx = i * 240 - seamOffset + 55;
@@ -2331,111 +2580,185 @@
         ctx.fillRect(sx + ww - 5, GROUND_Y - wh + 3, 1.5, wh - 5);
       }
 
-      // === LAVA PITS (full glowing lava pools - deadly if fallen into) ===
+      // === PINK SLIME PITS (oozing flowing goo pools - deadly if fallen into; reskinned from lava) ===
       for (let gap of waterGaps) {
         const sx = gap.wx - scrollX;
         const gw = gap.width;
         if (sx + gw < -20 || sx > W + 20) continue;
 
-        const pitDepth = 135; // deep lava pool visually
+        const pitDepth = 135; // deep slime pool visually
 
-        // Dark rock rim / upper edges of pit (cracked)
-        ctx.fillStyle = '#2c211b';
+        // Dark pink rock/biosphere rim / upper edges of pit (cracked, deep tones)
+        ctx.fillStyle = '#2c1f2b';
         ctx.fillRect(sx - 1, floorTop - 1, gw + 2, 7);
         // Cracked rim texture
-        ctx.fillStyle = '#1f1813';
+        ctx.fillStyle = '#1f1420';
         ctx.fillRect(sx + 3, floorTop, 2, 4);
         ctx.fillRect(sx + gw - 7, floorTop + 1, 3, 3);
 
-        // Heat glow on upper pit walls (rock lit by lava)
-        ctx.fillStyle = 'rgba(120, 45, 18, 0.55)';
+        // Subtle pink glow on upper pit walls (rock lit by slime)
+        ctx.fillStyle = 'rgba(90, 45, 80, 0.45)';
         ctx.fillRect(sx, floorTop + 5, 3, 22);
         ctx.fillRect(sx + gw - 3, floorTop + 5, 3, 22);
 
-        // === FULL DEPTH GLOWING LAVA (optimized loops: fewer arcs/rects, grouped styles, removed rare pop) ===
-        // Deep base lava (dark molten)
+        // === FULL DEPTH OOZING PINK SLIME (animated downward flow + drips + bubbles; no orange/lava) ===
+        // Deep base slime (dark pink fill #3a1a2a theme)
         ctx.fillStyle = '#3a1a2a';
         ctx.fillRect(sx + 1, floorTop + 5, gw - 2, pitDepth);
 
-        // Mid lava layer (rich red-orange)
-        ctx.fillStyle = '#9c2a15';
+        // Mid slime layer (richer dark pink #4a2233)
+        ctx.fillStyle = '#4a2233';
         ctx.fillRect(sx + 2, floorTop + 8, gw - 4, pitDepth - 12);
 
-        // Side wall lava glow (grouped early to batch)
-        ctx.fillStyle = 'rgba(210, 70, 20, 0.35)';
+        // Side wall slime glow / ooze (grouped, deep to bright pink)
+        ctx.fillStyle = 'rgba(100, 50, 90, 0.32)';
         ctx.fillRect(sx + 1, floorTop + 18, 2, pitDepth - 10);
         ctx.fillRect(sx + gw - 3, floorTop + 18, 2, pitDepth - 10);
 
-        // Upper brighter lava + surface (grouped)
-        ctx.fillStyle = 'rgba(175, 45, 18, 0.95)';
+        // Upper brighter slime surface (grouped)
+        ctx.fillStyle = 'rgba(85, 40, 75, 0.92)';
         ctx.fillRect(sx + 1, floorTop + 5, gw - 2, 28);
-        ctx.fillStyle = 'rgba(235, 85, 25, 0.85)';
+        ctx.fillStyle = 'rgba(120, 55, 95, 0.82)';
         ctx.fillRect(sx + 1, floorTop + 6, gw - 2, 11);
 
-        // Animated vertical flow streaks (reduced 3+2 -> 2+1)
-        const flowT = (frame * 0.04) % (gw + 40);
-        ctx.fillStyle = 'rgba(220, 70, 22, 0.28)';
-        for (let f = 0; f < 2; f++) {
-          const fx = sx + 4 + ((f * 17 + flowT * 0.6) % (gw - 8));
-          ctx.fillRect(fx, floorTop + 9, 2.5, pitDepth - 18);
+        // Animated vertical flow / ooze streaks (downward slow, use sin(frame*rate + phase + gap.wx) for offset)
+        const flowT = (frame * 0.035) % (gw + 50);
+        const flowPhase = gap.wx * 0.013; // seeded by position for variation
+        ctx.fillStyle = 'rgba(255, 119, 204, 0.26)';
+        for (let f = 0; f < 3; f++) {
+          const phaseOff = (f * 1.3 + flowPhase);
+          const dripOff = Math.sin(frame * 0.022 + phaseOff) * 4.5; // vertical flow/drip offset
+          const fx = sx + 5 + ((f * 19 + flowT * 0.55) % (gw - 10));
+          const fy = floorTop + 10 + dripOff * 0.6;
+          ctx.fillRect(fx, fy, 2.2, pitDepth - 20 - (f % 2));
         }
-        ctx.fillStyle = 'rgba(255, 120, 35, 0.18)';
-        for (let f = 0; f < 1; f++) {
-          const fx = sx + 8 + ((f * 23 + flowT * 0.9) % (gw - 10));
-          ctx.fillRect(fx, floorTop + 12, 1.8, pitDepth - 25);
+        ctx.fillStyle = 'rgba(255, 136, 204, 0.15)';
+        for (let f = 0; f < 2; f++) {
+          const phaseOff = (f * 2.1 + flowPhase + 1.7);
+          const dripOff = Math.sin(frame * 0.018 + phaseOff) * 6.2;
+          const fx = sx + 9 + ((f * 27 + flowT * 0.8) % (gw - 14));
+          const fy = floorTop + 13 + dripOff * 0.5;
+          ctx.fillRect(fx, fy, 1.6, pitDepth - 28);
         }
 
-        // Animated bubbling / churning (lower density: /20 + max 7 instead of /13+5; fewer arcs)
-        const bubblePhase = (frame * 0.055) % (Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 145, 35, 0.8)';
-        const numBubs = Math.max(3, Math.floor(gw / 20));
-        for (let b = 0; b < numBubs && b < 7; b++) {
-          const bx = sx + ((b * 17 + 4) % (gw - 6));
-          const by = floorTop + 7 + ((Math.sin(bubblePhase + b * 1.7) + 1) * 5.5) + (b % 4) * 0.8;
-          const br = 1.6 + Math.sin(bubblePhase * 1.15 + b) * 0.9;
+        // Animated goo drips / blobs from edges and bottom (ellipses/rects with vertical sin offset, slow ooze)
+        const dripBase = frame * 0.014 + flowPhase;
+        ctx.fillStyle = 'rgba(255, 102, 187, 0.75)';
+        for (let d = 0; d < 5; d++) {
+          const dPhase = dripBase + d * 0.9 + (d % 3) * 1.6;
+          const vy = Math.sin(dPhase) * 7.5 + Math.sin(dPhase * 1.6) * 3.2; // downward ooze/drip offset
+          const dx = sx + 3 + ((d * 13 + (gap.wx % 17)) % (gw - 8));
+          const dy = floorTop + 9 + vy + (d % 2) * 1.5;
+          const dw = 2.8 + Math.sin(dPhase * 0.7) * 0.7;
+          const dh = 3.5 + Math.cos(dPhase) * 1.8;
+          ctx.beginPath();
+          ctx.ellipse(dx, dy, dw, Math.max(1.5, dh), 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Extra bottom-hanging drips / blobs (from pit bottom edges)
+        ctx.fillStyle = 'rgba(255, 136, 204, 0.55)';
+        for (let d = 0; d < 3; d++) {
+          const dPhase = dripBase * 0.8 + d * 1.4;
+          const vy = Math.sin(dPhase + 0.8) * 5.0 + 2;
+          const dx = sx + 4 + ((d * 22 + 7) % (gw - 10));
+          const dy = floorTop + pitDepth - 18 + vy;
+          ctx.beginPath();
+          ctx.ellipse(dx, dy, 2.1 + Math.sin(dPhase) * 0.5, 4.5 + Math.cos(dPhase * 1.1) * 1.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Bubbles / highlights in brighter pink (pulsing size/alpha with sin(frame); seeded stable positions)
+        const bubblePhase = (frame * 0.065) % (Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 136, 204, 0.8)';
+        const numBubs = Math.max(4, Math.floor(gw / 22));
+        for (let b = 0; b < numBubs && b < 8; b++) {
+          const seed = (gap.wx * 0.77 + b * 19.3) % 83;
+          const bx = sx + 2 + ((b * 21 + seed) % (gw - 6));
+          const by = floorTop + 8 + ((Math.sin(bubblePhase + b * 1.9) + 1) * 4.5) + (b % 3) * 0.6;
+          const pulse = 0.65 + 0.45 * Math.sin(bubblePhase * 1.15 + b);
+          const br = (1.5 + Math.sin(bubblePhase + b * 0.7) * 0.7) * pulse;
+          ctx.globalAlpha = 0.55 + 0.35 * Math.sin(bubblePhase * 0.9 + b * 1.3 + seed);
           ctx.beginPath();
           ctx.arc(bx, by, Math.max(1, br), 0, Math.PI * 2);
           ctx.fill();
         }
+        ctx.globalAlpha = 1.0;
 
-        // Floating darker crust patches (reduced 3->2)
-        ctx.fillStyle = 'rgba(55, 22, 12, 0.55)';
-        const crustPhase = (frame * 0.018) % 30;
-        for (let c = 0; c < 2; c++) {
-          const cx = sx + 3 + ((c * 19 + crustPhase * 1.1) % (gw - 12));
-          ctx.fillRect(cx, floorTop + 14 + (c % 2) * 3, 5 + (c % 2), 2.5);
+        // Flowing highlights / subtle pulsing surface sheen (brighter pink accents, downward bias)
+        ctx.fillStyle = 'rgba(255, 170, 220, 0.35)';
+        const sheenT = frame * 0.026 + gap.wx * 0.009;
+        for (let f = 0; f < 2; f++) {
+          const fx = sx + 6 + (((f * 31 + sheenT * 0.7) % (gw - 12)));
+          const fy = floorTop + 7 + Math.sin(sheenT * 0.8 + f) * 2.5;
+          ctx.fillRect(fx, fy, 3.5, 2.2);
         }
-
-        // Side wall lava glow (deeper)
-        ctx.fillStyle = 'rgba(245, 105, 30, 0.22)';
-        ctx.fillRect(sx + 1, floorTop + 25, 1.5, pitDepth - 20);
-        ctx.fillRect(sx + gw - 2.5, floorTop + 25, 1.5, pitDepth - 20);
       }
 
-      // Erupting lava fireballs (pop up from lava then fall back in)
+      // Slime puddles (splats from purple slimeballs; short lived ~5s, bubble, deadly to touch)
+      for (let pud of slimePuddles) {
+        const sx = pud.wx - scrollX;
+        if (sx < -40 || sx > W + 40) continue;
+        const alpha = Math.max(0.05, pud.life / 300);
+        const pw = (pud.size || 18) * 1.1;
+        ctx.globalAlpha = alpha;
+        // main splat puddle (bubbling purple goo on floor)
+        ctx.fillStyle = '#6622aa';
+        ctx.beginPath();
+        ctx.ellipse(sx, GROUND_Y - 1, pw, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // lighter edge
+        ctx.fillStyle = 'rgba(170, 100, 220, 0.6)';
+        ctx.beginPath();
+        ctx.ellipse(sx, GROUND_Y - 1, pw * 0.7, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // small bubbles in puddle (fading)
+        ctx.fillStyle = '#ff88cc';
+        for (let b = 0; b < 4; b++) {
+          const bp = frame * 0.07 + b * 1.3 + (pud.wx * 0.1);
+          const bx = sx - pw * 0.4 + (b % 3) * (pw * 0.35);
+          const by = GROUND_Y - 2 + Math.sin(bp) * 1.5;
+          ctx.beginPath();
+          ctx.arc(bx, by, 1.2 + Math.sin(bp * 1.5) * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+      }
+
+      // Erupting purple slimeballs (from slime pits; twice size, bubbling)
       for (let dart of poisonDarts) {
         const dsx = dart.wx - scrollX;
         const dsy = dart.y;
         if (dsx < -14 || dsx > W + 14) continue;
 
-        const r = 4.5 + Math.sin(frame * 0.18 + dsx) * 0.8; // pulsing radius
+        const r = 9 + Math.sin(frame * 0.18 + dsx) * 1.2; // twice size, pulsing
 
-        // Outer fire glow
-        ctx.fillStyle = 'rgba(255, 100, 20, 0.4)';
+        // Outer purple/magenta glow (bubbling slime)
+        ctx.fillStyle = 'rgba(170, 80, 220, 0.35)';
         ctx.beginPath();
-        ctx.arc(dsx, dsy, r + 3, 0, Math.PI * 2);
+        ctx.arc(dsx, dsy, r + 5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main fireball (red-orange)
-        ctx.fillStyle = '#ff5522';
+        // Main slimeball body (deep purple-pink)
+        ctx.fillStyle = '#9933cc';
         ctx.beginPath();
         ctx.arc(dsx, dsy, r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hot yellow core
-        ctx.fillStyle = '#ffdd66';
+        // Bubbling highlights inside (lighter pink-purple bubbles, animated)
+        ctx.fillStyle = '#ff88cc';
+        for (let b = 0; b < 3; b++) {
+          const bp = frame * 0.12 + b * 2.3 + dsx;
+          const bx = dsx + Math.sin(bp) * (r * 0.4);
+          const by = dsy + Math.cos(bp * 0.8) * (r * 0.3) - 1;
+          ctx.beginPath();
+          ctx.arc(bx, by, 1.8 + Math.sin(bp * 1.5) * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Hot core (brighter)
+        ctx.fillStyle = '#cc99ff';
         ctx.beginPath();
-        ctx.arc(dsx - 0.8, dsy - 0.6, r * 0.45, 0, Math.PI * 2);
+        ctx.arc(dsx - 1, dsy - 1, r * 0.35, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -2629,37 +2952,167 @@
         ctx.stroke();
       }
 
-      // === FLOATING PLATFORMS (dark rock with lava glow edges) ===
+      // === PINK SNAKE-LIKE FLOWER CEILING HAZARDS (L5 biosphere theme; draw after ground/high bg but before platforms/player for proper layering) ===
+      // Stem #44aa66 or darker; flower petals #ff88cc / #ff77cc / #cc66ee bright dangerous pink. Snake curve via wiggle sin offset on segments.
+      // From ceiling (small y) down as thick segmented vine; head flower (circle + 5 petals); subtle vein/glow + slight petal/head anim.
+      // No parallax (or very light); animated with frame.
+      for (let f of ceilingFlowers) {
+        const sx = f.wx - scrollX;
+        if (sx < -60 || sx > W + 60) continue; // offscreen cull
+        const baseY = f.baseY;
+        const curLen = f.length;
+        if (curLen < 1) continue;
+
+        const segments = 7;
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+          const t = i / segments;
+          const ly = baseY + t * curLen;
+          // snake wiggle: amp grows with length down the vine, phase + t for curve
+          const amp = Math.min(t * curLen * 0.085, 22);
+          const woff = Math.sin(frame * 0.029 + f.wigglePhase + t * 2.1) * amp;
+          points.push({ x: sx + woff, y: ly });
+        }
+
+        // Thick stem vine (dark green #44aa66 theme match to flora stems; use stroke for smooth curve)
+        ctx.strokeStyle = '#2f7a4a'; // slightly darker stem
+        ctx.lineWidth = 9.5;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.stroke();
+
+        // Lighter inner stem highlight
+        ctx.strokeStyle = '#4aa86b';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.stroke();
+
+        // Pink vein glow line (subtle dangerous highlight)
+        ctx.strokeStyle = 'rgba(255, 136, 204, 0.45)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x + 1, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x + 1, points[i].y);
+        }
+        ctx.stroke();
+
+        // Flower head at tip (glow + layered petals + center)
+        const tip = points[points.length - 1];
+        const headPhase = frame * 0.04 + f.wigglePhase;
+        const petalPulse = 0.85 + 0.15 * Math.sin(headPhase * 1.6);
+        const headRot = Math.sin(headPhase) * 0.25;
+
+        // Outer soft glow (pink danger aura)
+        ctx.fillStyle = 'rgba(255, 136, 204, 0.22)';
+        ctx.beginPath();
+        ctx.arc(tip.x, tip.y, 13, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Petals (5 main + smaller offsets; bright pink #ff88cc / #ff77cc)
+        ctx.fillStyle = '#ff88cc';
+        for (let p = 0; p < 5; p++) {
+          const pa = (p * (Math.PI * 2 / 5)) + headRot + (p % 2 ? 0.15 : -0.1);
+          const px = tip.x + Math.cos(pa) * (7.5 * petalPulse);
+          const py = tip.y + Math.sin(pa) * (5.5 * petalPulse);
+          ctx.beginPath();
+          ctx.ellipse(px, py, 5.5 * petalPulse, 3.2 * petalPulse, pa + 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#ff77cc';
+        for (let p = 0; p < 5; p++) {
+          const pa = (p * (Math.PI * 2 / 5)) + headRot + 0.6 + (p % 2 ? 0.1 : -0.15);
+          const px = tip.x + Math.cos(pa) * (5 * petalPulse);
+          const py = tip.y + Math.sin(pa) * (4 * petalPulse);
+          ctx.beginPath();
+          ctx.ellipse(px, py, 3.8 * petalPulse, 2.2 * petalPulse, pa, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Center bulb (dangerous purple-pink)
+        ctx.fillStyle = '#cc66ee';
+        ctx.beginPath();
+        ctx.arc(tip.x, tip.y, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 170, 220, 0.7)';
+        ctx.beginPath();
+        ctx.arc(tip.x - 1, tip.y - 1, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ceiling attach nub (small stem from top)
+        ctx.fillStyle = '#2f7a4a';
+        ctx.fillRect(sx - 2, 0, 4, baseY + 2);
+        ctx.fillStyle = '#4aa86b';
+        ctx.fillRect(sx - 1, 0, 2, baseY + 1);
+      }
+
+      // === FLOATING PLATFORMS (bubblegum pink with bubble texture; thicker, L/R sway + up/down float) ===
       for (let p of platforms) {
         const sway = (p.swayAmp || 0) * Math.sin((frame * 0.021) + (p.swayPhase || 0));
+        const floatY = (p.floatAmp || 0) * Math.sin((frame * 0.018) + (p.floatPhase || 0));
         const sx = p.wx - scrollX + sway;
         if (sx < -90 || sx > W + 90) continue;
-        const py = p.y;
+        const py = p.y + floatY;
 
-        // soft shadow (moves slightly with sway)
+        // soft shadow (moves slightly with sway + floatY)
         ctx.fillStyle = 'rgba(0,0,0,0.32)';
         ctx.fillRect(sx + 3, py + p.height + 3, p.width - 6, 5);
 
-        // main platform body (charred rock)
-        ctx.fillStyle = ((p.swayAmp || 0) > 0.04 ? '#4a2233' : '#3a1a2a');
+        // main platform body (bubblegum pink; variation based on moving L/R sway)
+        ctx.fillStyle = ((p.swayAmp || 0) > 0.04 ? '#ff77cc' : '#ff88cc');
         ctx.fillRect(sx, py, p.width, p.height);
 
-        // lava glow top edge
-        ctx.fillStyle = '#cc5522';
+        // lighter pink top highlight (bubblegum sheen, no lava)
+        ctx.fillStyle = 'rgba(255, 187, 221, 0.65)';
         ctx.fillRect(sx, py, p.width, 2);
 
-        // inner hot highlight
-        ctx.fillStyle = '#ff8844';
+        // subtle inner top highlight
+        ctx.fillStyle = 'rgba(255, 200, 230, 0.4)';
         ctx.fillRect(sx + 3, py + 2, p.width - 6, 1);
 
-        // underside rock detail
-        ctx.fillStyle = '#1f1814';
+        // underside detail (deeper pink)
+        ctx.fillStyle = '#552244';
         ctx.fillRect(sx + 2, py + p.height - 3, p.width - 4, 2);
 
-        // corner ember lights (lava orange)
-        ctx.fillStyle = '#ffaa55';
-        ctx.fillRect(sx + 5, py + 2.5, 2, 1);
-        ctx.fillRect(sx + p.width - 8, py + 2.5, 2, 1);
+        // Bubble texture: several small semi-transparent ellipses/circles scattered on surface
+        // (random but seeded by wx/phase for stable positions per platform; pulsing size/alpha with sin(frame))
+        ctx.fillStyle = '#ffbbdd';
+        const numBubbles = 5;
+        for (let i = 0; i < numBubbles; i++) {
+          // seeded pseudo-random pos using wx + phase + i (stable, no rand in draw)
+          const seed = (p.wx * 0.83 + (p.swayPhase || 0) * 0.4 + i * 31.7) % 97;
+          const bx = sx + 4 + (seed % (p.width - 9));
+          const by = py + 2.5 + ((i * 2.8 + (seed % 7)) % (p.height - 4));
+          const pulse = 0.75 + 0.35 * Math.sin(frame * 0.065 + i * 1.1 + (p.floatPhase || 0) * 0.6);
+          const brx = (1.7 + (i % 2) * 0.6) * pulse;
+          const bry = (1.2 + (i % 3) * 0.4) * pulse;
+          ctx.globalAlpha = 0.28 + 0.22 * Math.sin(frame * 0.09 + i * 0.8 + seed);
+          ctx.beginPath();
+          ctx.ellipse(bx, by, brx, bry, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+
+        // subtle bubble rim highlights (brighter pink accents)
+        ctx.fillStyle = 'rgba(255, 200, 230, 0.5)';
+        for (let i = 0; i < 2; i++) {
+          const seed2 = (p.wx * 1.1 + i * 47) % 61;
+          const bx2 = sx + 6 + (seed2 % (p.width - 12));
+          const by2 = py + 3 + ((i * 3.5 + (seed2 % 5)) % (p.height - 6));
+          const br2 = 1.1 + Math.sin(frame * 0.08 + i) * 0.3;
+          ctx.beginPath();
+          ctx.ellipse(bx2, by2, br2, br2 * 0.7, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       // === FRIENDLY NPC (pink octagon with blue eyes, middle of level, bounces and speech bubble on approach) ===
@@ -2843,9 +3296,10 @@
         }
       }
 
-      // draw obstacles (triangles) - lava themed living hazards that wiggle L/R as if alive
+      // draw obstacles (triangles) - pink biosphere living organic/crystal hazards that patrol + wiggle L/R as if alive (reskinned; no lava)
       for (let o of obstacles) {
-        const sx = o.wx - scrollX;
+        const currWX = getTriangleCurrentWX(o);
+        const sx = currWX - scrollX;
         if (sx < -30 || sx > W + 30) continue;
 
         const th = o.h;
@@ -2862,8 +3316,8 @@
         ctx.closePath();
         ctx.fill();
 
-        // main triangle (hazard) - lava themed charred rock
-        ctx.fillStyle = '#2c211b';
+        // main triangle (hazard) - pink biosphere organic/crystal (reskinned; no lava)
+        ctx.fillStyle = '#2a1f2b';
         ctx.beginPath();
         ctx.moveTo(drawX, GROUND_Y - th);
         ctx.lineTo(drawX - tw / 2, GROUND_Y + 0.5);
@@ -2871,9 +3325,13 @@
         ctx.closePath();
         ctx.fill();
 
-        // pulsing lava glow top lip / edge (themed)
-        const lavaAlpha = 0.55 + 0.35 * Math.sin(frame * 0.1 + (o.wx || 0));
-        ctx.fillStyle = `rgba(255, 100, 30, ${lavaAlpha})`;
+        // NEW vein (center pulsing pink/magenta living detail)
+        ctx.fillStyle = `rgba(255,136,204, ${0.32 + 0.22*Math.sin(frame*0.09 + (o.wx||0))})`;
+        ctx.fillRect(drawX-1.5, GROUND_Y - th*0.72 , 3, th*0.48);
+
+        // pulsing bio glow top lip / edge (pink biosphere)
+        const lipAlpha = 0.55 + 0.35 * Math.sin(frame * 0.1 + (o.wx || 0));
+        ctx.fillStyle = `rgba(255, 119, 204, ${lipAlpha})`;
         ctx.beginPath();
         ctx.moveTo(drawX, GROUND_Y - th);
         ctx.lineTo(drawX - tw / 2 + 1, GROUND_Y - 1);
@@ -2881,14 +3339,24 @@
         ctx.closePath();
         ctx.fill();
 
-        // lava cracks / small vents on the face (animated glow)
-        ctx.fillStyle = 'rgba(220, 65, 20, 0.65)';
+        // NEW soft highlight (thin pink rim after lip for living organic detail)
+        ctx.strokeStyle = 'rgba(255,136,204,0.28)';
+        ctx.lineWidth=1.1;
+        ctx.beginPath();
+        ctx.moveTo(drawX, GROUND_Y - th + 2);
+        ctx.lineTo(drawX - tw / 2 + 3, GROUND_Y - 2);
+        ctx.lineTo(drawX + tw / 2 - 3, GROUND_Y - 2);
+        ctx.closePath();
+        ctx.stroke();
+
+        // pink crystal cracks / small vents on the face (animated glow)
+        ctx.fillStyle = `rgba(255, 136, 204, 0.6)`;
         const crackY = GROUND_Y - th * 0.55 + Math.sin(frame * 0.07 + o.wx) * 2;
         ctx.fillRect(drawX - 4, crackY, 8, 1.5);
         ctx.fillRect(drawX - 2, GROUND_Y - th * 0.3, 4, 1);
 
         // top edge (cracked rock)
-        ctx.strokeStyle = '#4a3a30';
+        ctx.strokeStyle = '#552244';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         ctx.moveTo(drawX, GROUND_Y - th);
@@ -2896,11 +3364,11 @@
         ctx.stroke();
 
         // small accent / ember line
-        ctx.fillStyle = '#3a2a22';
+        ctx.fillStyle = '#4a2233';
         ctx.fillRect(drawX - 1.5, GROUND_Y - th + 5, 3, 1.5);
       }
 
-      // === FIERY SPHERES (red lava orbs - slow chasers, squashable from above, shoot fireballs) ===
+      // === GLOWING PURPLE BLOBS (biosphere melting chasers - slow, squashable from above, shoot projectiles) ===
       for (let s of specials) {
         const sx = s.wx - scrollX;
         const sy = s.y;
@@ -2916,74 +3384,109 @@
         ctx.ellipse(cx + 2, GROUND_Y + 2, radius * 0.9, 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Outer fire aura / heat glow (pulsing)
+        // Soft outer purple/magenta glow (pulsing - glowing alien biosphere effect)
         const pulse = 0.7 + Math.sin(frame * 0.12 + s.wx) * 0.35;
-        ctx.fillStyle = `rgba(255, 80, 20, ${0.18 * pulse})`;
+        ctx.fillStyle = `rgba(170, 80, 200, ${0.16 * pulse})`;
         ctx.beginPath();
-        ctx.arc(cx, cy, radius + 7 + Math.sin(frame * 0.09) * 2, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, radius + 9 + Math.sin(frame * 0.09) * 2.5, radius * 1.15 + 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main sphere body (molten red)
-        ctx.fillStyle = '#cc3311';
+        // Secondary inner glow layer (brighter pink-purple)
+        ctx.fillStyle = `rgba(204, 102, 238, ${0.22 * pulse})`;
         ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy - 1, radius + 3 + Math.sin(frame * 0.11) * 1.5, radius * 1.05, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Darker rock crust patches
-        ctx.fillStyle = '#662211';
+        // Main blob body - organic purple/pink with slight vertical melt squish (tall to respect original h)
+        const meltPhase = s.wx * 0.015 + frame * 0.075;
+        const melt = Math.sin(meltPhase) * 2.8;
+        const blobH = radius * 1.18 + melt * 0.4; // slight melt stretch on height
+        ctx.fillStyle = '#3a1a2a';
         ctx.beginPath();
-        ctx.arc(cx - 3, cy - 4, radius * 0.55, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(cx + 5, cy + 2, radius * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Hot glowing core (yellow-orange)
-        ctx.fillStyle = '#ffaa33';
-        ctx.beginPath();
-        ctx.arc(cx - 1, cy - 2, radius * 0.38, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy + melt * 0.25, radius * 0.98, blobH, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bright lava cracks / highlights
-        ctx.fillStyle = '#ffdd55';
-        ctx.fillRect(cx - radius * 0.6, cy - 1, radius * 1.1, 1.5);
-        ctx.fillRect(cx - 1, cy - radius * 0.55, 1.5, radius * 0.9);
+        // Secondary blob lobe (left side, offset for blobby shape)
+        ctx.fillStyle = '#4a2233';
+        ctx.beginPath();
+        ctx.ellipse(cx - 4.5, cy - 1 + melt * 0.6, radius * 0.72, radius * 0.92 + melt * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-        // Embers around the sphere (procedural)
-        ctx.fillStyle = 'rgba(255, 180, 40, 0.7)';
-        for (let e = 0; e < 3; e++) {
-          const ex = cx + Math.sin(frame * 0.07 + e * 1.9 + s.wx) * (radius + 3);
-          const ey = cy + Math.cos(frame * 0.09 + e * 2.3) * (radius * 0.6 + 2);
+        // Right + lower drip lobe (melting organic feel)
+        ctx.beginPath();
+        ctx.ellipse(cx + 4, cy + 3 + melt * 0.8, radius * 0.65, radius * 0.78 + melt * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bright glowing core (vibrant purple-pink, pulsing)
+        ctx.fillStyle = '#cc66ee';
+        ctx.beginPath();
+        ctx.ellipse(cx - 1, cy - 2 + melt * 0.15, radius * 0.42, radius * 0.48, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hotter inner core highlight
+        ctx.fillStyle = '#ff88cc';
+        ctx.beginPath();
+        ctx.arc(cx - 2, cy - 3, radius * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Melting surface drips / vents (animated pink goo-like drips that bob downward)
+        ctx.fillStyle = 'rgba(255, 136, 204, 0.75)';
+        for (let d = 0; d < 2; d++) {
+          const dPhase = frame * 0.09 + s.wx * 0.02 + d * 2.1;
+          const dripY = cy + radius * 0.55 + Math.sin(dPhase) * 3.5 + d * 3;
+          const dripW = 2.8 + (d % 2);
           ctx.beginPath();
-          ctx.arc(ex, ey, 1.2 + (e % 2), 0, Math.PI * 2);
+          ctx.ellipse(cx - 5 + d * 9, dripY, dripW, 4.5 + Math.sin(dPhase * 1.3) * 1.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Rising vapor / bubble accents (melting "bubbles" drifting upward, pink-purple)
+        ctx.fillStyle = 'rgba(204, 102, 238, 0.65)';
+        for (let e = 0; e < 3; e++) {
+          const ePhase = frame * 0.065 + e * 1.7 + s.wx * 0.01;
+          const ex = cx + Math.sin(ePhase) * (radius * 0.7 + 2);
+          const ey = cy - 6 - ((ePhase * 1.8) % (radius * 1.1)); // slow rise with wrap for continuous melt vapor
+          ctx.beginPath();
+          ctx.arc(ex, ey, 1.1 + (e % 2) * 0.6, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // === MONSTER PROJECTILES (small fireballs with smoke trail from fiery spheres) ===
+      // === MONSTER SLIMEBALLS (bubbling purple from glowing blobs/enemies; twice size)
       for (let pr of projectiles) {
         const sx = pr.wx - scrollX;
         const sy = pr.y;
         if (sx < -30 || sx > W + 30) continue;
 
-        const r = 3.8 + Math.sin(frame * 0.22 + sx) * 0.5;
+        const r = 8 + Math.sin(frame * 0.22 + sx) * 0.8; // twice size
 
-        // Outer flame glow
-        ctx.fillStyle = 'rgba(255, 90, 20, 0.35)';
+        // Outer purple slime glow
+        ctx.fillStyle = 'rgba(160, 70, 210, 0.3)';
         ctx.beginPath();
-        ctx.arc(sx, sy, r + 2.5, 0, Math.PI * 2);
+        ctx.arc(sx, sy, r + 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Main fireball body (orange-red)
-        ctx.fillStyle = '#ff6622';
+        // Main bubbling slimeball body (purple-pink)
+        ctx.fillStyle = '#aa66ff';
         ctx.beginPath();
         ctx.arc(sx, sy, r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bright yellow-white hot core
-        ctx.fillStyle = '#ffdd88';
+        // Bubbles inside (pulsing lighter)
+        ctx.fillStyle = '#ff77cc';
+        for (let b = 0; b < 3; b++) {
+          const bp = frame * 0.15 + b * 2.1 + sx;
+          const bx = sx + Math.sin(bp) * r * 0.35;
+          const by = sy + Math.cos(bp * 0.7) * r * 0.25;
+          ctx.beginPath();
+          ctx.arc(bx, by, 1.5 + Math.sin(bp) * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Core
+        ctx.fillStyle = '#dd99ff';
         ctx.beginPath();
-        ctx.arc(sx - 0.6, sy - 0.5, r * 0.42, 0, Math.PI * 2);
+        ctx.arc(sx - 0.5, sy - 0.5, r * 0.3, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -3206,28 +3709,41 @@
         }
       }
 
-      // === END FIREBALLS (near-exit hazard; repurposed from prior boss logic in L5 - no active endBoss entity) ===
+      // === END SLIMEBALLS (near-exit hazard; bubbling purple, twice size; repurposed visuals)
       for (let fb of endFireballs) {
         const sx = fb.wx - scrollX;
         const sy = fb.y;
         if (sx < -20 || sx > W + 40) continue;
 
-        // Outer flame glow
-        ctx.fillStyle = 'rgba(255, 100, 30, 0.35)';
+        const r = 9; // twice size base
+
+        // Outer purple glow
+        ctx.fillStyle = 'rgba(170, 80, 220, 0.3)';
         ctx.beginPath();
-        ctx.arc(sx + 4, sy + 1.5, 8, 0, Math.PI * 2);
+        ctx.arc(sx + 4, sy + 1.5, r + 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Core fireball
-        ctx.fillStyle = '#dd6622';
+        // Main slimeball
+        ctx.fillStyle = '#aa66ff';
         ctx.beginPath();
-        ctx.arc(sx + 4, sy + 2, 4.5, 0, Math.PI * 2);
+        ctx.arc(sx + 4, sy + 2, r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hot inner (less yellow, more plasma)
-        ctx.fillStyle = '#eeaa77';
+        // Bubbles
+        ctx.fillStyle = '#ff88cc';
+        for (let b = 0; b < 2; b++) {
+          const bp = frame * 0.1 + b * 3 + sx;
+          const bx = sx + 4 + Math.sin(bp) * 3;
+          const by = sy + 1 + Math.cos(bp) * 2;
+          ctx.beginPath();
+          ctx.arc(bx, by, 1.8 + Math.sin(bp) * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Core
+        ctx.fillStyle = '#cc99ff';
         ctx.beginPath();
-        ctx.arc(sx + 5, sy + 1, 2, 0, Math.PI * 2);
+        ctx.arc(sx + 5, sy + 1, 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -3653,6 +4169,7 @@
     }
 
     function startPlaying() {
+      getAudioCtx();
       if (gameState === 'start') {
         gameState = 'playing';
       } else if (gameState === 'over' || gameState === 'complete') {

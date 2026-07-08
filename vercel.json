@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "/prompt-builder.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/prompt-builder",
+      "destination": "/",
+      "permanent": true
+    }
+  ]
+}

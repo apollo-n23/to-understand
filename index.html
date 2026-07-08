@@ -1,0 +1,2618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LCARS 4.7 // POPCORN PROMPT SYNTHESIZER</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --text: #d8e8ff;
+      --text-dim: #7a8aa0;
+      --text-data: #88bbff;
+      --yellow: #f0b800;
+      --gold: #ffcc66;
+      --orange: #ff9900;
+      --orange-dark: #cc7700;
+      --blue: #4499ff;
+      --blue-bright: #66bbff;
+      --cyan: #00ccff;
+      --purple: #8866cc;
+      --purple-light: #aa88ee;
+      --magenta: #ff6699;
+      --beige: #ccaa77;
+      --beige-light: #ddbb99;
+      --panel-dark: #05080f;
+      --bar-dark: #0a0f1a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      line-height: 1.35;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 8px 12px 72px;
+    }
+
+    /* === TOP ENGINEERING BAR (like the image) === */
+    .top-bar {
+      height: 42px;
+      background: linear-gradient(180deg, #f8d050 0%, var(--yellow) 45%, #d89800 100%);
+      border-radius: 0 0 22px 22px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      margin-bottom: 6px;
+      box-shadow: 0 3px 0 #000;
+      position: relative;
+      z-index: 10;
+    }
+    .top-bar::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0;
+      height: 100%; width: 38%;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.15));
+      border-radius: 0 0 22px 22px;
+    }
+    .top-bar-left {
+      font-weight: 900;
+      font-size: 17px;
+      letter-spacing: 3px;
+      color: #000;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .top-bar-title {
+      margin-left: 22px;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 2.5px;
+      color: #000;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .top-bar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #000;
+      letter-spacing: 1.5px;
+    }
+    .top-status {
+      background: #000;
+      color: var(--yellow);
+      padding: 1px 9px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    /* === CONSOLE FRAME === */
+    .console {
+      max-width: 1420px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* === BUSY LCARS BACKGROUND LITTER (the key request) === */
+    .bg-litter {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .data-column {
+      position: absolute;
+      top: 0;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 9px;
+      line-height: 11px;
+      color: #2a4a7a;
+      letter-spacing: 0.5px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      white-space: nowrap;
+      opacity: 0.65;
+      user-select: none;
+    }
+    .data-column.left { left: 4px; top: 60px; height: 62%; }
+    .data-column.right { right: 4px; top: 70px; height: 58%; }
+
+    .data-strip {
+      position: absolute;
+      height: 13px;
+      background: linear-gradient(90deg, transparent, rgba(68,153,255,0.12), transparent);
+      border-top: 1px solid rgba(68,153,255,0.15);
+      border-bottom: 1px solid rgba(68,153,255,0.08);
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8.5px;
+      color: #2a4a7a;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      white-space: nowrap;
+      opacity: 0.7;
+      user-select: none;
+    }
+    .data-strip.s1 { top: 58px; left: 120px; right: 180px; }
+    .data-strip.s2 { top: 142px; left: 80px; right: 260px; }
+    .data-strip.s3 { bottom: 118px; left: 140px; right: 95px; }
+
+    .hex-row {
+      position: absolute;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8.5px;
+      color: #1f3a60;
+      letter-spacing: 0.8px;
+      opacity: 0.55;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .hex-row.r1 { top: 210px; left: 26px; }
+    .hex-row.r2 { top: 312px; right: 32px; }
+    .hex-row.r3 { bottom: 168px; left: 32px; }
+
+    /* Small pill buttons scattered like the image */
+    .bg-pill {
+      position: absolute;
+      height: 15px;
+      padding: 0 7px;
+      border-radius: 999px;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      user-select: none;
+      opacity: 0.75;
+      box-shadow: 0 0 0 1px #000;
+    }
+    .bg-pill.p1 { top: 72px; left: 18px; background: #8866cc; width: 38px; }
+    .bg-pill.p2 { top: 91px; left: 18px; background: #4499ff; width: 32px; }
+    .bg-pill.p3 { top: 110px; left: 18px; background: #ff9900; width: 41px; }
+    .bg-pill.p4 { top: 72px; right: 18px; background: #ccaa77; width: 29px; }
+    .bg-pill.p5 { top: 91px; right: 18px; background: #66bbff; width: 35px; }
+    .bg-pill.p6 { top: 110px; right: 18px; background: #ff6699; width: 26px; }
+    .bg-pill.p7 { bottom: 142px; left: 22px; background: #4499ff; width: 44px; }
+    .bg-pill.p8 { bottom: 123px; left: 22px; background: #8866cc; width: 31px; }
+
+    /* === MAIN LAYOUT === */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 148px 1fr 162px;
+      gap: 10px;
+      position: relative;
+      z-index: 2;
+      align-items: stretch;
+    }
+
+    /* Left decorative sidebar (dense LCARS buttons like image) */
+    .left-sidebar {
+      background: var(--bar-dark);
+      border: 1px solid #1a2a44;
+      border-radius: 6px 0 0 6px;
+      padding: 8px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: stretch;
+      min-height: 100%;
+      height: 100%;
+    }
+    .left-sidebar .lcars-slice-row {
+      width: 100%;
+      display: flex;
+      gap: 4.4px;
+      height: 17px;
+      margin-bottom: 1px;
+    }
+    .left-sidebar .lcars-slice-main {
+      flex: 2;
+      min-width: 0;
+      height: 100%;
+      border-radius: 999px 0 0 999px;
+      font-size: 7.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0 6px 0 7px;
+      color: #000;
+      box-shadow: 0 0 0 1px #000;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .left-sidebar .lcars-slice-cap {
+      flex: 1;
+      height: 100%;
+      border-radius: 0 999px 999px 0;
+      box-shadow: 0 0 0 1px #000;
+    }
+    .left-sidebar .lcars-slice-row.b1 { --slice-color: #8866cc; }
+    .left-sidebar .lcars-slice-row.b2 { --slice-color: #4499ff; }
+    .left-sidebar .lcars-slice-row.b3 { --slice-color: #ff9900; }
+    .left-sidebar .lcars-slice-row.b4 { --slice-color: #ccaa77; }
+    .left-sidebar .lcars-slice-row.b5 { --slice-color: #66bbff; }
+    .left-sidebar .lcars-slice-row.b6 { --slice-color: #ff6699; }
+    .left-sidebar .lcars-slice-row.b7 { --slice-color: #4499ff; }
+    .left-sidebar .lcars-slice-row.b8 { --slice-color: #8866cc; }
+    .left-sidebar .lcars-slice-row.b9 { --slice-color: #ffaa44; }
+    .left-sidebar .lcars-slice-row .lcars-slice-main,
+    .left-sidebar .lcars-slice-row .lcars-slice-cap { background: var(--slice-color); }
+
+    .sidebar-spacer {
+      height: 10px;
+      flex-shrink: 0;
+    }
+    .earth-view {
+      width: 100%;
+      border: 1px solid #1a2a44;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #000;
+      flex-shrink: 0;
+    }
+    .earth-view svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .pale-blue-dot-pane {
+      margin-top: 6px;
+      background: #000;
+      border: 1px solid #1a2a44;
+      border-radius: 3px;
+      padding: 5px 6px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .pale-blue-dot-pane .pbd-title {
+      font-size: 12.4px;
+      font-weight: 800;
+      color: var(--cyan);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #1a2a44;
+    }
+    .pale-blue-dot-pane p {
+      font-size: 10.7px;
+      line-height: 1.45;
+      color: #6a8aaa;
+      margin-bottom: 5px;
+    }
+    .pale-blue-dot-pane .pbd-attrib {
+      font-size: 9.9px;
+      color: var(--text-dim);
+      font-style: italic;
+      text-align: right;
+      margin-top: 4px;
+    }
+    .end-boss-thumb {
+      margin-top: 6px;
+      background: #000;
+      border: 1px solid #1a2a44;
+      border-radius: 4px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .end-boss-thumb svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .end-boss-label {
+      font-size: 7px;
+      color: #446688;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-top: 3px;
+      text-align: center;
+    }
+
+    .star-map-pane {
+      margin-top: 6px;
+      background: #000;
+      border: 1px solid #1a2a44;
+      border-radius: 4px;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .star-map-canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      background: #020408;
+    }
+    .star-map-pane::before {
+      content: "";
+      display: block;
+      height: 3px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue), var(--purple));
+      opacity: 0.55;
+      flex-shrink: 0;
+    }
+    .star-map-title {
+      font-size: 7.5px;
+      font-weight: 800;
+      color: var(--blue-bright);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 4px 6px 2px;
+      border-bottom: 1px solid #1a2a44;
+      flex-shrink: 0;
+    }
+    .star-map-svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+    .star-map-svg .bg-dust {
+      fill: #c8d8ff;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .star-map-readout {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 7.5px;
+      color: var(--yellow);
+      letter-spacing: 0.8px;
+      padding: 3px 6px 5px;
+      border-top: 1px solid #1a2a44;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .star-map-svg .sector-grid line {
+      stroke: rgba(68, 153, 255, 0.35);
+      stroke-width: 0.4;
+    }
+    .star-map-svg .star-hit {
+      fill: transparent;
+      cursor: pointer;
+      pointer-events: all;
+    }
+    .star-map-svg .star-point {
+      pointer-events: none;
+      transition: filter 0.15s ease;
+    }
+    .star-map-svg .star-hit:hover + .star-point,
+    .star-map-svg .star-point.selected {
+      filter: brightness(1.8);
+    }
+    .star-map-svg .vessel-path {
+      fill: none;
+      stroke: #ff77cc;
+      stroke-width: 0.55;
+      stroke-dasharray: 3 2;
+      opacity: 0.82;
+      pointer-events: none;
+    }
+    .star-map-svg .star-world-label {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 7.6px;
+      fill: #f0b800;
+      letter-spacing: 0.4px;
+      pointer-events: none;
+      text-transform: uppercase;
+    }
+    .star-map-svg .vessel-hit {
+      fill: transparent;
+      cursor: pointer;
+      pointer-events: all;
+    }
+    .star-map-svg .vessel-ship ellipse,
+    .star-map-svg .vessel-ship rect,
+    .star-map-svg .vessel-ship line,
+    .star-map-svg .vessel-ship circle {
+      fill: none;
+      stroke: #66bbff;
+      stroke-width: 0.6;
+      pointer-events: none;
+    }
+    .star-map-svg .vessel-ship.selected ellipse,
+    .star-map-svg .vessel-ship.selected rect,
+    .star-map-svg .vessel-ship.selected line,
+    .star-map-svg .vessel-ship.selected circle {
+      stroke: #99ddff;
+      filter: brightness(1.6);
+    }
+    .star-map-svg .vessel-reticule-label {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 7.6px;
+      fill: #66bbff;
+      letter-spacing: 0.3px;
+      pointer-events: none;
+      text-transform: uppercase;
+    }
+    .star-map-svg .star-reticule {
+      pointer-events: none;
+      transition: transform 0.2s ease;
+    }
+    .star-map-svg .star-reticule circle {
+      fill: none;
+      stroke: var(--yellow);
+      stroke-width: 1.2;
+    }
+    .star-map-svg .star-reticule line {
+      stroke: var(--yellow);
+      stroke-width: 0.8;
+      opacity: 0.9;
+    }
+
+    /* === CENTER WORK AREA === */
+    .work-area {
+      background: #02050c;
+      border: 2px solid #1a2a44;
+      border-radius: 4px;
+      padding: 10px 12px 14px;
+      position: relative;
+    }
+    .work-area::before {
+      content: "";
+      position: absolute;
+      top: -2px; left: -2px; right: -2px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue), var(--purple));
+      border-radius: 4px 4px 0 0;
+      opacity: 0.6;
+    }
+
+    .work-title {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+
+    /* The actual input panels - made more LCARS-like */
+    .input-panel {
+      margin-bottom: 7px;
+      background: var(--panel-dark);
+      border: 1px solid #1f2f4a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .input-header {
+      height: 19px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #000;
+      position: relative;
+    }
+    .input-header.persona      { background: var(--orange); }
+    .input-header.objective    { background: var(--blue); }
+    .input-header.process      { background: var(--purple); }
+    .input-header.context      { background: var(--magenta); }
+    .input-header.output       { background: var(--cyan); }
+    .input-header.restrictions { background: var(--gold); }
+    .input-header.nature       { background: var(--beige); }
+
+    .input-header .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .input-header .extra {
+      font-size: 8.5px;
+      opacity: 0.85;
+      font-family: "Consolas", "Courier New", monospace;
+    }
+    .input-header .char-count {
+      font-size: 8.5px;
+      opacity: 0.85;
+      font-family: "Consolas", "Courier New", monospace;
+      min-width: 52px;
+      text-align: right;
+    }
+    .input-header .char-count.near-limit {
+      color: var(--orange);
+      font-weight: 800;
+      opacity: 1;
+      text-shadow: 0 0 4px rgba(255, 153, 0, 0.5);
+    }
+    .input-header .char-count.at-limit {
+      color: #ff2244;
+      font-weight: 800;
+      opacity: 1;
+      text-shadow: 0 0 4px rgba(255, 34, 68, 0.5);
+    }
+
+    .drag-handle {
+      cursor: grab;
+      margin-right: 6px;
+      font-size: 11px;
+      font-weight: 900;
+      opacity: 0.75;
+      user-select: none;
+      letter-spacing: -1px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .drag-handle:active { cursor: grabbing; }
+
+    #panels-container {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    #panels-container .input-panel {
+      margin-bottom: 0;
+      transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .input-panel.dragging {
+      opacity: 0.45;
+      border-color: var(--cyan);
+    }
+    .input-panel.drag-over {
+      border-color: var(--orange);
+      box-shadow: 0 0 10px rgba(255, 153, 0, 0.45);
+    }
+
+    textarea {
+      width: 100%;
+      background: #000000;
+      color: #c8d8ff;
+      border: none;
+      resize: none;
+      padding: 7px 9px;
+      font-size: 13.5px;
+      line-height: 1.38;
+      font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
+      outline: none;
+    }
+    textarea:focus {
+      box-shadow: inset 0 0 0 1px rgba(102, 187, 255, 0.25);
+    }
+    textarea::placeholder {
+      color: #334455;
+      font-style: italic;
+    }
+
+    /* Size variations - wider for Process, Context, Restrictions */
+    #persona { height: 55px; }
+    #objective { height: 78px; }
+    #process { height: 172px; }
+    #context { height: 172px; }
+    #output { height: 88px; }
+    #restrictions { height: 172px; }
+    #nature { height: 62px; }
+
+    /* === TOOLBAR MENU (clear + format toggle; copy in floating bar) === */
+    .toolbar-menu {
+      margin: 8px 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      padding: 6px 10px;
+      background: var(--bar-dark);
+      border: 1px solid #1a2a44;
+      border-radius: 0 18px 4px 4px;
+      box-shadow: inset 0 -1px 0 rgba(68, 153, 255, 0.12);
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-left: auto;
+    }
+
+    .format-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .format-label {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      transition: color 0.15s ease, text-shadow 0.15s ease;
+      user-select: none;
+    }
+    .format-label.active {
+      color: var(--cyan);
+      text-shadow: 0 0 6px rgba(0, 204, 255, 0.45);
+    }
+    .format-label.format-label-xml.active {
+      color: var(--purple-light);
+      text-shadow: 0 0 6px rgba(170, 136, 238, 0.45);
+    }
+    .format-slider {
+      position: relative;
+      width: 58px;
+      height: 28px;
+      padding: 0;
+      border: 2px solid var(--blue);
+      border-radius: 999px;
+      background: #000;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .format-slider:hover {
+      border-color: var(--blue-bright);
+      box-shadow: 0 0 8px rgba(68, 153, 255, 0.35);
+    }
+    .format-slider.xml-active {
+      border-color: var(--purple);
+    }
+    .format-slider.xml-active:hover {
+      border-color: var(--purple-light);
+      box-shadow: 0 0 8px rgba(136, 102, 204, 0.35);
+    }
+    .format-slider-track {
+      display: block;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    .format-slider-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, var(--orange) 0%, var(--orange-dark) 100%);
+      box-shadow: 0 0 0 2px #000;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .format-slider.xml-active .format-slider-thumb {
+      transform: translateX(30px);
+      background: linear-gradient(180deg, var(--purple-light) 0%, var(--purple) 100%);
+    }
+
+    .lcars-clear {
+      height: 46px;
+      padding: 0 16px;
+      background: #111a2a;
+      color: var(--magenta);
+      border: 2px solid var(--magenta);
+      border-radius: 18px 0 0 18px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      line-height: 1.1;
+    }
+    .lcars-clear:hover {
+      background: #1f1122;
+      color: #ff88aa;
+      border-color: #ff88aa;
+    }
+
+    .lcars-computer {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 46px;
+      padding: 0 16px;
+      background: #111a2a;
+      color: var(--cyan);
+      border: 2px solid var(--cyan);
+      border-radius: 0 18px 18px 0;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      line-height: 1.1;
+    }
+    .lcars-computer:hover {
+      background: #0a1f2a;
+      color: #66eeff;
+      border-color: #66eeff;
+    }
+
+    /* === RIGHT SIDEBAR (data readouts like image) === */
+    .right-sidebar {
+      background: var(--bar-dark);
+      border: 1px solid #1a2a44;
+      border-radius: 0 6px 6px 0;
+      padding: 8px 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 9.9px;
+      min-height: 100%;
+      height: 100%;
+    }
+    .scan-readouts {
+      background: #000;
+      border: 1px solid #2a4a77;
+      border-radius: 4px;
+      padding: 8px 8px 10px;
+      margin-bottom: 4px;
+      box-shadow: inset 0 0 16px rgba(68, 153, 255, 0.1), 0 0 8px rgba(68, 153, 255, 0.12);
+    }
+    .prompt-analysis-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ff9900;
+      text-transform: uppercase;
+      letter-spacing: 2.4px;
+      margin-bottom: 10px;
+      padding: 0 2px 6px;
+      border-bottom: 2px solid #4499ff;
+      text-shadow: 0 0 10px rgba(255, 153, 0, 0.3);
+      font-family: "Consolas", "Courier New", monospace;
+    }
+    .data-readout .readout-value.buffer-readout {
+      color: #f0b800;
+    }
+    .data-readout {
+      background: rgba(10, 20, 40, 0.55);
+      padding: 6px 7px;
+      border-radius: 3px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 11px;
+      color: var(--text-data);
+      line-height: 1.3;
+      margin-bottom: 5px;
+      border-left: 3px solid #4499ff;
+    }
+    .data-readout:last-child {
+      margin-bottom: 0;
+    }
+    .data-readout .label {
+      color: #5599cc;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 2px;
+    }
+    .data-readout .readout-value {
+      color: #88ccff;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      line-height: 1.15;
+    }
+    .integrity-readout .readout-value {
+      color: #f0b800;
+    }
+    .lcars-integrity-bar {
+      display: flex;
+      align-items: stretch;
+      gap: 3px;
+      margin-top: 7px;
+    }
+    .lcars-integrity-track {
+      flex: 1;
+      height: 12px;
+      background: #050a14;
+      border: 1px solid #2a4a77;
+      border-radius: 2px 0 0 2px;
+      overflow: hidden;
+    }
+    .lcars-integrity-fill {
+      height: 100%;
+      width: 0%;
+      display: flex;
+      align-items: stretch;
+      background: linear-gradient(90deg, #3366aa 0%, #66bbff 72%, #ff9900 100%);
+      transition: width 0.4s ease;
+      border-radius: 1px 0 0 1px;
+    }
+    .lcars-integrity-fill.has-fill {
+      min-width: 16px;
+    }
+    .lcars-integrity-endcap {
+      width: 14px;
+      margin-left: auto;
+      flex-shrink: 0;
+      background: #ff9900;
+      border-radius: 0 8px 8px 0;
+      box-shadow: 0 0 0 1px #000;
+    }
+    .lcars-integrity-rail {
+      width: 10px;
+      flex-shrink: 0;
+      background: #4499ff;
+      border-radius: 0 999px 999px 0;
+      opacity: 0.45;
+      box-shadow: 0 0 0 1px #000;
+    }
+    .status-heading {
+      margin-top: 6px;
+      font-size: 8.8px;
+      color: #446688;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status-block {
+      background: #000;
+      padding: 2px 4px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8.8px;
+      color: #4499ff;
+      line-height: 1.3;
+    }
+    .simulations-block {
+      margin: 9px 0 1px;
+    }
+    .simulations-label {
+      font-size: 8.8px;
+      color: #446688;
+      margin-bottom: 3px;
+      padding-left: 1px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    /* Right sidebar LCARS slices — rectangular main + rounded cap */
+    .right-sidebar .right-lcars-controls {
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    .right-sidebar .right-lcars-slice-row {
+      width: 100%;
+      display: flex;
+      gap: 4.4px;
+      height: 17px;
+    }
+    .right-sidebar .right-lcars-slice-main {
+      flex: 2;
+      min-width: 0;
+      height: 100%;
+      border-radius: 0;
+      font-size: 7.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0 6px 0 7px;
+      color: #000;
+      box-shadow: 0 0 0 1px #000;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .right-sidebar .right-lcars-slice-cap {
+      flex: 1;
+      height: 100%;
+      border-radius: 0 999px 999px 0;
+      box-shadow: 0 0 0 1px #000;
+    }
+    .right-sidebar .right-lcars-slice-row .right-lcars-slice-main,
+    .right-sidebar .right-lcars-slice-row .right-lcars-slice-cap {
+      background: var(--slice-color);
+    }
+    .right-sidebar .right-lcars-slice-row.rb1 { --slice-color: #8866cc; }
+    .right-sidebar .right-lcars-slice-row.rb2 { --slice-color: #4499ff; }
+    .right-sidebar .right-lcars-slice-row.rb3 { --slice-color: #ff9900; }
+    .right-sidebar .right-lcars-slice-row.rb4 { --slice-color: #ccaa77; }
+    .right-sidebar .right-lcars-slice-row.rb5 { --slice-color: #66bbff; }
+    .right-sidebar .right-lcars-slice-row.rb6 { --slice-color: #ff6699; }
+
+    /* === BOTTOM DECOR (scan grid + circular control) === */
+    .bottom-bar {
+      margin-top: 6px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .scan-grid {
+      flex: 1;
+      background: #000;
+      border: 1px solid #1a2a44;
+      border-radius: 3px;
+      padding: 4px 6px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 8px;
+      color: #1f3a60;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 2px 1px;
+      opacity: 0.6;
+      user-select: none;
+    }
+    .scan-grid div {
+      height: 7px;
+      background: currentColor;
+      opacity: 0.25;
+    }
+    .scan-grid .active { opacity: 0.85; background: #4499ff; }
+
+    /* Decorative circular LCARS control (inspired by the image) */
+    .circular-control {
+      width: 92px;
+      height: 92px;
+      position: relative;
+      flex-shrink: 0;
+      background: #000;
+      border: 2px solid #1a2a44;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+    .circular-control .pie {
+      position: absolute;
+      inset: 0;
+      background: conic-gradient(
+        #8866cc 0deg 48deg,
+        #4499ff 48deg 96deg,
+        #ff9900 96deg 144deg,
+        #ccaa77 144deg 192deg,
+        #66bbff 192deg 240deg,
+        #ff6699 240deg 288deg,
+        #4499ff 288deg 336deg,
+        #8866cc 336deg 360deg
+      );
+      mask: radial-gradient(circle at center, transparent 34%, black 36%);
+    }
+    .circular-control .center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 34px;
+      height: 34px;
+      background: #000;
+      border: 2px solid #1a2a44;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 800;
+      color: #66bbff;
+      letter-spacing: 0.5px;
+    }
+    .circular-control .arrow {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 9px solid #fff;
+      transform: translate(-50%, -50%) rotate(0deg);
+      opacity: 0.7;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111a2a;
+      color: var(--orange);
+      border: 2px solid var(--orange);
+      padding: 6px 22px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 1000;
+    }
+    .toast.show { opacity: 1; }
+
+    /* === FLOATING ACTION BAR === */
+    .floating-actions {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      z-index: 900;
+      padding: 6px 10px;
+      background: linear-gradient(180deg, #0d1525 0%, var(--bar-dark) 100%);
+      border: 2px solid #1a2a44;
+      border-radius: 999px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(68, 153, 255, 0.15);
+    }
+    .floating-actions .fab-btn {
+      height: 40px;
+      padding: 0 18px;
+      border: none;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      white-space: nowrap;
+    }
+    .floating-actions .fab-btn:hover {
+      transform: translateY(-1px);
+    }
+    .floating-actions .fab-btn:active {
+      transform: scale(0.97);
+    }
+    .fab-copy {
+      background: linear-gradient(180deg, #ffbb33 0%, var(--orange) 50%, var(--orange-dark) 100%);
+      color: #000;
+      box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--orange);
+    }
+    .fab-copy:hover {
+      box-shadow: 0 0 0 2px #000, 0 0 0 4px #ffcc66, 0 2px 10px rgba(255, 153, 0, 0.5);
+    }
+    .fab-preview {
+      background: linear-gradient(180deg, #66bbff 0%, var(--blue) 50%, #2a6fcc 100%);
+      color: #000;
+      box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--blue);
+    }
+    .fab-preview:hover {
+      box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--blue-bright), 0 2px 10px rgba(68, 153, 255, 0.5);
+    }
+    .fab-download {
+      background: linear-gradient(180deg, #aa88ee 0%, var(--purple) 50%, #6644aa 100%);
+      color: #000;
+      box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--purple);
+    }
+    .fab-download:hover {
+      box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--purple-light), 0 2px 10px rgba(136, 102, 204, 0.5);
+    }
+
+    /* === PREVIEW MODAL === */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      z-index: 1100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-panel {
+      width: min(720px, 100%);
+      max-height: min(82vh, 640px);
+      display: flex;
+      flex-direction: column;
+      background: var(--panel-dark);
+      border: 2px solid #1a2a44;
+      border-radius: 6px;
+      box-shadow: 0 0 0 1px rgba(68, 153, 255, 0.2), 0 12px 40px rgba(0, 0, 0, 0.9);
+      overflow: hidden;
+      transform: translateY(12px);
+      transition: transform 0.2s ease;
+    }
+    .modal-overlay.open .modal-panel {
+      transform: translateY(0);
+    }
+    .modal-panel::before {
+      content: "";
+      display: block;
+      height: 4px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue), var(--purple));
+      flex-shrink: 0;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, #f8d050 0%, var(--yellow) 100%);
+      border-bottom: 2px solid #000;
+    }
+    .modal-title {
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #000;
+    }
+    .modal-header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .modal-format-toggle {
+      gap: 6px;
+    }
+    .modal-format-toggle .format-label {
+      font-size: 8px;
+      letter-spacing: 1.2px;
+    }
+    .modal-format-toggle .format-slider {
+      width: 52px;
+      height: 26px;
+    }
+    .modal-format-toggle .format-slider-thumb {
+      width: 18px;
+      height: 18px;
+    }
+    .modal-format-toggle .format-slider.xml-active .format-slider-thumb {
+      transform: translateX(26px);
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: 2px solid #000;
+      border-radius: 50%;
+      background: #111a2a;
+      color: var(--magenta);
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s ease, color 0.1s ease;
+    }
+    .modal-close:hover {
+      background: #1f1122;
+      color: #ff88aa;
+    }
+    .modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 12px 14px;
+      background: #000;
+    }
+    .modal-prompt {
+      margin: 0;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--text-data);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .modal-prompt.empty {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    .modal-footer {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bar-dark);
+      border-top: 1px solid #1a2a44;
+    }
+    .modal-copy-btn {
+      flex: 1;
+      height: 38px;
+      background: linear-gradient(180deg, #ffbb33 0%, var(--orange) 50%, var(--orange-dark) 100%);
+      color: #000;
+      border: none;
+      border-radius: 0 20px 20px 0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 0 0 2px #000;
+    }
+    .modal-copy-btn:hover {
+      box-shadow: 0 0 0 2px #000, 0 0 0 3px #ffcc66;
+    }
+    .modal-dismiss-btn {
+      height: 38px;
+      padding: 0 16px;
+      background: #111a2a;
+      color: var(--cyan);
+      border: 2px solid var(--cyan);
+      border-radius: 20px 0 0 20px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .modal-dismiss-btn:hover {
+      background: #0a1a2a;
+      color: var(--blue-bright);
+      border-color: var(--blue-bright);
+    }
+
+    .lcars-footer {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 8px;
+      color: #223344;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <!-- TOP ENGINEERING BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">LCARS 4.7</div>
+    <div class="top-bar-title">PROMPT SYNTHESIZER • POPCORN</div>
+    <div class="top-bar-right">
+      <div>INTERFACE ACTIVE</div>
+      <div class="top-status" id="stardate">45221.7</div>
+    </div>
+  </div>
+
+  <div class="console">
+    <!-- DENSE LCARS BACKGROUND LITTER -->
+    <div class="bg-litter">
+      <!-- Vertical data columns -->
+      <div class="data-column left">
+        1209 0809 0716 1701746560000 2 9840 1701 1701 9840 6607 8235 7233 7233 258 2 2 7240746561701710580102 158 158 985
+      </div>
+      <div class="data-column right">
+        23 548 2453 265485486543 23 23 2310 1234 23 45623 23 78 105 7-4856 18-5245 7-4205 1-701E 18-5245
+      </div>
+
+      <!-- Horizontal data strips -->
+      <div class="data-strip s1">1701 9840 6607 8235 7233 258 2 2 1701746560000 546615216 2 9840 1701</div>
+      <div class="data-strip s2">2345 0809 34 484 2 9840 1701 1701 234 43 8452 7233 7233 258 2 2 986747875 158 258 789</div>
+      <div class="data-strip s3">235 235 54452515 541 15555 25 235 23 124545 12288 45 213 5 55654841518 785 135 1245871222122235</div>
+
+      <!-- Hex-style rows -->
+      <div class="hex-row r1">546615216  2 9840 1701 1701 9840 6607 78 7233 7233 258 2 2 87847485487464757689568353524345</div>
+      <div class="hex-row r2">23 548 2453 265485486543 23 23 2310 1234 23 45623 23 78 105 7-4856 18-5245 7-4205 1-701E</div>
+      <div class="hex-row r3">235 235 54452515 541 15555 25 235 23 124545 12288 45 213 5 55654841518 785 135 1245871222122235</div>
+
+      <!-- Scattered small pills -->
+      <div class="bg-pill p1">2.258</div>
+      <div class="bg-pill p2">38</div>
+      <div class="bg-pill p3">44</div>
+      <div class="bg-pill p4">17</div>
+      <div class="bg-pill p5">9</div>
+      <div class="bg-pill p6">16</div>
+      <div class="bg-pill p7">36</div>
+      <div class="bg-pill p8">6</div>
+    </div>
+
+    <!-- MAIN THREE-COLUMN LAYOUT -->
+    <div class="main-grid">
+      <!-- LEFT SIDEBAR - dense button stack like the image -->
+      <div class="left-sidebar">
+        <div class="lcars-slice-row b1">
+          <div class="lcars-slice-main">HOLODECK</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b2">
+          <div class="lcars-slice-main">NAVIGATION</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b3">
+          <div class="lcars-slice-main">SCIENCE</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b4">
+          <div class="lcars-slice-main">ENGINEERING</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b5">
+          <div class="lcars-slice-main">TACTICAL</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b6">
+          <div class="lcars-slice-main">MEDICAL</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b7">
+          <div class="lcars-slice-main">SECURITY</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b8">
+          <div class="lcars-slice-main">COMMUNICATIONS</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+        <div class="lcars-slice-row b9">
+          <div class="lcars-slice-main">TRANSPORTER</div>
+          <div class="lcars-slice-cap"></div>
+        </div>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="earth-view" title="Earth from orbit — Voyager perspective">
+          <svg viewBox="0 0 136 136" xmlns="http://www.w3.org/2000/svg" aria-label="Earth seen from orbit">
+            <rect width="136" height="136" fill="#020408"/>
+            <circle cx="68" cy="68" r="66" fill="#000810"/>
+            <circle cx="22" cy="18" r="0.6" fill="#fff" opacity="0.7"/>
+            <circle cx="108" cy="32" r="0.5" fill="#fff" opacity="0.5"/>
+            <circle cx="95" cy="12" r="0.4" fill="#fff" opacity="0.6"/>
+            <circle cx="40" cy="110" r="0.5" fill="#fff" opacity="0.4"/>
+            <circle cx="120" cy="95" r="0.7" fill="#fff" opacity="0.55"/>
+            <defs>
+              <radialGradient id="earthGrad" cx="38%" cy="35%">
+                <stop offset="0%" stop-color="#8ed4ff"/>
+                <stop offset="35%" stop-color="#3388cc"/>
+                <stop offset="65%" stop-color="#1a5588"/>
+                <stop offset="100%" stop-color="#0a1a30"/>
+              </radialGradient>
+              <radialGradient id="atmosGlow" cx="50%" cy="50%">
+                <stop offset="72%" stop-color="transparent"/>
+                <stop offset="88%" stop-color="rgba(120,200,255,0.25)"/>
+                <stop offset="100%" stop-color="rgba(180,230,255,0.12)"/>
+              </radialGradient>
+            </defs>
+            <circle cx="68" cy="72" r="38" fill="url(#earthGrad)"/>
+            <ellipse cx="58" cy="62" rx="18" ry="10" fill="#2a8a44" opacity="0.75"/>
+            <ellipse cx="82" cy="78" rx="14" ry="9" fill="#2a7a3a" opacity="0.65"/>
+            <ellipse cx="52" cy="80" rx="10" ry="6" fill="#3a9a55" opacity="0.55"/>
+            <ellipse cx="78" cy="58" rx="8" ry="5" fill="#ffffff" opacity="0.35"/>
+            <ellipse cx="48" cy="70" rx="6" ry="4" fill="#ffffff" opacity="0.28"/>
+            <circle cx="68" cy="72" r="42" fill="url(#atmosGlow)"/>
+            <path d="M 30 95 Q 68 108 106 95" stroke="rgba(100,180,255,0.2)" stroke-width="1" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="pale-blue-dot-pane">
+          <div class="pbd-title">Pale Blue Dot</div>
+          <p>From this distant vantage point, the Earth might not seem of any particular interest. But for us, it's different. Consider again that dot. That's here. That's home. That's us.</p>
+          <p>On it everyone you love, everyone you know, everyone you ever heard of, every human being who ever was, lived out their lives. The aggregate of our joy and suffering, thousands of confident religions, ideologies, and economic doctrines, every hunter and forager, every hero and coward, every creator and destroyer of civilization, every king and peasant, every young couple in love, every mother and father, hopeful child, inventor and explorer, every teacher of morals, every corrupt politician, every "superstar," every "supreme leader," every saint and sinner in the history of our species lived there — on a mote of dust suspended in a sunbeam.</p>
+          <p>The Earth is a very small stage in a vast cosmic arena. Think of the rivers of blood spilled by all those generals and emperors so that, in glory and triumph, they could become the momentary masters of a fraction of a dot.</p>
+          <p>Our posturings, our imagined self-importance, the delusion that we have some privileged position in the Universe, are challenged by this point of pale light. Our planet is a lonely speck in the great enveloping cosmic dark. In our obscurity, in all this vastness, there is no hint that help will come from elsewhere to save us from ourselves.</p>
+          <p>The Earth is the only world known so far to harbor life. There is nowhere else, at least in the near future, to which our species could migrate. Visit, yes. Settle, not yet. Like it or not, for the moment the Earth is where we make our stand.</p>
+          <p>It has been said that astronomy is a humbling and character-building experience. There is perhaps no better demonstration of the folly of human conceits than this distant image of our tiny world. To me, it underscores our responsibility to deal more kindly with one another, and to preserve and cherish the pale blue dot, the only home we've ever known.</p>
+          <div class="pbd-attrib">— Carl Sagan, 1994</div>
+        </div>
+      </div>
+
+      <!-- CENTER - THE ACTUAL PROMPT BUILDER -->
+      <div class="work-area">
+        <div class="work-title">POPCORN PROMPT FRAMEWORK • 7 CHANNELS</div>
+
+        <div class="toolbar-menu">
+          <div class="toolbar-left">
+            <button id="clear-btn" class="lcars-clear" type="button">CLEAR<br>ALL</button>
+            <a href="https://grok.com/" class="lcars-computer" target="_blank" rel="noopener noreferrer">COMPUTER</a>
+          </div>
+          <div class="toolbar-right">
+            <div class="format-toggle" role="group" aria-label="Prompt output format">
+              <span class="format-label format-label-md active" id="format-label-md">MARKDOWN</span>
+              <button type="button" id="format-toggle" class="format-slider" role="switch" aria-checked="false" aria-label="Toggle between Markdown and XML format">
+                <span class="format-slider-track">
+                  <span class="format-slider-thumb"></span>
+                </span>
+              </button>
+              <span class="format-label format-label-xml" id="format-label-xml">XML</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- INPUT PANELS -->
+        <div id="panels-container">
+          <div class="input-panel" data-panel-id="persona">
+            <div class="input-header persona">
+              <span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">::</span>
+              PERSONA
+              <span class="header-right">
+                <span class="extra">CH-01  2.258</span>
+                <span class="char-count" id="char-count-persona">0 / 300</span>
+              </span>
+            </div>
+            <textarea id="persona" maxlength="300" placeholder="The role and personality the AI should take on..."></textarea>
+          </div>
+          <div class="input-panel" data-panel-id="objective">
+            <div class="input-header objective">
+              <span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">::</span>
+              OBJECTIVE
+              <span class="header-right">
+                <span class="extra">CH-02  1701</span>
+                <span class="char-count" id="char-count-objective">0 / 400</span>
+              </span>
+            </div>
+            <textarea id="objective" maxlength="400" placeholder="The end goal for the AI model..."></textarea>
+          </div>
+          <div class="input-panel" data-panel-id="process">
+            <div class="input-header process">
+              <span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">::</span>
+              PROCESS
+              <span class="header-right">
+                <span class="extra">CH-03  9840</span>
+                <span class="char-count" id="char-count-process">0 / 1,500</span>
+              </span>
+            </div>
+            <textarea id="process" maxlength="1500" placeholder="Steps to follow or chain of logic to adhere to..."></textarea>
+          </div>
+          <div class="input-panel" data-panel-id="context">
+            <div class="input-header context">
+              <span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">::</span>
+              CONTEXT
+              <span class="header-right">
+                <span class="extra">CH-04  6607</span>
+                <span class="char-count" id="char-count-context">0 / 1,500</span>
+              </span>
+            </div>
+            <textarea id="context" maxlength="1500" placeholder="Useful information about the wider situation..."></textarea>
+          </div>
+          <div class="input-panel" data-panel-id="output">
+            <div class="input-header output">
+              <span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">::</span>
+              OUTPUT
+              <span class="header-right">
+                <span class="extra">CH-05  258</span>
+                <span class="char-count" id="char-count-output">0 / 900</span>
+              </span>
+            </div>
+            <textarea id="output" maxlength="900" placeholder="The nature of the output required from the AI model..."></textarea>
+          </div>
+          <div class="input-panel" data-panel-id="restrictions">
+            <div class="input-header restrictions">
+              <span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">::</span>
+              RESTRICTIONS
+              <span class="header-right">
+                <span class="extra">CH-06  7233</span>
+                <span class="char-count" id="char-count-restrictions">0 / 1,500</span>
+              </span>
+            </div>
+            <textarea id="restrictions" maxlength="1500" placeholder="The constraints the model must follow..."></textarea>
+          </div>
+          <div class="input-panel" data-panel-id="nature">
+            <div class="input-header nature">
+              <span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">::</span>
+              NATURE
+              <span class="header-right">
+                <span class="extra">CH-07  42</span>
+                <span class="char-count" id="char-count-nature">0 / 300</span>
+              </span>
+            </div>
+            <textarea id="nature" maxlength="300" placeholder="The tone and any other softer guidance..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDEBAR - data readouts like the image -->
+      <div class="right-sidebar">
+        <div class="scan-readouts">
+          <div class="prompt-analysis-title">PROMPT ANALYSIS</div>
+
+          <div class="data-readout">
+            <div class="label">TOTAL CHARS</div>
+            <div id="char-count" class="readout-value buffer-readout">0</div>
+          </div>
+          <div class="data-readout">
+            <div class="label">EST. TOKENS</div>
+            <div id="token-est" class="readout-value">0</div>
+          </div>
+          <div class="data-readout integrity-readout">
+            <div class="label">PROMPT INTEGRITY</div>
+            <div id="prompt-integrity" class="readout-value">0%</div>
+            <div class="lcars-integrity-bar" aria-hidden="true">
+              <div class="lcars-integrity-track">
+                <div id="integrity-bar-fill" class="lcars-integrity-fill">
+                  <span class="lcars-integrity-endcap"></span>
+                </div>
+              </div>
+              <div class="lcars-integrity-rail"></div>
+            </div>
+          </div>
+          <div class="data-readout">
+            <div class="label">SECTIONS ACTIVE</div>
+            <div id="sections-active" class="readout-value">0 / 7</div>
+          </div>
+        </div>
+
+        <div class="status-heading">STATUS</div>
+        <div class="status-block">
+          READY<br>
+          18-5245 18-5245<br>
+          23-854  4-2584
+        </div>
+
+        <div class="simulations-block">
+          <div class="simulations-label">SIMULATIONS</div>
+          <a href="void-cube.html" style="display:block; background: linear-gradient(180deg, #4499ff 0%, #2a6fcc 100%); color:#000; text-decoration:none; font-size:9.5px; font-weight:800; letter-spacing:0.8px; padding:5px 9px; border-radius:999px; text-align:center; box-shadow: 0 0 0 1px #000; transition: transform 0.08s ease, box-shadow 0.08s ease;">VOID CUBE PROTOCOL</a>
+        </div>
+
+        <div class="right-lcars-controls">
+          <div class="right-lcars-slice-row rb1">
+            <div class="right-lcars-slice-main">SENSORS</div>
+            <div class="right-lcars-slice-cap"></div>
+          </div>
+          <div class="right-lcars-slice-row rb2">
+            <div class="right-lcars-slice-main">PHASERS</div>
+            <div class="right-lcars-slice-cap"></div>
+          </div>
+          <div class="right-lcars-slice-row rb3">
+            <div class="right-lcars-slice-main">WARP</div>
+            <div class="right-lcars-slice-cap"></div>
+          </div>
+          <div class="right-lcars-slice-row rb4">
+            <div class="right-lcars-slice-main">SHIELDS</div>
+            <div class="right-lcars-slice-cap"></div>
+          </div>
+          <div class="right-lcars-slice-row rb5">
+            <div class="right-lcars-slice-main">IMPULSE</div>
+            <div class="right-lcars-slice-cap"></div>
+          </div>
+          <div class="right-lcars-slice-row rb6">
+            <div class="right-lcars-slice-main">TRACTOR</div>
+            <div class="right-lcars-slice-cap"></div>
+          </div>
+        </div>
+
+        <div class="end-boss-thumb" title="End-level polygonal guardian (Neon Dash)">
+          <svg viewBox="0 0 90 100" xmlns="http://www.w3.org/2000/svg" aria-label="Large end-level polygonal enemy">
+            <rect width="90" height="100" fill="#050810"/>
+            <rect x="0" y="88" width="90" height="12" fill="#1a0a0a"/>
+            <polygon points="6,28 66,32 72,62 62,88 4,82 0,52" fill="#2a0f0f"/>
+            <polygon points="4,82 62,88 56,98 2,94" fill="#1a0808"/>
+            <polygon points="14,28 32,8 46,30 58,12 64,32" fill="#3a1515"/>
+            <polygon points="8,32 50,36 46,58 4,54" fill="#3f1a1a"/>
+            <circle cx="30" cy="44" r="5" fill="#ff5533"/>
+            <circle cx="31" cy="44" r="2.2" fill="#ffaa44"/>
+            <rect x="16" y="70" width="11" height="18" fill="#220a0a"/>
+            <rect x="38" y="72" width="11" height="16" fill="#220a0a"/>
+            <rect x="14" y="86" width="15" height="5" fill="#150505"/>
+            <rect x="36" y="86" width="15" height="5" fill="#150505"/>
+            <polygon points="60,62 80,48 84,56 64,68" fill="#2f1212"/>
+            <ellipse cx="74" cy="52" rx="5" ry="3.5" fill="rgba(255,80,30,0.4)"/>
+          </svg>
+          <div class="end-boss-label">End Guardian</div>
+        </div>
+
+        <div class="star-map-pane" title="Interactive tactical star map">
+          <div class="star-map-title">Tactical Star Map</div>
+          <div class="star-map-canvas-wrap" id="star-map-wrap">
+            <svg id="star-map-svg" class="star-map-svg" viewBox="0 0 148 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Interactive star map">
+              <defs>
+                <radialGradient id="nebulaPurple" cx="30%" cy="35%">
+                  <stop offset="0%" stop-color="rgba(136,102,204,0.45)"/>
+                  <stop offset="55%" stop-color="rgba(68,34,120,0.2)"/>
+                  <stop offset="100%" stop-color="transparent"/>
+                </radialGradient>
+                <radialGradient id="nebulaCyan" cx="72%" cy="62%">
+                  <stop offset="0%" stop-color="rgba(0,204,255,0.35)"/>
+                  <stop offset="50%" stop-color="rgba(20,80,140,0.18)"/>
+                  <stop offset="100%" stop-color="transparent"/>
+                </radialGradient>
+                <radialGradient id="nebulaMagenta" cx="55%" cy="78%">
+                  <stop offset="0%" stop-color="rgba(255,102,153,0.28)"/>
+                  <stop offset="60%" stop-color="rgba(120,30,80,0.12)"/>
+                  <stop offset="100%" stop-color="transparent"/>
+                </radialGradient>
+                <radialGradient id="nebulaGold" cx="50%" cy="50%">
+                  <stop offset="0%" stop-color="rgba(255,200,80,0.22)"/>
+                  <stop offset="100%" stop-color="transparent"/>
+                </radialGradient>
+              </defs>
+              <g id="star-map-bg"></g>
+              <g id="star-map-grid" class="sector-grid"></g>
+              <g id="star-map-vessels" class="vessels"></g>
+              <g id="star-map-stars" class="stars"></g>
+              <g id="star-reticule" class="star-reticule" transform="translate(88, 40)">
+                <circle cx="0" cy="0" r="9"/>
+                <line x1="-12" y1="0" x2="-5" y2="0"/>
+                <line x1="5" y1="0" x2="12" y2="0"/>
+                <line x1="0" y1="-12" x2="0" y2="-5"/>
+                <line x1="0" y1="5" x2="0" y2="12"/>
+                <circle cx="0" cy="0" r="2" fill="#f0b800" stroke="none" opacity="0.85"/>
+                <text id="star-map-vessel-label" class="vessel-reticule-label" x="14" y="4" visibility="hidden"></text>
+              </g>
+            </svg>
+          </div>
+          <div class="star-map-readout" id="star-map-readout">TARGET: SIRIUS • MAG 1.0</div>
+        </div>
+
+        <div style="margin-top:auto; font-size:7.5px; color:#334455; text-align:center; padding-top:4px;">
+          U.S.S. ENTERPRISE<br>
+          NCC-1701-D
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR with scan grid + circular control -->
+    <div class="bottom-bar">
+      <div class="circular-control" title="LCARS Mode Selector (decorative)">
+        <div class="pie"></div>
+        <div class="center">MODE</div>
+        <div class="arrow"></div>
+      </div>
+
+      <div class="scan-grid" title="System activity grid">
+        <div></div><div class="active"></div><div></div><div></div><div class="active"></div><div></div>
+        <div class="active"></div><div></div><div></div><div></div><div></div><div class="active"></div>
+        <div></div><div></div><div class="active"></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div class="active"></div><div></div><div></div>
+      </div>
+    </div>
+
+    <div class="lcars-footer">
+      LCARS • POPCORN PROMPT MATRIX 4.7 • ACCESS LEVEL: COMMANDER • ALL SECTIONS SECURE
+    </div>
+  </div>
+
+  <div id="toast" class="toast">PROMPT COPIED TO DATABANK</div>
+
+  <div class="floating-actions" role="toolbar" aria-label="Prompt actions">
+    <button id="copy-btn" class="fab-btn fab-copy" type="button">Copy</button>
+    <button id="fab-preview-btn" class="fab-btn fab-preview" type="button">Preview</button>
+    <button id="fab-download-btn" class="fab-btn fab-download" type="button">Download</button>
+  </div>
+
+  <div id="preview-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title" hidden>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span id="preview-modal-title" class="modal-title">Compiled Prompt Preview</span>
+        <div class="modal-header-actions">
+          <div class="format-toggle modal-format-toggle" role="group" aria-label="Prompt output format">
+            <span class="format-label format-label-md">MARKDOWN</span>
+            <button type="button" id="modal-format-toggle" class="format-slider" role="switch" aria-checked="false" aria-label="Toggle between Markdown and XML format">
+              <span class="format-slider-track">
+                <span class="format-slider-thumb"></span>
+              </span>
+            </button>
+            <span class="format-label format-label-xml">XML</span>
+          </div>
+          <button id="modal-close-btn" class="modal-close" type="button" aria-label="Close preview">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <pre id="modal-prompt-text" class="modal-prompt empty">(No prompt content — fill in at least one channel.)</pre>
+      </div>
+      <div class="modal-footer">
+        <button id="modal-dismiss-btn" class="modal-dismiss-btn" type="button">Return to Edit</button>
+        <button id="modal-copy-btn" class="modal-copy-btn" type="button">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ids = ['persona', 'objective', 'process', 'context', 'output', 'restrictions', 'nature'];
+    const FORMAT_KEY = 'lcarsPromptFormat';
+    const PANEL_ORDER_KEY = 'lcarsPanelOrder';
+    const NEAR_LIMIT_THRESHOLD = 0.85;
+    let promptFormat = 'markdown';
+    let panelOrder = [...ids];
+    let draggedPanel = null;
+
+    const SECTION_META = {
+      persona:      { md: 'PERSONA',      xml: 'persona' },
+      objective:    { md: 'OBJECTIVE',    xml: 'objective' },
+      process:      { md: 'PROCESS',      xml: 'process' },
+      context:      { md: 'CONTEXT',      xml: 'context' },
+      output:       { md: 'OUTPUT',       xml: 'output' },
+      restrictions: { md: 'RESTRICTIONS', xml: 'restrictions' },
+      nature:       { md: 'NATURE',       xml: 'nature' }
+    };
+
+    const CHAR_LIMITS = {
+      persona: 300,
+      objective: 400,
+      process: 1500,
+      context: 1500,
+      output: 900,
+      restrictions: 1500,
+      nature: 300
+    };
+
+    const INTEGRITY_WEIGHTS = {
+      persona: 5,
+      objective: 10,
+      process: 15,
+      context: 25,
+      output: 20,
+      restrictions: 20,
+      nature: 5
+    };
+
+    function calculatePromptIntegrity() {
+      let total = 0;
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        const limit = CHAR_LIMITS[id];
+        const weight = INTEGRITY_WEIGHTS[id];
+        if (!el || !limit || weight == null) return;
+        const milestones = Math.min(4, Math.floor((el.value.length / limit) * 4));
+        total += (milestones / 4) * weight;
+      });
+      return Math.round(total);
+    }
+
+    function enforceCharLimit(id) {
+      const el = document.getElementById(id);
+      const limit = CHAR_LIMITS[id];
+      if (!el || limit == null) return;
+      if (el.value.length > limit) {
+        el.value = el.value.slice(0, limit);
+      }
+    }
+
+    function getValue(id) {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+
+    const XML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
+    function escapeXml(text) {
+      return text.replace(/[&<>"']/g, ch => XML_ESCAPE_MAP[ch]);
+    }
+
+    function buildPromptMarkdown() {
+      const parts = [];
+      panelOrder.forEach(id => {
+        const value = getValue(id);
+        if (value) parts.push(`${SECTION_META[id].md}:\n${value}`);
+      });
+      return parts.join('\n\n');
+    }
+
+    function buildPromptXml() {
+      const children = [];
+      panelOrder.forEach(id => {
+        const value = getValue(id);
+        if (value) children.push(`<${SECTION_META[id].xml}>${escapeXml(value)}</${SECTION_META[id].xml}>`);
+      });
+      return children.length ? `<prompt>\n${children.join('\n')}\n</prompt>` : '';
+    }
+
+    function buildPrompt() {
+      return promptFormat === 'xml' ? buildPromptXml() : buildPromptMarkdown();
+    }
+
+    function updateFormatToggleUI() {
+      const isXml = promptFormat === 'xml';
+      document.querySelectorAll('.format-slider').forEach(toggle => {
+        toggle.setAttribute('aria-checked', isXml ? 'true' : 'false');
+        toggle.classList.toggle('xml-active', isXml);
+      });
+      document.querySelectorAll('.format-label-md').forEach(label => {
+        label.classList.toggle('active', !isXml);
+      });
+      document.querySelectorAll('.format-label-xml').forEach(label => {
+        label.classList.toggle('active', isXml);
+      });
+    }
+
+    const EMPTY_PROMPT_MSG = '(No prompt content — fill in at least one channel.)';
+
+    function fillPromptPreview(el) {
+      if (!el) return;
+      const promptText = buildPrompt();
+      if (promptText) {
+        el.textContent = promptText;
+        el.classList.remove('empty');
+      } else {
+        el.textContent = EMPTY_PROMPT_MSG;
+        el.classList.add('empty');
+      }
+    }
+
+    function updateModalPromptText() {
+      const modal = document.getElementById('preview-modal');
+      if (!modal || modal.hidden) return;
+      fillPromptPreview(document.getElementById('modal-prompt-text'));
+    }
+
+    function togglePromptFormat() {
+      setPromptFormat(promptFormat === 'xml' ? 'markdown' : 'xml');
+    }
+
+    function setPromptFormat(format) {
+      promptFormat = format === 'xml' ? 'xml' : 'markdown';
+      try { localStorage.setItem(FORMAT_KEY, promptFormat); } catch (e) {}
+      updateFormatToggleUI();
+      updateLiveStats();
+      updateModalPromptText();
+    }
+
+    function loadFormatFromStorage() {
+      try {
+        const saved = localStorage.getItem(FORMAT_KEY);
+        if (saved === 'xml' || saved === 'markdown') {
+          promptFormat = saved;
+        }
+      } catch (e) {}
+      updateFormatToggleUI();
+    }
+
+    function updateLiveStats() {
+      ids.forEach(id => enforceCharLimit(id));
+
+      const prompt = buildPrompt();
+      const countEl = document.getElementById('char-count');
+      countEl.textContent = prompt.length.toLocaleString();
+
+      // Per-section character counts
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        const sectionCountEl = document.getElementById('char-count-' + id);
+        if (!el || !sectionCountEl) return;
+        const len = el.value.length;
+        const limit = CHAR_LIMITS[id];
+        sectionCountEl.textContent = `${len.toLocaleString()} / ${limit.toLocaleString()}`;
+        const atLimit = len >= limit;
+        const nearLimit = len >= limit * NEAR_LIMIT_THRESHOLD && !atLimit;
+        sectionCountEl.classList.toggle('at-limit', atLimit);
+        sectionCountEl.classList.toggle('near-limit', nearLimit);
+      });
+
+      const tokenEl = document.getElementById('token-est');
+      if (tokenEl) tokenEl.textContent = Math.round(prompt.length / 3.8);
+
+      const integrity = calculatePromptIntegrity();
+      const integrityEl = document.getElementById('prompt-integrity');
+      if (integrityEl) integrityEl.textContent = `${integrity}%`;
+      const integrityBar = document.getElementById('integrity-bar-fill');
+      if (integrityBar) {
+        integrityBar.style.width = `${integrity}%`;
+        integrityBar.classList.toggle('has-fill', integrity > 0);
+      }
+
+      let active = 0;
+      panelOrder.forEach(id => { if (getValue(id)) active++; });
+      const activeEl = document.getElementById('sections-active');
+      if (activeEl) activeEl.textContent = `${active} / ${ids.length}`;
+    }
+
+    function saveToStorage() {
+      const data = {};
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) data[id] = el.value;
+      });
+      try { localStorage.setItem('lcarsPromptData', JSON.stringify(data)); } catch(e){}
+    }
+
+    function loadFromStorage() {
+      try {
+        const raw = localStorage.getItem('lcarsPromptData');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        ids.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && data[id] !== undefined) {
+            el.value = data[id];
+            enforceCharLimit(id);
+          }
+        });
+      } catch(e){}
+    }
+
+    function isValidPanelOrder(order) {
+      return Array.isArray(order)
+        && order.length === ids.length
+        && ids.every(id => order.includes(id));
+    }
+
+    function loadPanelOrder() {
+      try {
+        const raw = localStorage.getItem(PANEL_ORDER_KEY);
+        if (!raw) return;
+        const order = JSON.parse(raw);
+        if (isValidPanelOrder(order)) {
+          panelOrder = order;
+        }
+      } catch (e) {}
+    }
+
+    function savePanelOrder() {
+      try {
+        localStorage.setItem(PANEL_ORDER_KEY, JSON.stringify(panelOrder));
+      } catch (e) {}
+    }
+
+    function applyPanelOrder() {
+      const container = document.getElementById('panels-container');
+      if (!container) return;
+      panelOrder.forEach(id => {
+        const panel = container.querySelector(`[data-panel-id="${id}"]`);
+        if (panel) container.appendChild(panel);
+      });
+    }
+
+    function syncPanelOrderFromDOM() {
+      const container = document.getElementById('panels-container');
+      if (!container) return;
+      panelOrder = [...container.querySelectorAll('.input-panel')].map(p => p.dataset.panelId);
+    }
+
+    function reorderPanel(dragged, target) {
+      const container = document.getElementById('panels-container');
+      if (!container || !dragged || !target || dragged === target) return;
+
+      const allPanels = [...container.querySelectorAll('.input-panel')];
+      const draggedIdx = allPanels.indexOf(dragged);
+      const targetIdx = allPanels.indexOf(target);
+      if (draggedIdx < 0 || targetIdx < 0) return;
+
+      if (draggedIdx < targetIdx) {
+        container.insertBefore(dragged, target.nextSibling);
+      } else {
+        container.insertBefore(dragged, target);
+      }
+
+      syncPanelOrderFromDOM();
+      savePanelOrder();
+      updateLiveStats();
+    }
+
+    function initPanelDragDrop() {
+      const container = document.getElementById('panels-container');
+      if (!container) return;
+
+      container.querySelectorAll('.drag-handle').forEach(handle => {
+        handle.addEventListener('dragstart', (e) => {
+          const panel = handle.closest('.input-panel');
+          if (!panel) return;
+          draggedPanel = panel;
+          panel.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', panel.dataset.panelId);
+        });
+
+        handle.addEventListener('dragend', () => {
+          if (draggedPanel) {
+            draggedPanel.classList.remove('dragging');
+            draggedPanel = null;
+          }
+          container.querySelectorAll('.input-panel').forEach(p => p.classList.remove('drag-over'));
+        });
+      });
+
+      container.querySelectorAll('.input-panel').forEach(panel => {
+        panel.addEventListener('dragover', (e) => {
+          if (!draggedPanel) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (panel !== draggedPanel) panel.classList.add('drag-over');
+        });
+
+        panel.addEventListener('dragleave', (e) => {
+          if (!panel.contains(e.relatedTarget)) {
+            panel.classList.remove('drag-over');
+          }
+        });
+
+        panel.addEventListener('drop', (e) => {
+          if (!draggedPanel) return;
+          e.preventDefault();
+          panel.classList.remove('drag-over');
+          reorderPanel(draggedPanel, panel);
+        });
+      });
+
+      container.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('dragstart', (e) => e.preventDefault());
+      });
+    }
+
+    function clearAll() {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      updateLiveStats();
+      saveToStorage();
+    }
+
+    async function writeToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          return true;
+        } catch (e) {
+          document.body.removeChild(ta);
+          return false;
+        }
+      }
+    }
+
+    function showToast(message, duration = 1400) {
+      const toast = document.getElementById('toast');
+      const defaultText = 'PROMPT COPIED TO DATABANK';
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+        toast.textContent = defaultText;
+      }, duration);
+    }
+
+    function flashButton(btn, successLabel, duration = 1200) {
+      if (!btn) return;
+      const original = btn.innerHTML;
+      const originalBg = btn.style.background;
+      const originalColor = btn.style.color;
+      btn.style.background = '#22aa00';
+      btn.style.color = '#000';
+      btn.innerHTML = successLabel;
+      setTimeout(() => {
+        btn.style.background = originalBg;
+        btn.style.color = originalColor;
+        btn.innerHTML = original;
+      }, duration);
+    }
+
+    async function copyPrompt(sourceBtn) {
+      const promptText = buildPrompt();
+      const copyBtn = sourceBtn || document.getElementById('copy-btn');
+      const ok = await writeToClipboard(promptText);
+
+      if (ok) {
+        flashButton(copyBtn, 'COPIED');
+        showToast('PROMPT COPIED TO DATABANK');
+      } else {
+        alert('Copy failed. Please select and copy manually:\n\n' + promptText);
+      }
+    }
+
+    function openPreviewModal() {
+      const modal = document.getElementById('preview-modal');
+      updateFormatToggleUI();
+      updateModalPromptText();
+
+      modal.hidden = false;
+      requestAnimationFrame(() => modal.classList.add('open'));
+      document.body.style.overflow = 'hidden';
+      document.getElementById('modal-close-btn').focus();
+    }
+
+    function closePreviewModal() {
+      const modal = document.getElementById('preview-modal');
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+      setTimeout(() => { modal.hidden = true; }, 200);
+    }
+
+    async function copyModalPrompt() {
+      const promptText = buildPrompt();
+      const modalCopyBtn = document.getElementById('modal-copy-btn');
+      const ok = await writeToClipboard(promptText);
+
+      if (ok) {
+        flashButton(modalCopyBtn, 'TRANSFERRED');
+        showToast('PROMPT COPIED TO DATABANK');
+      } else if (promptText) {
+        alert('Copy failed. Please select and copy manually from the preview.');
+      } else {
+        showToast('NOTHING TO COPY');
+      }
+    }
+
+    function downloadPrompt() {
+      const promptText = buildPrompt();
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const filename = `popcorn-prompt-${timestamp}.txt`;
+      const blob = new Blob([promptText || ''], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      const downloadBtn = document.getElementById('fab-download-btn');
+      flashButton(downloadBtn, 'DOWNLOADED');
+      showToast(promptText ? 'PROMPT DOWNLOADED' : 'EMPTY FILE DOWNLOADED');
+    }
+
+    function updateStardate() {
+      const el = document.getElementById('stardate');
+      const base = 45221.7;
+      const offset = (Date.now() / 86400000) % 1 * 0.9;
+      el.textContent = (base + offset).toFixed(1);
+    }
+
+    const MAP_WIDTH = 148;
+    const STAR_MAP_CATALOG = [
+      { x: 28, y: 0.06, label: 'ALPHA CENTAURI', brightness: '0.95', r: 2.2, color: '#e8f4ff' },
+      { x: 112, y: 0.04, label: 'PROCYON', brightness: '0.55', r: 1.2, color: '#88aacc' },
+      { x: 62, y: 0.10, label: 'VEGA', brightness: '0.7', r: 1.4, color: '#aaccff' },
+      { x: 88, y: 0.14, label: 'SIRIUS', brightness: '1', r: 2.8, color: '#ffffff' },
+      { x: 18, y: 0.18, label: 'EPSILON ERIDANI', brightness: '0.45', r: 1.1, color: '#7788aa', worldLabel: 'Earth' },
+      { x: 130, y: 0.22, label: 'TAU CETI', brightness: '0.4', r: 1, color: '#667799' },
+      { x: 42, y: 0.28, label: 'FOMALHAUT', brightness: '0.68', r: 1.5, color: '#bbddff' },
+      { x: 98, y: 0.32, label: 'DENEB', brightness: '0.6', r: 1.3, color: '#99bbdd' },
+      { x: 72, y: 0.38, label: 'ARCTURUS', brightness: '0.9', r: 2, color: '#fff8e0' },
+      { x: 38, y: 0.44, label: 'ALTAIR', brightness: '0.75', r: 1.6, color: '#cce8ff' },
+      { x: 120, y: 0.48, label: 'RIGEL', brightness: '0.98', r: 2.4, color: '#ffffff', worldLabel: 'Vulcan' },
+      { x: 54, y: 0.54, label: 'BETELGEUSE', brightness: '0.82', r: 1.8, color: '#ddeeff' },
+      { x: 14, y: 0.60, label: 'WOLF 359', brightness: '0.35', r: 0.9, color: '#556677' },
+      { x: 86, y: 0.66, label: 'POLLUX', brightness: '0.72', r: 1.7, color: '#ffeedd' },
+      { x: 64, y: 0.72, label: 'SPICA', brightness: '0.88', r: 2.1, color: '#ddeeff' },
+      { x: 32, y: 0.78, label: 'CAPELLA', brightness: '0.91', r: 2, color: '#fff4cc' },
+      { x: 108, y: 0.82, label: 'ANTARES', brightness: '0.77', r: 1.6, color: '#ffaa88' },
+      { x: 48, y: 0.88, label: 'REGULUS', brightness: '0.8', r: 1.5, color: '#e8f0ff', worldLabel: 'Andoria' },
+      { x: 124, y: 0.92, label: 'CANOPUS', brightness: '0.93', r: 2.2, color: '#f8ffff' },
+      { x: 22, y: 0.96, label: 'ZETA RETICULI', brightness: '0.5', r: 1.1, color: '#8899bb' },
+      { x: 100, y: 0.20, label: 'ALDEBARAN', brightness: '0.7', r: 1.5, color: '#ff6644' },
+      { x: 135, y: 0.35, label: 'MIRACH', brightness: '0.5', r: 1.1, color: '#8899aa' },
+      { x: 8, y: 0.42, label: 'BARNARD STAR', brightness: '0.3', r: 0.9, color: '#556688' },
+      { x: 78, y: 0.52, label: 'GIACOMINI', brightness: '0.42', r: 1, color: '#7788aa' },
+      { x: 142, y: 0.58, label: 'SAIPH', brightness: '0.55', r: 1.2, color: '#99aacc' },
+      { x: 58, y: 0.62, label: 'MIMOSA', brightness: '0.65', r: 1.3, color: '#aabbdd' },
+      { x: 96, y: 0.76, label: 'BETA CRUCIS', brightness: '0.6', r: 1.2, color: '#bbccdd' },
+      { x: 36, y: 0.34, label: 'BETA HYDRI', brightness: '0.48', r: 1, color: '#ff5544' }
+    ];
+    const STAR_MAP_VESSELS = [
+      { x: 0.22, y: 0.12, name: 'USS Enterprise', from: { x: -12, y: 0.02 } },
+      { x: 0.82, y: 0.08, name: 'USS Farragut', from: { x: 162, y: 0.01 } },
+      { x: 0.35, y: 0.35, name: 'USS Stargazer', from: { x: -8, y: 0.28 } },
+      { x: 0.68, y: 0.42, name: 'USS Defiant', from: { x: 158, y: 0.36 } },
+      { x: 0.18, y: 0.58, name: 'USS Voyager', from: { x: -6, y: 0.72 } },
+      { x: 0.72, y: 0.55, name: 'USS Excelsior', from: { x: 154, y: 0.68 } },
+      { x: 0.48, y: 0.74, name: 'USS Reliant', from: { x: 0.48, y: 1.06 } },
+      { x: 0.92, y: 0.78, name: 'USS Discovery', from: { x: 162, y: 0.92 } },
+      { x: 0.58, y: 0.90, name: 'USS Prometheus', from: { x: 148, y: 1.04 } }
+    ];
+    const STAR_MAP_NEBULAE = [
+      { cx: 0.28, cy: 0.18, rx: 0.38, ry: 0.14, fill: 'url(#nebulaPurple)' },
+      { cx: 0.74, cy: 0.38, rx: 0.32, ry: 0.12, fill: 'url(#nebulaCyan)' },
+      { cx: 0.42, cy: 0.58, rx: 0.36, ry: 0.13, fill: 'url(#nebulaMagenta)' },
+      { cx: 0.82, cy: 0.72, rx: 0.28, ry: 0.11, fill: 'url(#nebulaPurple)' },
+      { cx: 0.22, cy: 0.84, rx: 0.30, ry: 0.10, fill: 'url(#nebulaGold)' },
+      { cx: 0.60, cy: 0.48, rx: 0.24, ry: 0.09, fill: 'url(#nebulaCyan)' }
+    ];
+    const STAR_MAP_DUST = [
+      [12,0.07,0.4],[45,0.15,0.5],[95,0.11,0.35],[132,0.19,0.45],[8,0.31,0.3],[76,0.25,0.55],
+      [118,0.29,0.4],[34,0.51,0.35],[102,0.47,0.5],[66,0.63,0.4],[140,0.61,0.45],[24,0.69,0.35],
+      [88,0.75,0.5],[52,0.83,0.4],[116,0.87,0.45],[6,0.93,0.35],[74,0.97,0.4]
+    ];
+
+    let starMapHeight = 400;
+    let starMapSelectFn = null;
+    let lastMapSelection = { type: 'star', label: 'SIRIUS' };
+
+    function svgEl(tag, attrs) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+      return el;
+    }
+
+    function vesselCurveGeometry(x1, y1, x2, y2, sign = 1, strength = 0.22) {
+      const mx = (x1 + x2) / 2;
+      const my = (y1 + y2) / 2;
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = (-dy / len) * sign;
+      const ny = (dx / len) * sign;
+      const offset = len * strength;
+      const cx = mx + nx * offset;
+      const cy = my + ny * offset;
+      const tx = x2 - cx;
+      const ty = y2 - cy;
+      const heading = (Math.atan2(ty, tx) + Math.PI / 2) * 180 / Math.PI;
+      return {
+        cx,
+        cy,
+        heading,
+        path: `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`
+      };
+    }
+
+    function appendVessel(group, x, y, heading, name) {
+      const S = 1.8;
+      const target = svgEl('g', {
+        class: 'vessel-target',
+        'data-name': name,
+        transform: `translate(${x},${y}) rotate(${heading})`
+      });
+
+      target.appendChild(svgEl('circle', {
+        class: 'vessel-hit',
+        cx: 0,
+        cy: 0.8 * S,
+        r: 14
+      }));
+
+      const ship = svgEl('g', { class: 'vessel-ship' });
+      ship.appendChild(svgEl('ellipse', { cx: 0, cy: -3.8 * S, rx: 4.6 * S, ry: 3.1 * S }));
+      ship.appendChild(svgEl('ellipse', { cx: 0, cy: 0.6 * S, rx: 1.4 * S, ry: 2.4 * S }));
+      ship.appendChild(svgEl('line', { x1: -0.5 * S, y1: 2.2 * S, x2: -3.4 * S, y2: 4.8 * S }));
+      ship.appendChild(svgEl('line', { x1: 0.5 * S, y1: 2.2 * S, x2: 3.4 * S, y2: 4.8 * S }));
+      ship.appendChild(svgEl('ellipse', { cx: -3.6 * S, cy: 5.8 * S, rx: 1.15 * S, ry: 3.6 * S }));
+      ship.appendChild(svgEl('ellipse', { cx: 3.6 * S, cy: 5.8 * S, rx: 1.15 * S, ry: 3.6 * S }));
+      ship.appendChild(svgEl('circle', { cx: -3.6 * S, cy: 9.2 * S, r: 0.95 * S }));
+      ship.appendChild(svgEl('circle', { cx: 3.6 * S, cy: 9.2 * S, r: 0.95 * S }));
+
+      target.appendChild(ship);
+      group.appendChild(target);
+    }
+
+    function buildStarMapContent(mapH) {
+      const bg = document.getElementById('star-map-bg');
+      const grid = document.getElementById('star-map-grid');
+      const vessels = document.getElementById('star-map-vessels');
+      const stars = document.getElementById('star-map-stars');
+      if (!bg || !grid || !vessels || !stars) return;
+
+      bg.innerHTML = '';
+      grid.innerHTML = '';
+      vessels.innerHTML = '';
+      stars.innerHTML = '';
+
+      bg.appendChild(svgEl('rect', { width: MAP_WIDTH, height: mapH, fill: '#020408' }));
+
+      STAR_MAP_NEBULAE.forEach(n => {
+        bg.appendChild(svgEl('ellipse', {
+          cx: n.cx * MAP_WIDTH,
+          cy: n.cy * mapH,
+          rx: n.rx * MAP_WIDTH,
+          ry: n.ry * mapH,
+          fill: n.fill
+        }));
+      });
+
+      STAR_MAP_DUST.forEach(([x, yf, r]) => {
+        bg.appendChild(svgEl('circle', {
+          class: 'bg-dust',
+          cx: x,
+          cy: yf * mapH,
+          r
+        }));
+      });
+
+      const hLines = 12;
+      const vLines = 6;
+      for (let i = 1; i < hLines; i++) {
+        const y = (mapH / hLines) * i;
+        grid.appendChild(svgEl('line', { x1: 0, y1: y, x2: MAP_WIDTH, y2: y }));
+      }
+      for (let i = 1; i < vLines; i++) {
+        const x = (MAP_WIDTH / vLines) * i;
+        grid.appendChild(svgEl('line', { x1: x, y1: 0, x2: x, y2: mapH }));
+      }
+
+      STAR_MAP_VESSELS.forEach((v, i) => {
+        const x = v.x * MAP_WIDTH;
+        const y = v.y * mapH;
+        const fx = v.from.x <= 1 ? v.from.x * MAP_WIDTH : v.from.x;
+        const fy = v.from.y <= 1 ? v.from.y * mapH : v.from.y;
+        const curveSign = i % 2 === 0 ? 1 : -1;
+        const curve = vesselCurveGeometry(fx, fy, x, y, curveSign);
+        vessels.appendChild(svgEl('path', {
+          class: 'vessel-path',
+          d: curve.path
+        }));
+        appendVessel(vessels, x, y, curve.heading, v.name);
+      });
+
+      STAR_MAP_CATALOG.forEach(s => {
+        const cy = s.y * mapH;
+        const g = svgEl('g', {
+          class: 'star-target',
+          'data-label': s.label,
+          'data-brightness': s.brightness
+        });
+        g.appendChild(svgEl('circle', {
+          class: 'star-hit',
+          cx: s.x, cy, r: Math.max(9, s.r * 4)
+        }));
+        g.appendChild(svgEl('circle', {
+          class: 'star-point',
+          cx: s.x, cy, r: s.r,
+          fill: s.color,
+          opacity: s.brightness
+        }));
+        if (s.worldLabel) {
+          const worldText = svgEl('text', {
+            class: 'star-world-label',
+            x: s.x + 4,
+            y: cy + 7
+          });
+          worldText.textContent = s.worldLabel;
+          g.appendChild(worldText);
+        }
+        stars.appendChild(g);
+      });
+    }
+
+    function resizeStarMap() {
+      const wrap = document.getElementById('star-map-wrap');
+      const svg = document.getElementById('star-map-svg');
+      if (!wrap || !svg) return;
+
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight;
+      if (w < 2 || h < 2) return;
+
+      const mapH = Math.max(280, Math.round(MAP_WIDTH * (h / w)));
+      if (mapH === starMapHeight && svg.getAttribute('viewBox') === `0 0 ${MAP_WIDTH} ${mapH}`) return;
+
+      starMapHeight = mapH;
+      svg.setAttribute('viewBox', `0 0 ${MAP_WIDTH} ${mapH}`);
+      buildStarMapContent(mapH);
+
+      if (starMapSelectFn) starMapSelectFn();
+    }
+
+    function initStarMap() {
+      const svg = document.getElementById('star-map-svg');
+      const starGroup = document.getElementById('star-map-stars');
+      const vesselGroup = document.getElementById('star-map-vessels');
+      const reticule = document.getElementById('star-reticule');
+      const vesselLabel = document.getElementById('star-map-vessel-label');
+      const readout = document.getElementById('star-map-readout');
+      const wrap = document.getElementById('star-map-wrap');
+      if (!svg || !starGroup || !vesselGroup || !reticule || !wrap) return;
+
+      const STAR_HIT_RADIUS = 11;
+      const VESSEL_HIT_RADIUS = 16;
+      const AMBIGUITY_RATIO = 1.4;
+
+      function clientToSvg(clientX, clientY) {
+        const ctm = svg.getScreenCTM();
+        if (!ctm) return null;
+        const pt = svg.createSVGPoint();
+        pt.x = clientX;
+        pt.y = clientY;
+        return pt.matrixTransform(ctm.inverse());
+      }
+
+      function getStarCoords(target) {
+        const point = target.querySelector('.star-point');
+        return {
+          cx: parseFloat(point.getAttribute('cx')),
+          cy: parseFloat(point.getAttribute('cy')),
+          point
+        };
+      }
+
+      function getVesselScreenCoords(target) {
+        const hit = target.querySelector('.vessel-hit');
+        const pt = svg.createSVGPoint();
+        pt.x = parseFloat(hit.getAttribute('cx'));
+        pt.y = parseFloat(hit.getAttribute('cy'));
+        const ctm = target.getCTM();
+        const mapped = ctm ? pt.matrixTransform(ctm) : pt;
+        return {
+          cx: mapped.x,
+          cy: mapped.y,
+          ship: target.querySelector('.vessel-ship')
+        };
+      }
+
+      function clearMapSelections() {
+        starGroup.querySelectorAll('.star-point.selected').forEach(s => s.classList.remove('selected'));
+        vesselGroup.querySelectorAll('.vessel-ship.selected').forEach(s => s.classList.remove('selected'));
+      }
+
+      function hideVesselLabel() {
+        if (!vesselLabel) return;
+        vesselLabel.textContent = '';
+        vesselLabel.setAttribute('visibility', 'hidden');
+      }
+
+      function showVesselLabel(name, cx) {
+        if (!vesselLabel) return;
+        vesselLabel.textContent = name;
+        const isRightHalf = cx >= MAP_WIDTH / 2;
+        if (isRightHalf) {
+          vesselLabel.setAttribute('x', '-14');
+          vesselLabel.setAttribute('text-anchor', 'end');
+        } else {
+          vesselLabel.setAttribute('x', '14');
+          vesselLabel.setAttribute('text-anchor', 'start');
+        }
+        vesselLabel.setAttribute('y', '4');
+        vesselLabel.setAttribute('visibility', 'visible');
+      }
+
+      function selectStar(target) {
+        if (!target) return;
+        const { cx, cy, point } = getStarCoords(target);
+        const label = target.dataset.label || 'UNKNOWN';
+        const brightness = target.dataset.brightness || '—';
+
+        clearMapSelections();
+        reticule.setAttribute('transform', `translate(${cx}, ${cy})`);
+        point.classList.add('selected');
+        hideVesselLabel();
+        if (readout) readout.textContent = `TARGET: ${label} • MAG ${brightness}`;
+        lastMapSelection = { type: 'star', label };
+      }
+
+      function selectVessel(target) {
+        if (!target) return;
+        const { cx, cy, ship } = getVesselScreenCoords(target);
+        const name = target.dataset.name || 'UNKNOWN VESSEL';
+
+        clearMapSelections();
+        reticule.setAttribute('transform', `translate(${cx}, ${cy})`);
+        if (ship) ship.classList.add('selected');
+        showVesselLabel(name, cx);
+        if (readout) readout.textContent = `VESSEL: ${name} • STARFLEET`;
+        lastMapSelection = { type: 'vessel', name };
+      }
+
+      function restoreMapSelection() {
+        if (lastMapSelection.type === 'vessel') {
+          const vessel = vesselGroup.querySelector(`[data-name="${lastMapSelection.name}"]`);
+          if (vessel) {
+            selectVessel(vessel);
+            return;
+          }
+        }
+        const star = starGroup.querySelector(`[data-label="${lastMapSelection.label}"]`)
+          || starGroup.querySelector('.star-target');
+        selectStar(star);
+      }
+
+      starMapSelectFn = restoreMapSelection;
+
+      function findNearestTarget(clientX, clientY) {
+        const svgPt = clientToSvg(clientX, clientY);
+        if (!svgPt) return null;
+
+        const candidates = [];
+
+        starGroup.querySelectorAll('.star-target').forEach(target => {
+          const { cx, cy } = getStarCoords(target);
+          const dist = Math.hypot(svgPt.x - cx, svgPt.y - cy);
+          candidates.push({ type: 'star', target, dist, radius: STAR_HIT_RADIUS });
+        });
+
+        vesselGroup.querySelectorAll('.vessel-target').forEach(target => {
+          const { cx, cy } = getVesselScreenCoords(target);
+          const dist = Math.hypot(svgPt.x - cx, svgPt.y - cy);
+          candidates.push({ type: 'vessel', target, dist, radius: VESSEL_HIT_RADIUS });
+        });
+
+        const inRange = candidates.filter(c => c.dist <= c.radius).sort((a, b) => a.dist - b.dist);
+        if (!inRange.length) return null;
+        if (inRange[1] && inRange[1].dist < inRange[0].radius
+            && inRange[1].dist < inRange[0].dist * AMBIGUITY_RATIO) return null;
+        return inRange[0];
+      }
+
+      function handleMapClick(e) {
+        const starDirect = e.target.closest('.star-target');
+        const vesselDirect = e.target.closest('.vessel-target');
+
+        if (vesselDirect) {
+          e.stopPropagation();
+          selectVessel(vesselDirect);
+          return;
+        }
+        if (starDirect) {
+          e.stopPropagation();
+          selectStar(starDirect);
+          return;
+        }
+
+        const nearest = findNearestTarget(e.clientX, e.clientY);
+        if (!nearest) return;
+        e.stopPropagation();
+        if (nearest.type === 'vessel') selectVessel(nearest.target);
+        else selectStar(nearest.target);
+      }
+
+      svg.addEventListener('click', handleMapClick);
+
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => resizeStarMap());
+        ro.observe(wrap);
+      }
+      window.addEventListener('resize', resizeStarMap);
+
+      const layoutStarMap = () => {
+        resizeStarMap();
+        restoreMapSelection();
+      };
+      requestAnimationFrame(() => requestAnimationFrame(layoutStarMap));
+    }
+
+    function attachListeners() {
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+          updateLiveStats();
+          saveToStorage();
+        });
+        el.addEventListener('keydown', (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            copyPrompt();
+          }
+        });
+      });
+
+      document.getElementById('copy-btn').addEventListener('click', () => copyPrompt(document.getElementById('copy-btn')));
+      document.getElementById('fab-preview-btn').addEventListener('click', openPreviewModal);
+      document.getElementById('fab-download-btn').addEventListener('click', downloadPrompt);
+
+      document.getElementById('modal-close-btn').addEventListener('click', closePreviewModal);
+      document.getElementById('modal-dismiss-btn').addEventListener('click', closePreviewModal);
+      document.getElementById('modal-copy-btn').addEventListener('click', copyModalPrompt);
+
+      const previewModal = document.getElementById('preview-modal');
+      previewModal.addEventListener('click', (e) => {
+        if (e.target === previewModal) closePreviewModal();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !previewModal.hidden) {
+          closePreviewModal();
+        }
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', () => {
+        if (confirm('Clear all input fields?')) clearAll();
+      });
+
+      document.querySelectorAll('.format-slider').forEach(toggle => {
+        toggle.addEventListener('click', togglePromptFormat);
+      });
+    }
+
+    function init() {
+      loadPanelOrder();
+      applyPanelOrder();
+      loadFromStorage();
+      loadFormatFromStorage();
+      updateLiveStats();
+      updateStardate();
+      setInterval(updateStardate, 38000);
+      attachListeners();
+      initPanelDragDrop();
+      initStarMap();
+      setTimeout(saveToStorage, 60);
+
+      // Keyboard hint
+      console.log('%c[LCARS] Ctrl/Cmd + Enter in any field copies the compiled prompt.', 'color:#334455');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

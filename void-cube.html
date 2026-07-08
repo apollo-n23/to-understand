@@ -85,7 +85,7 @@
 </head>
 <body>
   <div class="header">
-    <a href="prompt-builder.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
+    <a href="index.html" class="back-link">← RETURN TO PROMPT MATRIX</a>
     <div class="page-title">NEON DASH PROTOCOL <span>774 • SIDE-SCROLL SIM</span></div>
   </div>
 
@@ -154,6 +154,7 @@
     let lastOrbSpawn = 0;
     let lastGreenOrbSpawn = 0;
     let firstShieldTutorialActive = false;
+    let wasAirborne = true;
 
     const keys = {};
 
@@ -168,6 +169,9 @@
         try {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) { /* silent fail on old browsers */ }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
       }
       return audioCtx;
     }
@@ -239,6 +243,11 @@
       if (muted) return;
       playTone(780, 95, 'triangle', 0.20, 7, 90);
       setTimeout(() => playTone(1050, 55, 'sine', 0.11, 5, 45), 22);
+    }
+    function playLand() {
+      if (muted) return;
+      playTone(280, 55, 'sine', 0.12, 5, 55);
+      playNoise(48, 0.06, 900, 'lowpass');
     }
     function playCollect(isGreen = false) {
       if (muted) return;
@@ -598,6 +607,7 @@
       // === VISIBLE LADDER CLIMB (executes only when triggered; ends level at portal) ===
       if (player.isClimbing && gameState === 'playing') {
         player.climbProgress = (player.climbProgress || 0) + 0.0198;
+        if ((frame % 7) === 0) playLadderStep();
         const t = Math.min(1, player.climbProgress);
 
         if (levelExit) {
@@ -693,6 +703,7 @@
             player.vy = -19.5;   // Much stronger upward boost than normal jump
             landed = true;
             player.y = tTop - player.h - 1;
+            playTrampoline();
             // Fun bounce particles
             for (let i = 0; i < 7; i++) {
               particles.push({
@@ -709,12 +720,19 @@
         }
       }
 
+      // Land sound after full landing resolution (ground + platforms + trampoline)
+      if (landed && wasAirborne) {
+        playLand();
+      }
+      wasAirborne = !landed;
+
       // jump (only when on ground or a platform)
       if ((keys[' '] || keys['Spacebar']) && landed && player.vy >= -0.1) {
         player.vy = -11.8;
         jumpCount++;
         spawnDust(player.wx + 8, player.y + player.h + 1, 7, true);
         playJump();
+        wasAirborne = true;
         keys[' '] = false; // one-shot
       }
 
@@ -824,6 +842,7 @@
               vy: (dy / dist) * speed,
               life: 105 + Math.random() * 18
             });
+            playLaser();
           }
           // Randomised fairly slow interval between shots (roughly 1.6s – 3.2s)
           s.nextShot = frame + 95 + Math.random() * 95;
@@ -868,6 +887,7 @@
         if (dx < 22 && dy < 22) {
           const value = orb.value || 1;
           neonScore += value;
+          playCollect(value === 5);
 
           // Collect particles - different color for green orbs
           const particleColor = (value === 5) ? '#33ff88' : '#3355aa';
@@ -940,6 +960,7 @@
           } else if (player.hasShield) {
             // Shield absorbs exactly one hit, then pops and grants 5 seconds invulnerability
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds at ~60fps
             // Shield pop effect (neon blue)
             for (let k = 0; k < 22; k++) {
@@ -953,6 +974,7 @@
             }
           } else {
             gameState = 'over';
+            playDeath('hazard');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // small floor hit dust
             spawnDust(player.wx + player.w / 2, GROUND_Y, 5, false);
@@ -980,6 +1002,7 @@
               // Fully protected during 5-second post-shield grace period
             } else if (player.hasShield) {
               player.hasShield = false;
+              playShieldPop();
               player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
               for (let k = 0; k < 22; k++) {
                 const ang = Math.random() * Math.PI * 2;
@@ -992,6 +1015,7 @@
               }
             } else {
               gameState = 'over';
+              playDeath('hazard');
               spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
               spawnDust(player.wx + player.w / 2, GROUND_Y, 4, false);
               if (score > best) {
@@ -1024,6 +1048,7 @@
             projectiles.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1037,6 +1062,7 @@
             projectiles.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             // Remove the projectile that hit
             projectiles.splice(i, 1);
@@ -1069,6 +1095,7 @@
             endFireballs.splice(i, 1);
           } else if (player.hasShield) {
             player.hasShield = false;
+            playShieldPop();
             player.invulnUntil = now + 300; // 5 seconds invulnerability after shield pops
             for (let k = 0; k < 22; k++) {
               const ang = Math.random() * Math.PI * 2;
@@ -1082,6 +1109,7 @@
             endFireballs.splice(i, 1);
           } else {
             gameState = 'over';
+            playDeath('projectile');
             spawnExplosion(player.wx + player.w / 2, player.y + player.h / 2);
             endFireballs.splice(i, 1);
             if (score > best) {
@@ -1103,6 +1131,7 @@
         const dy = Math.abs(player.y + 13 - powerUp.y);
         if (dx < 26 && dy < 26) {
           player.hasShield = true;
+          playPowerup('shield');
           player.invulnUntil = 0; // Fresh shield replaces any grace period
 
           // Dismiss first-shield tutorial
@@ -1230,6 +1259,7 @@
           player.climbProgress = 0;
           player.climbStartY = player.y;
           player.climbTargetY = levelExit.baseY - 305; // tall portal (60%+ of level height)
+          playLadderGrab();
           keys['ArrowUp'] = false;
           keys['w'] = false;
           keys['W'] = false;
