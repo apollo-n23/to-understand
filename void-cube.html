@@ -1222,7 +1222,7 @@
 
         // Ensure no floating platforms or ANY other objects are touching or overlapping the ending ladder (prevent spawns touching ladder)
         const ladderCenter = levelExit.wx;
-        const safeMargin = 100; // generous padding so nothing visually or physically overlaps the ladder or top platform; covers triangles/obstacles, enemies/specials/verticals, waterGaps, neonOrbs, powerUps, lowWalls, trampolines, poison*, bg elems, flyingShips, alienTrees
+        const safeMargin = 100; // generous padding so nothing visually or physically overlaps the ladder or top platform; covers triangles/obstacles, enemies/specials, neonOrbs, powerUps, lowWalls, trampolines
         platforms = platforms.filter(p => {
           const platCenter = p.wx + p.width / 2;
           const xDist = Math.abs(platCenter - ladderCenter);
@@ -1232,16 +1232,15 @@
           }
           return true;
         });
-        // Extended filters for all other spawn types to prevent any overlap with ladder (use x dist + y tall check for high objects; ground objs by x only)
+        // Extended filters for L1 spawn types near ladder (use x dist + y tall check for high objects; ground objs by x only)
         obstacles = obstacles.filter(o => Math.abs(o.wx - ladderCenter) >= safeMargin);
         specials = specials.filter(s => Math.abs(s.wx - ladderCenter) >= safeMargin || (s.y && s.y <= GROUND_Y - 420));
-        waterGaps = waterGaps.filter(g => Math.abs(g.wx - ladderCenter) >= safeMargin);
-        verticalEnemies = verticalEnemies.filter(e => !(Math.abs(e.wx - ladderCenter) < safeMargin && e.y > GROUND_Y - 420));
         neonOrbs = neonOrbs.filter(o => !(Math.abs(o.wx - ladderCenter) < safeMargin && o.y > GROUND_Y - 420));
         lowWalls = lowWalls.filter(w => Math.abs(w.wx - ladderCenter) >= safeMargin);
         trampolines = trampolines.filter(t => Math.abs(t.wx - ladderCenter) >= safeMargin);
-        poisonClouds = poisonClouds.filter(c => !(Math.abs(c.wx - ladderCenter) < safeMargin && c.y > GROUND_Y - 420));
-        poisonDarts = poisonDarts.filter(d => !(Math.abs(d.wx - ladderCenter) < safeMargin && d.y > GROUND_Y - 420));
+        if (powerUp && Math.abs(powerUp.wx - ladderCenter) < safeMargin && powerUp.y > GROUND_Y - 420) {
+          powerUp = null;
+        }
 
         // Invisible barrier + large polygonal boss beyond it
         // (boss will be drawn and will start spitting fireballs)
@@ -2286,10 +2285,15 @@
     }
 
     function gameLoop() {
-      update();
-      draw();
-      updateLevel2LinkVisibility();
-      requestAnimationFrame(gameLoop);
+      try {
+        update();
+        draw();
+        updateLevel2LinkVisibility();
+      } catch (err) {
+        console.error('[Neon Dash] gameLoop error:', err);
+      } finally {
+        requestAnimationFrame(gameLoop);
+      }
     }
 
     function startPlaying() {

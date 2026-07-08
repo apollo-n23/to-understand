@@ -4161,11 +4161,16 @@
     }
 
     function gameLoop() {
-      update();
-      draw();
-      // updateLevel3LinkVisibility() REMOVED from per-frame (was causing subtle DOM/reflow cost in rAF hot path).
-      // Now called explicitly only on gameState transitions to 'complete'/'over'/'playing'.
-      requestAnimationFrame(gameLoop);
+      try {
+        update();
+        draw();
+        // updateLevel3LinkVisibility() REMOVED from per-frame (was causing subtle DOM/reflow cost in rAF hot path).
+        // Now called explicitly only on gameState transitions to 'complete'/'over'/'playing'.
+      } catch (err) {
+        console.error('[Neon Dash] gameLoop error:', err);
+      } finally {
+        requestAnimationFrame(gameLoop);
+      }
     }
 
     function startPlaying() {

@@ -1671,6 +1671,9 @@
         trampolines = trampolines.filter(t => Math.abs(t.wx - ladderCenter) >= safeMargin);
         poisonClouds = poisonClouds.filter(c => !(Math.abs(c.wx - ladderCenter) < safeMargin && c.y > GROUND_Y - 420));
         poisonDarts = poisonDarts.filter(d => !(Math.abs(d.wx - ladderCenter) < safeMargin && d.y > GROUND_Y - 420));
+        if (powerUp && Math.abs(powerUp.wx - ladderCenter) < safeMargin && powerUp.y > GROUND_Y - 420) {
+          powerUp = null;
+        }
 
         // Invisible barrier + large polygonal boss beyond it
         // (boss will be drawn and will start spitting fireballs)
@@ -3107,10 +3110,15 @@
     }
 
     function gameLoop() {
-      update();
-      draw();
-      updateNextLevelLinkVisibility();
-      requestAnimationFrame(gameLoop);
+      try {
+        update();
+        draw();
+        updateNextLevelLinkVisibility();
+      } catch (err) {
+        console.error('[Neon Dash] gameLoop error:', err);
+      } finally {
+        requestAnimationFrame(gameLoop);
+      }
     }
 
     function startPlaying() {
