@@ -72,7 +72,7 @@ Shared loop: gravity cube (26×26), stomp from above, collect neon orbs, climb t
 
 Spawn-safety rule: nothing spawns on the end ladder (`safeMargin` ≈ 100). Sound wrappers must match `sound-design-bible.md` (`playJump`, `playLand`, `playDeath(cause)`, …). Level 6 also has `playBubbleChirp()`.
 
-**Sprites:** each level loads `assets/neon/draw-sprites.js` and calls `NeonDashSprites.theme(...)`. `drawSprite` uses `canvas.drawImage` scaled to the existing entity box (player stays 26×26). Primitive canvas drawing remains as a fallback if an image has not loaded.
+**Sprites:** each level loads `assets/neon/draw-sprites.js` and calls `NeonDashSprites.theme(...)`. `drawSprite` uses `canvas.drawImage` scaled to the existing entity box (player stays 26×26). Thematic `sky-*.jpg` plates scroll as a far layer; `plat-*.png` tiles the floor and floating platforms (visual height only — hitboxes unchanged). L4 boss uses 8 Imagine-video idle frames via `drawBoss`. Primitive canvas drawing remains as a fallback if an image has not loaded.
 
 ```bash
 node tests/neon-mechanics.test.js

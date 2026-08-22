@@ -2208,6 +2208,7 @@
       // Layered grey smog for hazy atmosphere (no ceiling)
       ctx.fillStyle = '#2c313a';
       ctx.fillRect(0, 0, W, 210);
+      if (window.NeonDashSprites) NeonDashSprites.drawSky(ctx, W, H, GROUND_Y, scrollX, frame);
       ctx.fillStyle = '#363c47';
       ctx.fillRect(0, 70, W, 170);
       ctx.fillStyle = '#414850';
@@ -2558,6 +2559,7 @@
       // Base charred rocky floor (dark slate / basalt, pink biosphere influence)
       ctx.fillStyle = '#2f2a26';
       ctx.fillRect(0, floorTop, W, H - floorTop);
+      if (window.NeonDashSprites) NeonDashSprites.drawGround(ctx, W, GROUND_Y, H, scrollX);
 
       // Rough top edge / lip
       ctx.fillStyle = '#3a3430';
@@ -3097,6 +3099,10 @@
         // soft shadow (moves slightly with sway + floatY)
         ctx.fillStyle = 'rgba(0,0,0,0.32)';
         ctx.fillRect(sx + 3, py + p.height + 3, p.width - 6, 5);
+
+        if (window.NeonDashSprites && NeonDashSprites.drawPlatform(ctx, sx, py, p.width, p.height)) {
+          continue;
+        }
 
         // main platform body (bubblegum pink; variation based on moving L/R sway)
         ctx.fillStyle = ((p.swayAmp || 0) > 0.04 ? '#ff77cc' : '#ff88cc');

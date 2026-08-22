@@ -1730,6 +1730,7 @@
       // Deep green desert sky
       ctx.fillStyle = '#0d2218';
       ctx.fillRect(0, 0, W, H);
+      if (window.NeonDashSprites) NeonDashSprites.drawSky(ctx, W, H, GROUND_Y, scrollX, frame);
 
       // Occasional lightning flashes (silver and gold) in the green sky
       const lightningPhase = frame % 240;
@@ -1951,6 +1952,7 @@
       // base dusty yellow-grey floor
       ctx.fillStyle = '#c5b38a';
       ctx.fillRect(0, floorTop, W, H - floorTop);
+      if (window.NeonDashSprites) NeonDashSprites.drawGround(ctx, W, GROUND_Y, H, scrollX);
 
       // top edge highlight (warm glow)
       ctx.fillStyle = '#e8d8a8';
@@ -2166,6 +2168,10 @@
         // soft shadow
         ctx.fillStyle = 'rgba(0,0,0,0.28)';
         ctx.fillRect(sx + 4, py + p.height + 3, p.width - 6, 5);
+
+        if (window.NeonDashSprites && NeonDashSprites.drawPlatform(ctx, sx, py, p.width, p.height)) {
+          continue;
+        }
 
         // main platform body
         ctx.fillStyle = '#0e2744';

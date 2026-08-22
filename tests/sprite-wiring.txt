@@ -46,8 +46,8 @@ PASS Level4.html drawImage player via drawSprite
 PASS Level4.html drawSprite hazard
 PASS Level4.html drawSprite orbs
 PASS Level4.html drawSprite portal
+PASS Level4.html drawBoss animated
 PASS Level4.html drawSprite ptero
-PASS Level4.html drawSprite boss
 PASS Level4.html climb/collision still in source
 PASS Leve5.html canvas 960x520
 PASS Leve5.html loads draw-sprites.js
@@ -103,5 +103,19 @@ PASS exists assets/neon/drone.png
 PASS exists assets/neon/octopoop.png
 PASS exists assets/neon/boss.png
 PASS exists assets/neon/bubble.png
+PASS exists assets/neon/sky-void.jpg
+PASS exists assets/neon/sky-octo.jpg
+PASS exists assets/neon/sky-industrial.jpg
+PASS exists assets/neon/sky-lava.jpg
+PASS exists assets/neon/sky-pink.jpg
+PASS exists assets/neon/sky-water.jpg
+PASS exists assets/neon/plat-void.png
+PASS exists assets/neon/plat-octo.png
+PASS exists assets/neon/plat-industrial.png
+PASS exists assets/neon/plat-lava.png
+PASS exists assets/neon/plat-pink.png
+PASS exists assets/neon/plat-water.png
+PASS exists assets/neon/boss-01.png
+PASS exists assets/neon/boss-08.png
 PASS exists assets/neon/draw-sprites.js
 ALL SPRITE WIRING CHECKS PASSED

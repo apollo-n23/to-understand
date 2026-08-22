@@ -2734,6 +2734,7 @@
       // Near-black navy at top → deep blues mid → dark murk toward seabed
       ctx.fillStyle = '#030a14';
       ctx.fillRect(0, 0, W, 120);
+      if (window.NeonDashSprites) NeonDashSprites.drawSky(ctx, W, H, GROUND_Y, scrollX, frame);
       ctx.fillStyle = '#061428';
       ctx.fillRect(0, 80, W, 140);
       ctx.fillStyle = '#0a1e38';
@@ -3142,6 +3143,7 @@
       // Base deep navy stone seabed floor
       ctx.fillStyle = '#060f1c';
       ctx.fillRect(0, floorTop, W, H - floorTop);
+      if (window.NeonDashSprites) NeonDashSprites.drawGround(ctx, W, GROUND_Y, H, scrollX);
 
       // Rough top edge / lip (darker underwater rock)
       ctx.fillStyle = '#0e2438';
@@ -3681,6 +3683,10 @@
         // soft shadow (moves slightly with sway + floatY)
         ctx.fillStyle = 'rgba(0,0,0,0.32)';
         ctx.fillRect(sx + 3, py + p.height + 3, p.width - 6, 5);
+
+        if (window.NeonDashSprites && NeonDashSprites.drawPlatform(ctx, sx, py, p.width, p.height)) {
+          continue;
+        }
 
         // main platform body (ice-blue / aqua; variation based on moving L/R sway)
         ctx.fillStyle = ((p.swayAmp || 0) > 0.04 ? '#33aacc' : '#2277aa');

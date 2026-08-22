@@ -7,7 +7,7 @@ const LEVELS = [
   { file: 'void-cube.html', theme: 'void', extra: [] },
   { file: 'level2.html', theme: 'octo', extra: ['npc'] },
   { file: 'Level3.html', theme: 'industrial', extra: [] },
-  { file: 'Level4.html', theme: 'lava', extra: ['ptero', 'boss'] },
+  { file: 'Level4.html', theme: 'lava', extra: ['ptero'] },
   { file: 'Leve5.html', theme: 'pink', extra: ['ptero'] },
   { file: 'Level6.html', theme: 'water', extra: ['bubble'] },
 ];
@@ -36,6 +36,9 @@ for (const spec of LEVELS) {
   check(t.indexOf("drawSprite(ctx, 'hazard'") >= 0, spec.file + ' drawSprite hazard');
   check(t.indexOf("'orbGreen'") >= 0 && t.indexOf("'orb'") >= 0, spec.file + ' drawSprite orbs');
   check(t.indexOf("drawSprite(ctx, 'portal'") >= 0, spec.file + ' drawSprite portal');
+  if (spec.file === 'Level4.html') {
+    check(t.indexOf('drawBoss(') >= 0, spec.file + ' drawBoss animated');
+  }
   for (const k of spec.extra) {
     check(t.indexOf("drawSprite(ctx, '" + k + "'") >= 0, spec.file + ' drawSprite ' + k);
   }
@@ -49,6 +52,9 @@ const spriteFiles = [
   'portal-void.png', 'portal-industrial.png', 'portal-lava.png', 'portal-pink.png', 'portal-water.png',
   'blob.png', 'blob-lava.png', 'blob-pink.png', 'blob-water.png',
   'ptero.png', 'drone.png', 'octopoop.png', 'boss.png', 'bubble.png',
+  'sky-void.jpg', 'sky-octo.jpg', 'sky-industrial.jpg', 'sky-lava.jpg', 'sky-pink.jpg', 'sky-water.jpg',
+  'plat-void.png', 'plat-octo.png', 'plat-industrial.png', 'plat-lava.png', 'plat-pink.png', 'plat-water.png',
+  'boss-01.png', 'boss-08.png',
   'draw-sprites.js',
 ];
 for (const f of spriteFiles) {
