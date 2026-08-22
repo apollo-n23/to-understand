@@ -125,12 +125,12 @@
     const OXYGEN_MAX = 100;
     const OXYGEN_DRAIN = 0.17;
     const OXYGEN_REFILL = 1.15;
-    // ~20% fewer / less frequent air bubbles (still useful for oxygen)
-    const MAX_AIR_BUBBLES = 10;
+    // Air bubbles: spawn frequency −50% (intervals doubled); still playable oxygen
+    const MAX_AIR_BUBBLES = 8;
     const AIR_BUBBLE_R_MIN = 42;
     const AIR_BUBBLE_R_MAX = 78;
-    const AIR_BUBBLE_SPAWN_MIN = 17;
-    const AIR_BUBBLE_SPAWN_SPAN = 14;
+    const AIR_BUBBLE_SPAWN_MIN = 34;
+    const AIR_BUBBLE_SPAWN_SPAN = 28;
     // Underwater player physics (noticeably slower fall than other levels)
     const WATER_GRAVITY = 0.34;
     const WATER_GRAVITY_PIT = 0.16;
@@ -550,11 +550,28 @@
       if (gameState !== 'shop') return;
       saveNeonScore();
       saveOwnedPowerups();
+      // Clear shop overlay state so black fade / HUD don't stick
       shopPhase = null;
       shopTimer = 0;
       shopMessage = '';
-      gameState = 'complete';
-      playPortal();
+      shopMsgTimer = 0;
+      shopVisited = true; // no re-entry; must climb ladder to finish
+
+      // Place player safely beside Hydro door (outside doorway), free to walk to ladder
+      const door = getHydroDoorWorld();
+      if (door && levelExit) {
+        player.wx = door.doorL - player.w - 8;
+        player.y = GROUND_Y - player.h;
+        player.vx = 0;
+        player.vy = 0;
+        player.isClimbing = false;
+        player.climbProgress = 0;
+        // Snap camera so exit from shop isn't off-screen
+        scrollX = player.wx - 275;
+      }
+
+      // Resume end-of-level play (ladder climb → complete); do NOT skip to complete
+      gameState = 'playing';
       updateLevel3LinkVisibility();
     }
     function updateShop() {
@@ -653,11 +670,11 @@
       specials.push({ wx: 680, y: GROUND_Y - 64, w: 30, h: 64, nextShot: frame + 55 + Math.random() * 40 });
       player.y = GROUND_Y - player.h;
 
-      // Seed 3–4 large air bubbles near the start (~20% fewer; oxygen still immediate)
-      const seedCount = 3 + Math.floor(Math.random() * 2);
+      // Seed 2–3 large air bubbles near the start (frequency −50%; oxygen still immediate)
+      const seedCount = 2 + Math.floor(Math.random() * 2);
       for (let i = 0; i < seedCount; i++) {
         airBubbles.push(makeAirBubble(
-          player.wx + 90 + i * 100 + Math.random() * 40,
+          player.wx + 90 + i * 110 + Math.random() * 40,
           90 + Math.random() * (GROUND_Y - 160)
         ));
       }
@@ -3838,7 +3855,7 @@
         ctx.restore();
       }
 
-      // draw obstacles (triangles) - blue crystal/coral hazards that patrol + wiggle L/R
+      // draw obstacles — spiky coral reef formations (hitbox unchanged: ~tw 27, height o.h)
       for (let o of obstacles) {
         const currWX = getTriangleCurrentWX(o);
         const sx = currWX - scrollX;
@@ -3846,68 +3863,160 @@
 
         const th = o.h;
         const tw = 27;
-        const wiggle = Math.sin(frame * 0.065 + (o.wx || 0) * 0.015) * 1.6; // left to right wiggle - "alive"
+        const wiggle = Math.sin(frame * 0.065 + (o.wx || 0) * 0.015) * 1.6; // alive sway
         const drawX = sx + wiggle;
+        const pulse = 0.55 + 0.45 * Math.sin(frame * 0.08 + (o.wx || 0) * 0.02);
+        const polypBob = Math.sin(frame * 0.11 + (o.wx || 0) * 0.03);
 
-        // shadow under triangle
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        // soft ground shadow (wider base of coral cluster)
+        ctx.fillStyle = 'rgba(0,0,0,0.38)';
         ctx.beginPath();
-        ctx.moveTo(drawX - tw/2 - 1, GROUND_Y + 3);
-        ctx.lineTo(drawX + tw/2 + 1, GROUND_Y + 3);
-        ctx.lineTo(drawX, GROUND_Y - th * 0.35);
+        ctx.ellipse(drawX, GROUND_Y + 2.5, tw * 0.62, 3.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // base mound (reef rock) — teal-dark
+        ctx.fillStyle = '#0a2a38';
+        ctx.beginPath();
+        ctx.moveTo(drawX - tw * 0.55, GROUND_Y + 0.5);
+        ctx.quadraticCurveTo(drawX - tw * 0.2, GROUND_Y - th * 0.18, drawX, GROUND_Y - th * 0.12);
+        ctx.quadraticCurveTo(drawX + tw * 0.2, GROUND_Y - th * 0.18, drawX + tw * 0.55, GROUND_Y + 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#123848';
+        ctx.beginPath();
+        ctx.ellipse(drawX, GROUND_Y - 1, tw * 0.48, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // main central spike (keeps triangular silhouette / same height)
+        const tipY = GROUND_Y - th;
+        ctx.fillStyle = '#0d3a52';
+        ctx.beginPath();
+        ctx.moveTo(drawX, tipY);
+        ctx.lineTo(drawX - tw * 0.28, GROUND_Y - th * 0.08);
+        ctx.lineTo(drawX - tw * 0.12, GROUND_Y + 0.5);
+        ctx.lineTo(drawX + tw * 0.12, GROUND_Y + 0.5);
+        ctx.lineTo(drawX + tw * 0.28, GROUND_Y - th * 0.08);
         ctx.closePath();
         ctx.fill();
 
-        // main triangle (hazard) - blue crystal/coral
-        ctx.fillStyle = '#0d2840';
+        // mid-tone ridge on main spike
+        ctx.fillStyle = '#1a5a78';
         ctx.beginPath();
-        ctx.moveTo(drawX, GROUND_Y - th);
-        ctx.lineTo(drawX - tw / 2, GROUND_Y + 0.5);
-        ctx.lineTo(drawX + tw / 2, GROUND_Y + 0.5);
+        ctx.moveTo(drawX, tipY + 2);
+        ctx.lineTo(drawX - tw * 0.14, GROUND_Y - th * 0.15);
+        ctx.lineTo(drawX + tw * 0.14, GROUND_Y - th * 0.15);
         ctx.closePath();
         ctx.fill();
 
-        // center pulsing aqua crystal vein
-        ctx.fillStyle = `rgba(102,221,255, ${0.32 + 0.22*Math.sin(frame*0.09 + (o.wx||0))})`;
-        ctx.fillRect(drawX-1.5, GROUND_Y - th*0.72 , 3, th*0.48);
-
-        // pulsing aqua glow top lip / edge
-        const lipAlpha = 0.55 + 0.35 * Math.sin(frame * 0.1 + (o.wx || 0));
-        ctx.fillStyle = `rgba(51, 170, 204, ${lipAlpha})`;
+        // glowing aqua tip
+        ctx.fillStyle = `rgba(80, 210, 240, ${0.45 + 0.35 * pulse})`;
         ctx.beginPath();
-        ctx.moveTo(drawX, GROUND_Y - th);
-        ctx.lineTo(drawX - tw / 2 + 1, GROUND_Y - 1);
-        ctx.lineTo(drawX + tw / 2 - 1, GROUND_Y - 1);
+        ctx.moveTo(drawX, tipY);
+        ctx.lineTo(drawX - 4.5, tipY + th * 0.22);
+        ctx.lineTo(drawX + 4.5, tipY + th * 0.22);
         ctx.closePath();
         ctx.fill();
 
-        // soft highlight (thin aqua rim)
-        ctx.strokeStyle = 'rgba(102,221,255,0.28)';
-        ctx.lineWidth=1.1;
+        // left branch spike (teal coral arm, angled out)
+        const lBranchH = th * (0.55 + 0.08 * Math.sin((o.wx || 0)));
+        ctx.fillStyle = '#156070';
         ctx.beginPath();
-        ctx.moveTo(drawX, GROUND_Y - th + 2);
-        ctx.lineTo(drawX - tw / 2 + 3, GROUND_Y - 2);
-        ctx.lineTo(drawX + tw / 2 - 3, GROUND_Y - 2);
+        ctx.moveTo(drawX - tw * 0.08, GROUND_Y - th * 0.35);
+        ctx.lineTo(drawX - tw * 0.52, GROUND_Y - lBranchH);
+        ctx.lineTo(drawX - tw * 0.22, GROUND_Y - th * 0.12);
+        ctx.lineTo(drawX - tw * 0.05, GROUND_Y - th * 0.22);
         ctx.closePath();
+        ctx.fill();
+        // left tip glow (pink-coral accent)
+        ctx.fillStyle = `rgba(255, 120, 170, ${0.35 + 0.25 * pulse})`;
+        ctx.beginPath();
+        ctx.moveTo(drawX - tw * 0.52, GROUND_Y - lBranchH);
+        ctx.lineTo(drawX - tw * 0.42, GROUND_Y - lBranchH + 5);
+        ctx.lineTo(drawX - tw * 0.38, GROUND_Y - lBranchH + 3);
+        ctx.closePath();
+        ctx.fill();
+
+        // right branch spike (slightly shorter, blue-teal)
+        const rBranchH = th * (0.48 + 0.06 * Math.cos((o.wx || 0) * 0.7));
+        ctx.fillStyle = '#0e4a68';
+        ctx.beginPath();
+        ctx.moveTo(drawX + tw * 0.08, GROUND_Y - th * 0.32);
+        ctx.lineTo(drawX + tw * 0.50, GROUND_Y - rBranchH);
+        ctx.lineTo(drawX + tw * 0.20, GROUND_Y - th * 0.10);
+        ctx.lineTo(drawX + tw * 0.05, GROUND_Y - th * 0.20);
+        ctx.closePath();
+        ctx.fill();
+        // right tip glow (aqua)
+        ctx.fillStyle = `rgba(90, 220, 230, ${0.4 + 0.3 * pulse})`;
+        ctx.beginPath();
+        ctx.moveTo(drawX + tw * 0.50, GROUND_Y - rBranchH);
+        ctx.lineTo(drawX + tw * 0.40, GROUND_Y - rBranchH + 4.5);
+        ctx.lineTo(drawX + tw * 0.36, GROUND_Y - rBranchH + 2.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // secondary small center-left spike for denser reef silhouette
+        ctx.fillStyle = '#184858';
+        ctx.beginPath();
+        ctx.moveTo(drawX - tw * 0.18, GROUND_Y - th * 0.62);
+        ctx.lineTo(drawX - tw * 0.32, GROUND_Y - th * 0.28);
+        ctx.lineTo(drawX - tw * 0.06, GROUND_Y - th * 0.28);
+        ctx.closePath();
+        ctx.fill();
+
+        // secondary small center-right spike
+        ctx.fillStyle = '#1a5068';
+        ctx.beginPath();
+        ctx.moveTo(drawX + tw * 0.16, GROUND_Y - th * 0.58);
+        ctx.lineTo(drawX + tw * 0.06, GROUND_Y - th * 0.26);
+        ctx.lineTo(drawX + tw * 0.30, GROUND_Y - th * 0.26);
+        ctx.closePath();
+        ctx.fill();
+
+        // polyp clusters (small glowing dots along body) — pink / teal / aqua
+        const polyps = [
+          { dx: -3.5, dy: th * 0.42, c: '255,140,180', s: 1.6 },
+          { dx: 2.8, dy: th * 0.55, c: '80,210,230', s: 1.4 },
+          { dx: -1.2, dy: th * 0.28, c: '120,230,200', s: 1.3 },
+          { dx: 4.5, dy: th * 0.38, c: '255,150,160', s: 1.2 },
+          { dx: -5.5, dy: th * 0.18, c: '70,190,220', s: 1.5 },
+          { dx: 1.0, dy: th * 0.72, c: '200,120,200', s: 1.1 },
+          { dx: -tw * 0.35, dy: lBranchH * 0.55, c: '255,130,160', s: 1.3 },
+          { dx: tw * 0.32, dy: rBranchH * 0.5, c: '90,220,210', s: 1.2 }
+        ];
+        for (let pi = 0; pi < polyps.length; pi++) {
+          const pl = polyps[pi];
+          const py = GROUND_Y - pl.dy + polypBob * (0.4 + (pi % 3) * 0.15);
+          const a = 0.45 + 0.35 * Math.sin(frame * 0.1 + pi * 1.1 + (o.wx || 0));
+          ctx.fillStyle = `rgba(${pl.c}, ${a})`;
+          ctx.beginPath();
+          ctx.arc(drawX + pl.dx, py, pl.s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // thin aqua rim highlight on main spike
+        ctx.strokeStyle = `rgba(102,221,255,${0.25 + 0.2 * pulse})`;
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(drawX, tipY + 1);
+        ctx.lineTo(drawX - tw * 0.22, GROUND_Y - th * 0.1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(drawX, tipY + 1);
+        ctx.lineTo(drawX + tw * 0.22, GROUND_Y - th * 0.1);
         ctx.stroke();
 
-        // aqua crystal cracks on the face (animated glow)
-        ctx.fillStyle = `rgba(102, 221, 255, 0.6)`;
-        const crackY = GROUND_Y - th * 0.55 + Math.sin(frame * 0.07 + o.wx) * 2;
-        ctx.fillRect(drawX - 4, crackY, 8, 1.5);
-        ctx.fillRect(drawX - 2, GROUND_Y - th * 0.3, 4, 1);
-
-        // top edge
-        ctx.strokeStyle = '#1a4a6e';
-        ctx.lineWidth = 2.2;
+        // soft outer glow (deep-water coral luminescence)
+        ctx.save();
+        ctx.globalAlpha = 0.12 + 0.08 * pulse;
+        ctx.fillStyle = '#44ccdd';
         ctx.beginPath();
-        ctx.moveTo(drawX, GROUND_Y - th);
-        ctx.lineTo(drawX - tw / 2 + 2, GROUND_Y - 0.5);
-        ctx.stroke();
-
-        // small accent line
-        ctx.fillStyle = '#004466';
-        ctx.fillRect(drawX - 1.5, GROUND_Y - th + 5, 3, 1.5);
+        ctx.moveTo(drawX, tipY - 2);
+        ctx.lineTo(drawX - tw * 0.45, GROUND_Y);
+        ctx.lineTo(drawX + tw * 0.45, GROUND_Y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
 
       // === AQUA BIO-SHOOTERS (fins + tentacles - slow, squashable from above, shoot ink/water orbs) ===
@@ -4127,28 +4236,28 @@
         ctx.fillStyle = '#1f3347';
         ctx.fillRect(lx - 16, baseY - 323, 32, 7);
 
-        // Glowing cyan portal / rift at the top - now BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed)
+        // Glowing pink-purple portal / rift at the top - BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed)
         const portalY = baseY - 305;
         const px = lx;
         const py = portalY;
         const baseRx = 25;
         const baseRy = 36;
         const pulse = Math.sin(frame * 0.27) * 2 + 3;
-        // Outer pulsing fill glow (larger)
+        // Outer pulsing fill glow (larger) — pink-ish purple
         ctx.save();
-        ctx.shadowColor = '#66ddff';
+        ctx.shadowColor = '#cc66ee';
         ctx.shadowBlur = 28;
-        ctx.fillStyle = '#4fb8ff';
+        ctx.fillStyle = '#aa66cc';
         ctx.beginPath();
         ctx.ellipse(px, py, baseRx + pulse, baseRy + pulse * 0.7, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        // Inner core rift (brighter, larger)
-        ctx.fillStyle = '#aaddff';
+        // Inner core rift (brighter pink-lilac, larger)
+        ctx.fillStyle = '#ff88cc';
         ctx.beginPath();
         ctx.ellipse(px, py - 1, baseRx * 0.55, baseRy * 0.7, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#eeffff';
+        ctx.fillStyle = '#ffeef8';
         ctx.beginPath();
         ctx.ellipse(px, py - 2, baseRx * 0.28, baseRy * 0.38, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -4161,7 +4270,7 @@
           ctx.save();
           ctx.translate(px, py);
           ctx.rotate(rot);
-          ctx.strokeStyle = `rgba(120, 200, 255, ${alpha})`;
+          ctx.strokeStyle = `rgba(204, 102, 238, ${alpha})`;
           ctx.lineWidth = 1.8 + (4 - i) * 0.4;
           ctx.beginPath();
           ctx.ellipse(0, i * 1.2, rx, ry, 0, 0, Math.PI * 2);
@@ -4170,7 +4279,7 @@
           if (i % 2 === 1) {
             ctx.setLineDash([3, 5]);
             ctx.lineDashOffset = -frame * (1.2 + i * 0.6) * ((i % 4 < 2) ? 1 : -1);
-            ctx.strokeStyle = `rgba(180, 230, 255, ${alpha * 0.7})`;
+            ctx.strokeStyle = `rgba(255, 136, 204, ${alpha * 0.7})`;
             ctx.lineWidth = 1.2;
             ctx.beginPath();
             ctx.ellipse(0, i * 1.2, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 1.1);
@@ -4180,7 +4289,7 @@
           ctx.restore();
         }
         // Subtle rim
-        ctx.strokeStyle = '#88eeff';
+        ctx.strokeStyle = '#dd99ff';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         ctx.ellipse(px, py, baseRx + 1, baseRy + 1, 0, 0, Math.PI * 2);
@@ -4195,7 +4304,7 @@
             const spread = (b - (numBolts - 1) / 2) * 0.55;
             const ang = -1.65 + spread;
             const tPhase = frame * 0.9 + b * 2.3;
-            ctx.strokeStyle = 'rgba(180, 230, 255, 0.45)';
+            ctx.strokeStyle = 'rgba(238, 160, 255, 0.45)';
             ctx.lineWidth = 3.8;
             ctx.beginPath();
             let cx = px + Math.cos(ang) * 8;
@@ -4209,10 +4318,10 @@
               ctx.lineTo(cx, cy);
             }
             ctx.stroke();
-            ctx.strokeStyle = '#aaddff';
+            ctx.strokeStyle = '#ff88cc';
             ctx.lineWidth = 1.8;
             ctx.stroke();
-            ctx.strokeStyle = '#eeffff';
+            ctx.strokeStyle = '#ffeef8';
             ctx.lineWidth = 0.9;
             ctx.stroke();
           }
