@@ -7,9 +7,9 @@ const LEVELS = [
   { file: 'void-cube.html', theme: 'void', extra: [] },
   { file: 'level2.html', theme: 'octo', extra: ['npc'] },
   { file: 'Level3.html', theme: 'industrial', extra: [] },
-  { file: 'Level4.html', theme: 'lava', extra: ['ptero'] },
-  { file: 'Leve5.html', theme: 'pink', extra: ['ptero'] },
-  { file: 'Level6.html', theme: 'water', extra: ['bubble'] },
+  { file: 'Level4.html', theme: 'lava', extra: ['ptero', 'npc', 'build'] },
+  { file: 'Leve5.html', theme: 'pink', extra: ['ptero', 'npc', 'build'] },
+  { file: 'Level6.html', theme: 'water', extra: ['bubble', 'npc', 'build'] },
 ];
 
 const requiredKeys = ['player', 'hazard', 'orb', 'portal'];
@@ -35,7 +35,8 @@ for (const spec of LEVELS) {
   check(t.indexOf("drawSprite(ctx, 'player'") >= 0, spec.file + ' drawImage player via drawSprite');
   check(t.indexOf("drawSprite(ctx, 'hazard'") >= 0, spec.file + ' drawSprite hazard');
   check(t.indexOf("'orbGreen'") >= 0 && t.indexOf("'orb'") >= 0, spec.file + ' drawSprite orbs');
-  check(t.indexOf("drawSprite(ctx, 'portal'") >= 0, spec.file + ' drawSprite portal');
+  check(t.indexOf('drawPortal(') >= 0, spec.file + ' drawPortal animated');
+  check(t.indexOf('drawShot(') >= 0, spec.file + ' drawShot animated');
   if (spec.file === 'Level4.html') {
     check(t.indexOf('drawBoss(') >= 0, spec.file + ' drawBoss animated');
   }
@@ -50,11 +51,18 @@ const spriteFiles = [
   'hazard-void.png', 'hazard-octo.png', 'hazard-industrial.png', 'hazard-lava.png', 'hazard-pink.png', 'hazard-coral.png',
   'orb.png', 'orb-green.png',
   'portal-void.png', 'portal-industrial.png', 'portal-lava.png', 'portal-pink.png', 'portal-water.png',
+  'portal-void-01.png', 'portal-void-08.png', 'portal-lava-01.png', 'portal-pink-01.png', 'portal-water-01.png', 'portal-industrial-01.png',
   'blob.png', 'blob-lava.png', 'blob-pink.png', 'blob-water.png',
   'ptero.png', 'drone.png', 'octopoop.png', 'boss.png', 'bubble.png',
   'sky-void.jpg', 'sky-octo.jpg', 'sky-industrial.jpg', 'sky-lava.jpg', 'sky-pink.jpg', 'sky-water.jpg',
   'plat-void.png', 'plat-octo.png', 'plat-industrial.png', 'plat-lava.png', 'plat-pink.png', 'plat-water.png',
   'boss-01.png', 'boss-08.png',
+  'hud-plate.png', 'world-sign.png', 'shield-pickup.png', 'shield.png',
+  'shield-01.png', 'shield-08.png', 'pickup-01.png', 'pickup-08.png',
+  'fluid-lava.png', 'fluid-water.png', 'fluid-goo.png', 'fluid-acid.png',
+  'build-neon.png', 'build-hydro.png', 'build-lava.png', 'pyramid-gold.png', 'pyramid-ice.png',
+  'shot-bolt.png', 'shot-bolt-01.png', 'shot-fire.png', 'shot-fire-01.png',
+  'shot-laser.png', 'shot-laser-01.png', 'shot-slime.png', 'shot-water.png', 'shot-acid.png',
   'draw-sprites.js',
 ];
 for (const f of spriteFiles) {

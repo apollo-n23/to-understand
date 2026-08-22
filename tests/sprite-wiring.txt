@@ -8,7 +8,8 @@ PASS void-cube.html complete/over paths present
 PASS void-cube.html drawImage player via drawSprite
 PASS void-cube.html drawSprite hazard
 PASS void-cube.html drawSprite orbs
-PASS void-cube.html drawSprite portal
+PASS void-cube.html drawPortal animated
+PASS void-cube.html drawShot animated
 PASS void-cube.html climb/collision still in source
 PASS level2.html canvas 960x520
 PASS level2.html loads draw-sprites.js
@@ -20,7 +21,8 @@ PASS level2.html complete/over paths present
 PASS level2.html drawImage player via drawSprite
 PASS level2.html drawSprite hazard
 PASS level2.html drawSprite orbs
-PASS level2.html drawSprite portal
+PASS level2.html drawPortal animated
+PASS level2.html drawShot animated
 PASS level2.html drawSprite npc
 PASS level2.html climb/collision still in source
 PASS Level3.html canvas 960x520
@@ -33,7 +35,8 @@ PASS Level3.html complete/over paths present
 PASS Level3.html drawImage player via drawSprite
 PASS Level3.html drawSprite hazard
 PASS Level3.html drawSprite orbs
-PASS Level3.html drawSprite portal
+PASS Level3.html drawPortal animated
+PASS Level3.html drawShot animated
 PASS Level3.html climb/collision still in source
 PASS Level4.html canvas 960x520
 PASS Level4.html loads draw-sprites.js
@@ -45,9 +48,12 @@ PASS Level4.html complete/over paths present
 PASS Level4.html drawImage player via drawSprite
 PASS Level4.html drawSprite hazard
 PASS Level4.html drawSprite orbs
-PASS Level4.html drawSprite portal
+PASS Level4.html drawPortal animated
+PASS Level4.html drawShot animated
 PASS Level4.html drawBoss animated
 PASS Level4.html drawSprite ptero
+PASS Level4.html drawSprite npc
+PASS Level4.html drawSprite build
 PASS Level4.html climb/collision still in source
 PASS Leve5.html canvas 960x520
 PASS Leve5.html loads draw-sprites.js
@@ -59,8 +65,11 @@ PASS Leve5.html complete/over paths present
 PASS Leve5.html drawImage player via drawSprite
 PASS Leve5.html drawSprite hazard
 PASS Leve5.html drawSprite orbs
-PASS Leve5.html drawSprite portal
+PASS Leve5.html drawPortal animated
+PASS Leve5.html drawShot animated
 PASS Leve5.html drawSprite ptero
+PASS Leve5.html drawSprite npc
+PASS Leve5.html drawSprite build
 PASS Leve5.html climb/collision still in source
 PASS Level6.html canvas 960x520
 PASS Level6.html loads draw-sprites.js
@@ -72,8 +81,11 @@ PASS Level6.html complete/over paths present
 PASS Level6.html drawImage player via drawSprite
 PASS Level6.html drawSprite hazard
 PASS Level6.html drawSprite orbs
-PASS Level6.html drawSprite portal
+PASS Level6.html drawPortal animated
+PASS Level6.html drawShot animated
 PASS Level6.html drawSprite bubble
+PASS Level6.html drawSprite npc
+PASS Level6.html drawSprite build
 PASS Level6.html climb/collision still in source
 PASS exists assets/neon/player-void.png
 PASS exists assets/neon/player-octo.png
@@ -94,6 +106,12 @@ PASS exists assets/neon/portal-industrial.png
 PASS exists assets/neon/portal-lava.png
 PASS exists assets/neon/portal-pink.png
 PASS exists assets/neon/portal-water.png
+PASS exists assets/neon/portal-void-01.png
+PASS exists assets/neon/portal-void-08.png
+PASS exists assets/neon/portal-lava-01.png
+PASS exists assets/neon/portal-pink-01.png
+PASS exists assets/neon/portal-water-01.png
+PASS exists assets/neon/portal-industrial-01.png
 PASS exists assets/neon/blob.png
 PASS exists assets/neon/blob-lava.png
 PASS exists assets/neon/blob-pink.png
@@ -117,5 +135,31 @@ PASS exists assets/neon/plat-pink.png
 PASS exists assets/neon/plat-water.png
 PASS exists assets/neon/boss-01.png
 PASS exists assets/neon/boss-08.png
+PASS exists assets/neon/hud-plate.png
+PASS exists assets/neon/world-sign.png
+PASS exists assets/neon/shield-pickup.png
+PASS exists assets/neon/shield.png
+PASS exists assets/neon/shield-01.png
+PASS exists assets/neon/shield-08.png
+PASS exists assets/neon/pickup-01.png
+PASS exists assets/neon/pickup-08.png
+PASS exists assets/neon/fluid-lava.png
+PASS exists assets/neon/fluid-water.png
+PASS exists assets/neon/fluid-goo.png
+PASS exists assets/neon/fluid-acid.png
+PASS exists assets/neon/build-neon.png
+PASS exists assets/neon/build-hydro.png
+PASS exists assets/neon/build-lava.png
+PASS exists assets/neon/pyramid-gold.png
+PASS exists assets/neon/pyramid-ice.png
+PASS exists assets/neon/shot-bolt.png
+PASS exists assets/neon/shot-bolt-01.png
+PASS exists assets/neon/shot-fire.png
+PASS exists assets/neon/shot-fire-01.png
+PASS exists assets/neon/shot-laser.png
+PASS exists assets/neon/shot-laser-01.png
+PASS exists assets/neon/shot-slime.png
+PASS exists assets/neon/shot-water.png
+PASS exists assets/neon/shot-acid.png
 PASS exists assets/neon/draw-sprites.js
 ALL SPRITE WIRING CHECKS PASSED

@@ -156,6 +156,44 @@ for (const f of levels) {
   check(!!m, f + ' player w/h remain 26');
 }
 
+// --- spikes must never spawn on trampolines (all six levels) ---
+for (const f of levels) {
+  const t = fs.readFileSync(path.join(ROOT, f), 'utf8');
+  check(t.indexOf('function spikeOverlapsAnyTrampoline(') >= 0, f + ' defines spikeOverlapsAnyTrampoline');
+  check(t.indexOf('function trampolineOverlapsAnySpike(') >= 0, f + ' defines trampolineOverlapsAnySpike');
+  check(t.indexOf('spikeOverlapsAnyTrampoline(nextWX') >= 0, f + ' rejects spike spawn on trampolines');
+  check(t.indexOf('trampolineOverlapsAnySpike(tWX, tW)') >= 0, f + ' rejects trampoline spawn on spikes');
+}
+
+const spikeHtml = fs.readFileSync(path.join(ROOT, 'void-cube.html'), 'utf8');
+const spikeSandbox = { trampolines: [], obstacles: [] };
+vm.createContext(spikeSandbox);
+vm.runInContext(extractFunction(spikeHtml, 'spikeOverlapsAnyTrampoline'), spikeSandbox);
+vm.runInContext(extractFunction(spikeHtml, 'trampolineOverlapsAnySpike'), spikeSandbox);
+
+spikeSandbox.trampolines = [{ wx: 300, width: 40 }];
+check(spikeSandbox.spikeOverlapsAnyTrampoline(320, 0) === true, 'spike centered on trampoline overlaps');
+check(spikeSandbox.spikeOverlapsAnyTrampoline(500, 0) === false, 'distant spike does not overlap trampoline');
+
+spikeSandbox.obstacles = [{ wx: 340, h: 26 }];
+check(spikeSandbox.trampolineOverlapsAnySpike(326, 40) === true, 'trampoline over seeded spike overlaps');
+check(spikeSandbox.trampolineOverlapsAnySpike(200, 40) === false, 'distant trampoline does not overlap spike');
+
+spikeSandbox.trampolines = [{ wx: 400, width: 40 }];
+check(spikeSandbox.spikeOverlapsAnyTrampoline(370, 13) === true, 'patrolling spike envelope hits trampoline');
+check(spikeSandbox.spikeOverlapsAnyTrampoline(250, 13) === false, 'patrolling spike facing away misses trampoline');
+
+const patrolHtml = fs.readFileSync(path.join(ROOT, 'Level6.html'), 'utf8');
+const patrolSandbox = {};
+vm.createContext(patrolSandbox);
+vm.runInContext(extractFunction(patrolHtml, 'computeSafeTrianglePatrolAmp'), patrolSandbox);
+const trampRight = [{ wx: 420, width: 40 }];
+const ampRight = patrolSandbox.computeSafeTrianglePatrolAmp(400, 14, [], [], trampRight, []);
+check(ampRight === 0, 'L6 patrol amp is 0 when trampoline is immediately to the right');
+const trampFar = [{ wx: 520, width: 40 }];
+const ampFar = patrolSandbox.computeSafeTrianglePatrolAmp(400, 14, [], [], trampFar, []);
+check(ampFar >= 0 && (400 + 14 + ampFar) <= 520, 'L6 patrol stays left of a far-right trampoline');
+
 if (failed) {
   console.error('FAILED ' + failed + ' assertion(s)');
   process.exit(1);

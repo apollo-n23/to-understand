@@ -25,8 +25,11 @@ Then open [http://127.0.0.1:5173/](http://127.0.0.1:5173/) (POPCORN) or a level 
 | `index.html` | POPCORN synthesizer markup + JS |
 | `assets/lcars.css` | TNG LCARS visual system (Antonio + Share Tech Mono) |
 | `assets/*.jpg` / `*.png` | POPCORN LCARS stills (Earth, pale blue dot, End Guardian, Enterprise, nebula, mode selector, console grain, channel + FAB glyphs) |
-| `assets/neon/` | Neon Dash Imagine sprites (player/hazard/orb/portal/enemy per theme) + `draw-sprites.js` |
-| `tests/neon-mechanics.test.js` | Loads shipped `checkCollision`, collect loop, and L6 `leaveShop` from the HTML files |
+| `assets/neon/` | Neon Dash Imagine sprites (player, hazards, orbs, 8-frame portals/shots/shields, skies, tiles, HUD plates, buildings, fluids) + `draw-sprites.js` + `chrome.css` |
+| `tests/neon-mechanics.test.js` | Shipped `checkCollision`, collect loop, L6 `leaveShop`, and spike-vs-trampoline spawn helpers |
+| `tests/sprite-wiring-check.js` | Theme/sprite wiring + asset existence |
+| `tests/nav-ui.test.js` | Below-canvas level nav + chrome plates |
+| `tests/speech-ui.test.js` | Octopoop speech bubbles vs in-canvas help boxes |
 | `void-cube.html` | Neon Dash Level 1 (void) |
 | `level2.html` | Level 2 (Mr Octopoop) |
 | `Level3.html` | Level 3 |
@@ -68,15 +71,29 @@ Shared loop: gravity cube (26×26), stomp from above, collect neon orbs, climb t
 | 3 | `Level3.html` | Industrial |
 | 4 | `Level4.html` | Lava; crush-only boss (stomp ×3); next → `Leve5.html` |
 | 5 | `Leve5.html` | Pink biosphere, floral, drones, slime; next → `Level6.html` |
-| 6 | `Level6.html` | Underwater: oxygen drain, air bubbles, spiky coral, pink-purple portal. Hydro shop at the end door sells shield (20 neon) / ice (25) with carryover. Leaving the shop returns to **play** beside the door — climb the ladder to complete. |
+| 6 | `Level6.html` | Underwater: oxygen drain, translucent air bubbles, spiky coral, pink-purple portal. Hydro shop at the end door sells shield (20 neon) / ice (25) with carryover. Leaving the shop returns to **play** beside the door — climb the ladder to complete. |
 
-Spawn-safety rule: nothing spawns on the end ladder (`safeMargin` ≈ 100). Sound wrappers must match `sound-design-bible.md` (`playJump`, `playLand`, `playDeath(cause)`, …). Level 6 also has `playBubbleChirp()`.
+Every level has a **below-canvas nav** (`assets/neon/chrome.css`) with real `<a href>` links: `void-cube.html`, `level2.html`, `Level3.html`, `Level4.html`, `Leve5.html`, `Level6.html`. The current page gets `is-current`. JS-toggled complete-screen link IDs stay (`#level2-link` on L1, `#next-level-link` on L2–L5, `#level3-link` replay on L3–L6) — do not hide or rename those.
 
-**Sprites:** each level loads `assets/neon/draw-sprites.js` and calls `NeonDashSprites.theme(...)`. `drawSprite` uses `canvas.drawImage` scaled to the existing entity box (player stays 26×26). Thematic `sky-*.jpg` plates scroll as a far layer; `plat-*.png` tiles the floor and floating platforms (visual height only — hitboxes unchanged). L4 boss uses 8 Imagine-video idle frames via `drawBoss`. Primitive canvas drawing remains as a fallback if an image has not loaded.
+Spawn-safety: nothing spawns on the end ladder (`safeMargin` ≈ 100). **Ground spikes (triangles) never sit on trampolines** — both spawn directions use `spikeOverlapsAnyTrampoline` / `trampolineOverlapsAnySpike`; L5/L6 patrol amp is clamped so spikes cannot walk onto a pad. Sound wrappers must match `sound-design-bible.md` (`playJump`, `playLand`, `playDeath(cause)`, …). Level 6 also has `playBubbleChirp()`.
+
+**Sprites:** each level loads `assets/neon/draw-sprites.js` and `assets/neon/chrome.css`, then calls `NeonDashSprites.theme(...)`. `drawSprite` uses `canvas.drawImage` scaled to the existing entity box (player stays 26×26; canvas stays 960×520). Primitive canvas drawing remains as a fallback if an image has not loaded.
+
+- Skies `sky-*.jpg` and tiles `plat-*.png` are visual only (hitboxes unchanged).
+- Portals draw at 72×96 (2× the old 36×48), centered on the same `portalY`, with an 8-frame swirl cycle (`portal-*-01.png`…`08.png`). Climb/collision unchanged.
+- Projectiles use `drawShot` (bolt / fire / laser / slime / water / acid, 8-frame). Hitboxes unchanged.
+- Octopoop is `octopoop.png` on every theme that has that NPC. Speech uses `drawSpeechBubble` (magenta rounded callout). Help/tutorial overlays stay the cyan HUD boxes — do not mix the two.
+- End buildings: `build-lava.png` (L4), `build-neon.png` (L5), `build-hydro.png` (L6). Door NPCs: `pyramid-gold.png` / `pyramid-ice.png`. L6 Hydro door hitbox is unchanged.
+- L4 boss: 8 Imagine idle frames via `drawBoss`.
+- L6 air bubbles: glass PNG (knocked-out interior) drawn at `globalAlpha` 0.82. Spawn intervals `AIR_BUBBLE_SPAWN_MIN = 43`, `SPAN = 35` (−20% frequency vs the prior 34/28). Radii and oxygen refill unchanged (`r` 42–78, cap 8).
+
+Labels are HTML/CSS or canvas `fillText`, never baked into Imagine sprites.
 
 ```bash
 node tests/neon-mechanics.test.js
 node tests/sprite-wiring-check.js
+node tests/nav-ui.test.js
+node tests/speech-ui.test.js
 ```
 
 ## Deploy

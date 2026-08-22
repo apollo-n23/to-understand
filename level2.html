@@ -4,84 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEON DASH - LEVEL 2 // LCARS 4.7</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #01060c;
-      color: #aaccdd;
-      font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-    .header {
-      max-width: 960px;
-      margin: 14px auto 6px;
-      padding: 0 12px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .back-link {
-      color: #66bbff;
-      text-decoration: none;
-      font-size: 11px;
-      letter-spacing: 1.5px;
-      padding: 5px 13px;
-      border: 1px solid #2a4a66;
-      border-radius: 2px;
-      transition: all 0.1s ease;
-      white-space: nowrap;
-    }
-    .back-link:hover {
-      background: #0a1f33;
-      border-color: #66bbff;
-      color: #99ddff;
-    }
-    .page-title {
-      flex: 1;
-      text-align: center;
-      font-size: 11px;
-      letter-spacing: 4px;
-      color: #4477aa;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-    .page-title span {
-      color: #6699cc;
-      font-weight: 400;
-    }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      border: 1px solid #112233;
-      box-shadow: 0 0 40px rgba(10, 30, 60, 0.5);
-      background: #000;
-      image-rendering: pixelated;
-    }
-    .info {
-      max-width: 960px;
-      margin: 8px auto 18px;
-      text-align: center;
-      font-size: 10px;
-      color: #334455;
-      letter-spacing: 1px;
-    }
-    .info kbd {
-      font-family: "Consolas", monospace;
-      background: #0a1624;
-      padding: 1px 5px;
-      border-radius: 2px;
-      color: #5588aa;
-      border: 1px solid #223344;
-    }
-
-    #next-level-link:hover {
-      background: rgba(20, 50, 80, 0.8);
-      border-color: #66ddff;
-      color: #aaddff;
-      transform: translateY(-1px);
-    }
-  </style>
+  <link rel="stylesheet" href="assets/neon/chrome.css">
 </head>
 <body>
   <div class="header">
@@ -89,28 +12,26 @@
     <div class="page-title">NEON DASH LEVEL 2 <span>775 • SIDE-SCROLL SIM</span></div>
   </div>
 
-  <canvas id="game" width="960" height="520"></canvas>
+  <div class="game-stage">
+    <canvas id="game" width="960" height="520"></canvas>
+  </div>
+
+  <nav class="level-nav" aria-label="Level select">
+    <a class="level-nav-link" href="void-cube.html">L1 Void</a>
+    <a class="level-nav-link is-current" href="level2.html">L2 Octo</a>
+    <a class="level-nav-link" href="Level3.html">L3 Forge</a>
+    <a class="level-nav-link" href="Level4.html">L4 Lava</a>
+    <a class="level-nav-link" href="Leve5.html">L5 Flora</a>
+    <a class="level-nav-link" href="Level6.html">L6 Deep</a>
+  </nav>
 
   <div class="info">
     <kbd>←</kbd> <kbd>→</kbd> MOVE CUBE &nbsp;&nbsp; <kbd>SPACE</kbd> JUMP HAZARDS &amp; PLATFORMS &nbsp;&nbsp; <kbd>R</kbd> RESTART
   </div>
 
   <!-- Next Level Link - only visible on Level Complete screen (Level 3) -->
-  <div id="next-level-link-container" style="display: none; text-align: center; margin-top: 12px;">
-    <a id="next-level-link" href="Level3.html" 
-       style="display: inline-block; 
-              color: #66ddff; 
-              text-decoration: none; 
-              font-size: 15px; 
-              font-weight: 600;
-              letter-spacing: 1.5px;
-              padding: 8px 24px;
-              border: 1px solid #4488aa;
-              border-radius: 4px;
-              background: rgba(10, 30, 50, 0.6);
-              transition: all 0.15s ease;">
-      → PLAY LEVEL 3
-    </a>
+  <div id="next-level-link-container" class="chrome-complete" style="display: none;">
+    <a id="next-level-link" class="chrome-cta" href="Level3.html">→ PLAY LEVEL 3</a>
   </div>
 
   <script src="assets/neon/draw-sprites.js"></script>
@@ -622,6 +543,32 @@
       return false;
     }
 
+    // Ground spikes (obstacles) must never sit on trampolines (x overlap + small visual pad).
+    function spikeOverlapsAnyTrampoline(spikeWX, patrolAmp) {
+      const amp = patrolAmp || 0;
+      const pad = 10;
+      const sLeft = spikeWX - 14 - amp - pad;
+      const sRight = spikeWX + 14 + amp + pad;
+      for (let t of trampolines) {
+        const tLeft = t.wx;
+        const tRight = t.wx + (t.width || 40);
+        if (sRight > tLeft && sLeft < tRight) return true;
+      }
+      return false;
+    }
+    function trampolineOverlapsAnySpike(tWX, tW) {
+      const pad = 10;
+      const tLeft = tWX - pad;
+      const tRight = tWX + tW + pad;
+      for (let o of obstacles) {
+        const amp = o.patrolAmp || 0;
+        const oLeft = o.wx - 14 - amp;
+        const oRight = o.wx + 14 + amp;
+        if (tRight > oLeft && tLeft < oRight) return true;
+      }
+      return false;
+    }
+
     function update() {
       if (gameState !== 'playing') return;
 
@@ -932,7 +879,7 @@
         // Enforces edge-to-edge >=60px separation (player ~26 + margin). Prevents "on top" (significant x-overlap considering widths)
         // or "directly beside" (edge dist < minSep). Also covers same-type (tri vs tri) + bidirectional.
         // (Replaces prior weak +/-10 overlap; now robust + also vs other triangles/lowWalls for full consistency.)
-        let safe = !wouldBeTooCloseToHazards(triLeft, triRight, 60);
+        let safe = !wouldBeTooCloseToHazards(triLeft, triRight, 60) && !spikeOverlapsAnyTrampoline(nextWX, 0);
         if (safe) {
           obstacles.push({ wx: nextWX, h: oh });
           lastSpawnWX = nextWX;
@@ -1027,7 +974,7 @@
                 break;
               }
             }
-            if (trampCanSpawn) {
+            if (trampCanSpawn && !trampolineOverlapsAnySpike(tWX, tW)) {
               trampolines.push({
                 wx: tWX,
                 width: tW
@@ -1889,49 +1836,23 @@
       }
       ctx.globalAlpha = 1;
 
-      // === FLOATING "NEON DASH" NEON SIGN AT START (suspended by rocket boosters) ===
-      if (player.wx < 680) {
-        const signX = 260 - scrollX * 0.08;   // slow parallax, early in level
+      // === FLOATING "NEON DASH" NEON SIGN AT START ===
+      if (player.wx < 680 && gameState === 'playing') {
+        const signX = 260 - scrollX * 0.08;
         const signY = 92;
-
-        // Dark purple neon sign background
-        ctx.fillStyle = '#2a0a3a';
-        ctx.fillRect(signX - 92, signY - 18, 185, 36);
-
-        // Neon glow layers (dark purple)
-        ctx.fillStyle = 'rgba(140, 40, 200, 0.35)';
-        ctx.fillRect(signX - 96, signY - 21, 193, 42);
-
-        ctx.fillStyle = 'rgba(180, 60, 240, 0.55)';
-        ctx.fillRect(signX - 88, signY - 15, 177, 30);
-
-        // Text "NEON DASH"
-        ctx.fillStyle = '#c85aff';
+        const signW = 280;
+        const signH = 118;
+        if (!(window.NeonDashSprites && NeonDashSprites.drawWorldSign(ctx, signX - signW / 2, signY - 44, signW, signH))) {
+          ctx.fillStyle = '#2a0a3a';
+          ctx.fillRect(signX - 92, signY - 18, 185, 36);
+        }
+        ctx.fillStyle = '#e8fbff';
         ctx.font = '700 22px Segoe UI, Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('NEON DASH', signX, signY + 9);
-
-        // Bright neon outline
-        ctx.strokeStyle = '#ff99ff';
-        ctx.lineWidth = 1.2;
-        ctx.strokeText('NEON DASH', signX, signY + 9);
-
-        // Rocket boosters hanging below the sign
-        ctx.fillStyle = '#334455';
-        // Left booster
-        ctx.fillRect(signX - 48, signY + 18, 14, 22);
-        // Right booster
-        ctx.fillRect(signX + 34, signY + 18, 14, 22);
-
-        // Booster flames (flickering)
-        const flameFlicker = Math.sin(frame * 0.4) * 3;
-        ctx.fillStyle = '#ffaa33';
-        ctx.fillRect(signX - 46, signY + 38, 10, 7 + flameFlicker);
-        ctx.fillRect(signX + 36, signY + 38, 10, 7 + flameFlicker);
-
-        ctx.fillStyle = '#ffee88';
-        ctx.fillRect(signX - 43, signY + 40, 5, 4 + flameFlicker * 0.6);
-        ctx.fillRect(signX + 39, signY + 40, 5, 4 + flameFlicker * 0.6);
+        ctx.fillText('NEON DASH', signX, signY + 2);
+        ctx.strokeStyle = '#66e8ff';
+        ctx.lineWidth = 1.1;
+        ctx.strokeText('NEON DASH', signX, signY + 2);
       }
 
       // === DESERT ISLAND FLOOR (yellow and dusty grey glowing) ===
@@ -2009,6 +1930,9 @@
         const gw = gap.width;
         if (sx + gw < -20 || sx > W + 20) continue;
 
+        if (window.NeonDashSprites && NeonDashSprites.drawFluid(ctx, sx, floorTop, gw, H - floorTop + 10, frame)) {
+          continue;
+        }
         // Lighter, more solid blue water that fully replaces the yellow land
         ctx.fillStyle = 'rgba(115, 175, 225, 0.92)';
         ctx.fillRect(sx, floorTop, gw, H - floorTop + 10);
@@ -2047,6 +1971,7 @@
         const dsx = dart.wx - scrollX;
         const dsy = dart.y;
         if (dsx < -10 || dsx > W + 10) continue;
+        if (window.NeonDashSprites && NeonDashSprites.drawShot(ctx, 'slime', dsx, dsy + 3, frame, 14, 18, 0, 2)) continue;
 
         // Small pink dart / drop
         ctx.fillRect(dsx - 1.5, dsy, 3, 6);
@@ -2290,6 +2215,7 @@
         const sx = pr.wx - scrollX;
         const sy = pr.y;
         if (sx < -20 || sx > W + 20) continue;
+        if (window.NeonDashSprites && NeonDashSprites.drawShot(ctx, 'bolt', sx + 3, sy, frame, 34, 16, pr.vx, pr.vy)) continue;
 
         // Main bolt (glowing red-orange energy)
         ctx.fillStyle = '#ff6644';
@@ -2311,7 +2237,7 @@
         const npcX = mrOctopoopStart.wx - scrollX;
         const npcBaseY = mrOctopoopStart.y;
         const drawY = npcBaseY - bob;
-        const size = 34;
+        const size = 44;
         const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
         if (isOnScreen) {
@@ -2346,22 +2272,17 @@
             const boxH = 38;
             const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
             const boxY = Math.max(12, drawY - 55);
-            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#aaddff';
-            ctx.lineWidth = 1.6;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-            ctx.fillStyle = '#ccddff';
-            ctx.font = '11px Segoe UI, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Hi! I\'m Mr Octopoop!', boxX + boxW / 2, boxY + 14);
-            ctx.fillText('Welcome to Neon Dash.', boxX + boxW / 2, boxY + 28);
-            ctx.strokeStyle = '#88bbdd';
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW / 2, boxY + boxH);
-            ctx.lineTo(npcX, drawY - 2);
-            ctx.stroke();
+            if (!(window.NeonDashSprites && NeonDashSprites.drawSpeechBubble(ctx, boxX, boxY, boxW, boxH, npcX, drawY - 2, ['Hi! I\'m Mr Octopoop!', 'Welcome to Neon Dash.']))) {
+              ctx.fillStyle = 'rgba(52, 8, 38, 0.94)';
+              ctx.fillRect(boxX, boxY, boxW, boxH);
+              ctx.strokeStyle = '#ff79d0';
+              ctx.strokeRect(boxX, boxY, boxW, boxH);
+              ctx.fillStyle = '#ffe6f5';
+              ctx.font = '11px Segoe UI, Arial';
+              ctx.textAlign = 'center';
+              ctx.fillText('Hi! I\'m Mr Octopoop!', boxX + boxW / 2, boxY + 14);
+              ctx.fillText('Welcome to Neon Dash.', boxX + boxW / 2, boxY + 28);
+            }
           }
         }
       }
@@ -2371,7 +2292,7 @@
         const npcX = mrOctopoopEnd.wx - scrollX;
         const npcBaseY = mrOctopoopEnd.y;
         const drawY = npcBaseY - bob;
-        const size = 34;
+        const size = 44;
         const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
         if (isOnScreen) {
@@ -2406,22 +2327,17 @@
             const boxH = 42;
             const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
             const boxY = Math.max(12, drawY - 58);
-            ctx.fillStyle = 'rgba(18, 25, 38, 0.92)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#aaddff';
-            ctx.lineWidth = 1.6;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-            ctx.fillStyle = '#ccddff';
-            ctx.font = '11px Segoe UI, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Well done! Good luck savung the cubes!', boxX + boxW / 2, boxY + 14);
-            ctx.fillText('Press Up to climb the ladder to the portal!', boxX + boxW / 2, boxY + 30);
-            ctx.strokeStyle = '#88bbdd';
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW / 2, boxY + boxH);
-            ctx.lineTo(npcX, drawY - 2);
-            ctx.stroke();
+            if (!(window.NeonDashSprites && NeonDashSprites.drawSpeechBubble(ctx, boxX, boxY, boxW, boxH, npcX, drawY - 2, ['Well done! Good luck savung the cubes!', 'Press Up to climb the ladder to the portal!']))) {
+              ctx.fillStyle = 'rgba(52, 8, 38, 0.94)';
+              ctx.fillRect(boxX, boxY, boxW, boxH);
+              ctx.strokeStyle = '#ff79d0';
+              ctx.strokeRect(boxX, boxY, boxW, boxH);
+              ctx.fillStyle = '#ffe6f5';
+              ctx.font = '11px Segoe UI, Arial';
+              ctx.textAlign = 'center';
+              ctx.fillText('Well done! Good luck savung the cubes!', boxX + boxW / 2, boxY + 14);
+              ctx.fillText('Press Up to climb the ladder to the portal!', boxX + boxW / 2, boxY + 30);
+            }
           }
         }
       }
@@ -2462,11 +2378,11 @@
 
         // Glowing cyan portal / rift at the top - now BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed). Adapted for level2 simpler style (no templates).
         const portalY = baseY - 305;
-        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'portal', lx - 18, portalY - 24, 36, 48))) {
+        if (!(window.NeonDashSprites && NeonDashSprites.drawPortal(ctx, lx, portalY, frame))) {
         const px = lx;
         const py = portalY;
-        const baseRx = 25;
-        const baseRy = 36;
+        const baseRx = 50;
+        const baseRy = 72;
         const pulse = Math.sin(frame * 0.27) * 2 + 3;
         // Outer pulsing fill glow (larger)
         ctx.save();
@@ -2730,6 +2646,7 @@
         const sx = fb.wx - scrollX;
         const sy = fb.y;
         if (sx < -20 || sx > W + 40) continue;
+        if (window.NeonDashSprites && NeonDashSprites.drawShot(ctx, 'fire', sx + 4, sy + 2, frame, 26, 26, fb.vx, fb.vy)) continue;
 
         // Outer flame glow
         ctx.fillStyle = 'rgba(255, 100, 30, 0.35)';
@@ -2800,6 +2717,8 @@
       if (powerUp) {
         const pux = powerUp.wx - scrollX;
         const puy = powerUp.y;
+        if (window.NeonDashSprites && NeonDashSprites.drawPickup(ctx, pux, puy, 38, frame)) {
+        } else {
         const pulse = Math.sin(frame * 0.18) * 2.2;
 
         ctx.save();
@@ -2856,6 +2775,7 @@
         ctx.fillRect(pux - 1, puy - 6, 2, 5);
 
         ctx.restore();
+        }
       }
 
       // draw player cube
@@ -2897,27 +2817,16 @@
       if (player.hasShield) {
         const cx = px + player.w / 2;
         const cy = py + player.h / 2 + 1;
-        const pulse = Math.sin(frame * 0.21) * 1.8;
-
-        ctx.save();
-        ctx.strokeStyle = '#66ddff';
-        ctx.lineWidth = 2.8;
-        ctx.shadowColor = '#4499ff';
-        ctx.shadowBlur = 13 + pulse * 0.8;
-
-        // Outer shield ellipse
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, player.w / 2 + 10 + pulse * 0.4, player.h / 2 + 13 + pulse * 0.5, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Inner highlight ring
-        ctx.strokeStyle = 'rgba(170, 230, 255, 0.55)';
-        ctx.lineWidth = 1.1;
-        ctx.shadowBlur = 4;
-        ctx.beginPath();
-        ctx.ellipse(cx - 1, cy - 2, player.w / 2 + 3 + pulse * 0.3, player.h / 2 + 5 + pulse * 0.4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+        if (!(window.NeonDashSprites && NeonDashSprites.drawShield(ctx, cx, cy, player.w, player.h, frame))) {
+          const pulse = Math.sin(frame * 0.21) * 1.8;
+          ctx.save();
+          ctx.strokeStyle = '#66ddff';
+          ctx.lineWidth = 2.8;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, player.w / 2 + 10 + pulse * 0.4, player.h / 2 + 13 + pulse * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
       // Subtle invulnerability afterglow (5 seconds after shield pops - no bubble, just faint protection indicator)
@@ -3071,8 +2980,10 @@
       }
 
       if (gameState === 'start') {
-        ctx.fillStyle = 'rgba(2, 7, 15, 0.72)';
-        ctx.fillRect(0, 0, W, H);
+        if (!(window.NeonDashSprites && NeonDashSprites.drawHudPlate(ctx, W, H))) {
+          ctx.fillStyle = 'rgba(2, 7, 15, 0.48)';
+          ctx.fillRect(W / 2 - 320, H / 2 - 150, 640, 300);
+        }
 
         ctx.font = '700 36px Segoe UI, Arial';
         ctx.textAlign = 'center';
@@ -3094,8 +3005,10 @@
       }
 
       if (gameState === 'over') {
-        ctx.fillStyle = 'rgba(3, 6, 12, 0.65)';
-        ctx.fillRect(0, 0, W, H);
+        if (!(window.NeonDashSprites && NeonDashSprites.drawHudPlate(ctx, W, H))) {
+          ctx.fillStyle = 'rgba(3, 6, 12, 0.48)';
+          ctx.fillRect(W / 2 - 320, H / 2 - 150, 640, 300);
+        }
 
         ctx.font = '700 28px Segoe UI, Arial';
         ctx.textAlign = 'center';
@@ -3120,8 +3033,10 @@
       }
 
       if (gameState === 'complete') {
-        ctx.fillStyle = 'rgba(2, 6, 14, 0.72)';
-        ctx.fillRect(0, 0, W, H);
+        if (!(window.NeonDashSprites && NeonDashSprites.drawHudPlate(ctx, W, H))) {
+          ctx.fillStyle = 'rgba(2, 6, 14, 0.48)';
+          ctx.fillRect(W / 2 - 320, H / 2 - 150, 640, 300);
+        }
 
         ctx.font = '700 32px Segoe UI, Arial';
         ctx.textAlign = 'center';

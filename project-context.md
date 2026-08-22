@@ -2,13 +2,17 @@
 
 **Date/Context**: 2026-08-22. Workspace: C:\Users\antho\grok-to-understand. Two active tracks: (1) **Neon Dash** — single-file HTML5 Canvas side-scrolling platformer, **six levels**: void-cube.html (L1), level2.html (L2 Mr Octopoop), Level3.html (L3), Level4.html (L4 lava + crush-only boss), Leve5.html (L5 pink alien biosphere; filename is historical), Level6.html (L6 deep water + oxygen + Hydro shop). (2) **POPCORN Prompt Synthesizer** — `index.html` + `assets/lcars.css` + Imagine stills in `assets/` (LCARS 4.7 TNG overhaul, 2026-08-22). VOID CUBE PROTOCOL on the right rail links to `void-cube.html`. Live: Vercel project `to-understand` from GitHub `apollo-n23/to-understand` `main`. Docs: `README.md`, this file, `sound-design-bible.md`.
 
-**Current snapshot (2026-08-22)**:
+**Current snapshot (2026-08-22, Imagine overhaul + spawn polish)**:
 - POPCORN UI is **not** a single self-contained HTML file anymore. Markup/JS stay in `index.html`; chrome is `assets/lcars.css` (Antonio + Share Tech Mono, TNG 2357 flats, elbows, 3-col `168px | 1fr | 188px`). Earth, pale-blue-dot, End Guardian, Enterprise, nebula, mode selector, console grain, and channel/FAB glyphs are files under `assets/` — not inline SVGs.
 - FAB Copy/Preview/Download: wide bottom rail (`min(720px, 100% - 32px)`), `::before` **mask** icons (`icon-copy.png` / `icon-preview.png` / `icon-download.png`, black knocked out). Do **not** put `<img>` inside the buttons — `flashButton()` replaces `innerHTML`. Mobile (≤640px): stack full-width, body `padding-bottom: 180px`, toast `bottom: 172px`.
 - JS contract unchanged: field ids, `data-panel-id`, `lcarsPromptData` / `lcarsPromptFormat` / `lcarsPanelOrder`, integrity bar `#integrity-bar-fill` width %, star-map group ids + nebula gradient defs, `.star-hit` immediately before `.star-point`. Star map also paints `assets/nebula-starfield.jpg` into `#star-map-bg`.
-- Level 6 is in the chain (L5 `next-level-link` → `Level6.html`). Hydro shop: buy shield 20 / ice 25 neon (carryover). **Leaving the shop must `gameState = 'playing'`** with the player parked beside the Hydro door — do **not** skip to `complete`. Finish by climbing the ladder. Air bubbles: `MAX_AIR_BUBBLES = 8`, spawn intervals doubled vs the earlier denser pass. Coral reef draw replaced the old blue crystal triangles (hitbox unchanged). Exit portal is pink-purple (not cyan). L6 extra SFX: `playBubbleChirp()`.
-- Git: `main` was force-with-lease pushed over 8 older GitHub-web commits (2026-08-22) so Vercel could take the local history. Do not force-push unless histories have diverged the same way again. `mcps/` is gitignored (local MCP schema dumps, not site source).
-- Neon Dash Imagine sprites (2026-08-22): `assets/neon/` + `draw-sprites.js`. Each level HTML calls `NeonDashSprites.theme(...)` and `drawSprite` in `draw()` for player, hazards, orbs, portal (plus NPC/ptero/boss/bubble where those exist). Hitboxes unchanged (player 26×26). Tests: `node tests/neon-mechanics.test.js` and `node tests/sprite-wiring-check.js`.
+- Level 6 is in the chain (L5 `next-level-link` → `Level6.html`). Hydro shop: buy shield 20 / ice 25 neon (carryover). **Leaving the shop must `gameState = 'playing'`** with the player parked beside the Hydro door — do **not** skip to `complete`. Finish by climbing the ladder. Coral reef draw replaced the old blue crystal triangles (hitbox unchanged). Exit portal is pink-purple (not cyan). L6 extra SFX: `playBubbleChirp()`.
+- L6 air bubbles: translucent glass sprite (`bubble.png` interior knocked out) drawn at `globalAlpha` 0.82 so they do not obscure the water/sky. `MAX_AIR_BUBBLES = 8`, `AIR_BUBBLE_SPAWN_MIN = 43`, `AIR_BUBBLE_SPAWN_SPAN = 35` (−20% frequency vs the prior 34/28). Radii 42–78 and oxygen refill unchanged.
+- Git: prefer a normal `git push origin main`. `main` was force-with-lease pushed over 8 older GitHub-web commits (2026-08-22) so Vercel could take the local history — do **not** force-push unless histories have diverged the same way again. `mcps/` and `__pycache__/` and `assets/neon/boss-frames/` are gitignored.
+- Neon Dash Imagine sprites live in `assets/neon/` + `draw-sprites.js` + `chrome.css`. Each level HTML: `NeonDashSprites.theme(...)`, below-canvas `<nav class="level-nav">` with real hrefs, Imagine HUD plates. Hitboxes unchanged (player 26×26, canvas 960×520). Keep `Leve5.html` filename. Labels are HTML/CSS or `fillText`, not baked into sprites.
+- Shared draw API (see `draw-sprites.js`): `drawSprite`, `drawSky`, `drawGround`, `drawPlatform`, `drawBoss`, `drawHudPlate`, `drawWorldSign`, `drawShield`, `drawPickup`, `drawPortal` (72×96, 8-frame swirl, same climb Y), `drawShot` (bolt/fire/laser/slime/water/acid, 8-frame), `drawSpeechBubble` (magenta callout; Octopoop only — tutorials stay cyan HUD rects), `drawFluid`. Themes load octopoop on **all** levels that have that NPC. End buildings: `build-lava` / `build-neon` / `build-hydro`; pyramids `pyramid-gold` / `pyramid-ice`. L6 Hydro door offsets unchanged (`HYDRO_BUILD_OFF` 48, door 34×58).
+- Ground spikes vs trampolines: every level defines `spikeOverlapsAnyTrampoline` / `trampolineOverlapsAnySpike` and uses them on **both** spawn paths. L5/L6 `computeSafeTrianglePatrolAmp` treats trampolines as left **and** right bounds (plus `triHalf`) so patrol cannot walk onto a pad. Collision radii unchanged.
+- Tests: `node tests/neon-mechanics.test.js`, `node tests/sprite-wiring-check.js`, `node tests/nav-ui.test.js`, `node tests/speech-ui.test.js`.
 
 ---
 
@@ -22,7 +26,7 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
 - Game loop: update() (gravity/landing/wasAirborne, input, overWaterGap, collisions/death, spawns with guards, AI/movement for enemies/projectiles, collect, climb logic, NPC approach, levelExit spawn at specific wx), draw() (layers: sky/bg, elements, ground/pits, platforms, enemies, NPCs, levelExit/building, particles, UI), gameLoop() with RAF, init/startPlaying with listeners (SPACE/click start + getAudioCtx, 'm' mute, 'r' reset, ArrowDown ice).
 - State: gameState ('start'/'playing'/'over'/'complete'), scrollX, score, frame, keys, arrays (obstacles/triangles, platforms, specials/blobs, neonOrbs, pteros/drones, waterGaps/slime pits, poisonDarts/slimeballs, projectiles, endFireballs, levelExit, powerUp/icePowerUp, endPyramid, friendlyNPC, octopoppStart/Mid, ceilingFlowers, slimePuddles, backgroundElements/floral, particles, etc.), player (wx, y, vx, vy, w, h, hasShield, hasIceBlast, isClimbing, invulnUntil, drowningStart, climbProgress etc.), sound state (audioCtx, muted, masterVol~0.25, wasAirborne).
 - End condition: levelExit spawn (L5 direct at ~6740 for ~10% length extension vs L4 6127; no boss in L5), climb to portal. L4 → Leve5 → Level6 on complete + cumulative score via localStorage.
-- FPS counter, wouldBeTooCloseToHazards helper (60px edge sep for spawns), no external assets.
+- FPS counter, wouldBeTooCloseToHazards helper (60px edge sep for spawns), plus spike-vs-trampoline overlap helpers. Visuals come from `assets/neon/` with canvas fallbacks.
 
 **L5-Specific Theme/Reskin (Pink Alien Biosphere + Floral)**:
 - Platforms/floors/walls: deep/dark pinks (#4a2233, #3a1a2a, #552244 etc. + sin/phase variation).
@@ -37,7 +41,7 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
 
 **L6-Specific (Deep Water + Hydro Shop)** — `Level6.html`:
 - Underwater gravity (`WATER_GRAVITY` 0.34, pit 0.16). Oxygen bar: `OXYGEN_MAX` 100, drain 0.17, refill 1.15 inside air bubbles.
-- Air bubbles: `MAX_AIR_BUBBLES = 8`, spawn min/span 34/28 (frequency −50% vs earlier denser pass); seed 2–3 near start. `playBubbleChirp()` on collect/refill.
+- Air bubbles: `MAX_AIR_BUBBLES = 8`, spawn min/span **43/35** (frequency −20% vs the prior 34/28 pass); seed 2–3 near start; sprite is translucent (knocked-out grey disk + `globalAlpha` 0.82). Collision radii unchanged. `playBubbleChirp()` on collect/refill.
 - Ground hazards drawn as **spiky coral reef** (teal/pink polyps, same ~27×h triangle hitbox + patrol/wiggle).
 - End portal: pink-purple concentric rift (not cyan). Hydro shop at the end building: fade → counter; shield 20 neon, ice 25; purchases persist (`saveOwnedPowerups`). **`exitShop` resumes `playing`** with player at `doorL - player.w - 8`, camera snap; `shopVisited` prevents re-entry. Ladder climb still the only complete path.
 - Next-level from L5: `Leve5.html` `#next-level-link` href `Level6.html`.
@@ -48,16 +52,17 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
 - Wrappers (all files): playJump/playLand (wasAirborne tracking on jumps/lands), playCollect(isGreen), playPowerup('shield'/'ice'), playTrampoline, playLadderGrab (on climb start), playLadderStep (rhythmic frame%7), playPortal (at t>=1/'complete'), playIceBlast (detonate), playPteroSpit/playLaser (on spits), playShieldPop (absorbs), playDeath(cause: 'lava'/'ptero'/'hazard' etc. at every 'over'), playBossStomp (where active), + L5/new: playPyramidEmerge/playPyramidChat (door/pyramid), playBuildingHum (zone), playGooPop (slime/pops/splats), playNPCApproach (Octopopp/friendly/mrOcto approaches), playBlock (barriers/door).
 - Calls in update/collect/death/climb/complete/spit/NPC/building/puddle sections. L1 baseline; fixed sparse/missing calls in L2-4 (and L5 full incl. new). Unlocks + respect muted. Recent: fixed L5 jump (missing playJump() call in landed block).
 
-**Spawn Safety (cross all 5 levels, via agent + merge)**:
+**Spawn Safety (cross all 6 levels)**:
 - No objects (obstacles/triangles, specials/enemies, waterGaps/lava/slime, verticals, pteros/drones, neonOrbs, powerUp/icePowerUp, lowWalls, trampolines, poison*, backgroundElements, flyingShips, alienTrees, ceilingFlowers, slimePuddles) spawn directly touching end ladder.
 - On every levelExit spawn: ladderCenter + safeMargin=100 + extended filters (x-dist for ground; + y > GROUND_Y-420 for tall) + cleanup for all arrays (plus power/ice nulling in L4/L5). Guards in individual spawn ifs (if(!levelExit || abs(...) > 100)). Platform canSpawn checks preserved. (L4 has dual paths due to old boss logic.) Recent additions (ceilingFlowers, slimePuddles) respect this.
+- **Spikes vs trampolines:** triangular ground hazards must never sit on bounce pads. Helpers `spikeOverlapsAnyTrampoline(wx, patrolAmp)` and `trampolineOverlapsAnySpike(tWX, tW)` (10px visual pad, spike half-width 14, includes `patrolAmp` envelope) run on both spawn directions in L1–L6. L5/L6 patrol amp also uses trampolines as left and right bounds so the live `sin` walk cannot overlap a pad.
 
 **Cross-Level/Shared**:
 - Ladder climb with sounds/UP, portal badass concentric swirls/glow/lightning in all.
 - levelExit barrier, cumulative score via localStorage in some.
 - NPC bubbles with onscreen guards.
 - L4 → Leve5 → Level6 on complete (visibility funcs, saveCumulativeForNextLevel).
-- FPS, particles, no external assets.
+- FPS, particles. Neon Dash now **does** use shared files under `assets/neon/` (`draw-sprites.js`, `chrome.css`, Imagine PNGs/JPGs). Gameplay JS still lives in each level HTML. POPCORN uses `assets/lcars.css` + stills.
 
 **POPCORN Prompt Synthesizer (`index.html` + `assets/lcars.css`)**:
 - LCARS 4.7 UI (visuals in CSS + `assets/` stills as of 2026-08-22); 7 POPCORN channels: persona, objective, process, context, output, restrictions, nature.
@@ -89,7 +94,7 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
   - `initStarMap()`, `buildStarMapContent()`, `lastMapSelection` restores selection after resize.
 - **Live stats**: `updateLiveStats()` — per-section counts, buffer length, token est, integrity %, integrity bar width, sections active. Ctrl/Cmd+Enter copies prompt.
 - **Key JS**: `ids`, `panelOrder`, `PANEL_ORDER_KEY`, `SECTION_META`, `CHAR_LIMITS`, `INTEGRITY_WEIGHTS`, `NEAR_LIMIT_THRESHOLD`, `initPanelDragDrop()`, `reorderPanel()`, `calculatePromptIntegrity()`, star-map symbols (`STAR_MAP_CATALOG`, `STAR_MAP_VESSELS`, `buildStarMapContent()`, `initStarMap()`), `buildPrompt()`, `init()`.
-- Prompt UI now depends on `assets/lcars.css` and the Imagine stills listed in `README.md`. Game levels remain self-contained HTML (no shared asset folder) aside from localStorage score carry. COMPUTER still links to `https://grok.com/`.
+- Prompt UI now depends on `assets/lcars.css` and the Imagine stills listed in `README.md`. Neon Dash levels share `assets/neon/` (sprites + chrome) and still carry neon via localStorage. COMPUTER still links to `https://grok.com/`.
 
 **Recent Agent-Driven Changes (Neon Dash; prior sessions; 1+ subagents per issue, parallel often with worktree isolation/read-write; reports with excerpts; safe merges via search_replace on main with unique anchors)**:
 - Sun (L5): orange → deep pink/purple (#ff88cc/#ff77cc/#cc66ee etc.), 2x size (radii scaled e.g. 15→30, 68→136), surrounded by beaming/shimmering concentric circles (6 stroked rings at [44,60,...148] with per-ring shimmer=sin(frame*0.027+phase)*2.4 radius offset + alpha flicker 0.13+sin*0.17 clamped + phases/lineWidth; + 6 thin radial beams with lenShimmer + slow rotation). Updated comments. (Subagent 1.)
@@ -119,7 +124,7 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
 - Puddles: only on ground hit (not air expire/player hit); 5s fade; deadly touch; bubble anim.
 - Slimeballs: 2x size bubbling purple; splat+puddle only on ground; preserve original spit/move/coll.
 - Boss L4: sole death = direct land/crush (suppress externals during fight; keep shots/AI/stomp-3x).
-- General: shared patterns (ladder/portal/NPC bubbles/onscreen guards); no external assets; perf (reduced polys, batch alpha, onscreen culls); recent subagents for parallel issues + safe merges.
+- General: shared patterns (ladder/portal/NPC bubbles/onscreen guards); Imagine sprites in `assets/neon/` with canvas fallbacks; perf (reduced polys, batch alpha, onscreen culls); recent subagents for parallel issues + safe merges.
 - Prompt builder: LCARS theme fidelity via `assets/lcars.css` + stills; copy/preview/download respect active format; floating bar always visible (mask icons, no img children); per-field limits + near-limit warnings; panel drag order persisted; integrity scoring weights context/process heavily, persona/nature lightly; star map + vessels decorative but interactive (selection/reticule) with nebula still behind SVG; download always `.txt`.
 - Git/history: agents/merges/commits; branch may diverge; prefer relative paths; use todos for multi-step.
 
@@ -148,7 +153,7 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
 - Git: commits for agents/merges (spawn/sound/optimize/fixes/sun/triangles/boss/slime/flower/slimeballs/puddles etc.); branch may be behind/ahead origin/main (per initial status; clean working tree often).
 - Future/agents pattern: continue using spawn_subagent (worktree for isolation) for parallel issues, then safe search_replace merges on main + commit. Third/optimize-style agent for cleanup post-changes. Recent diagnose (crash) + fix (pVar) + agents for ice (3x even spawns + first-only tutorial), NPC offscreen, pteros (drones), Octopoop in L2, portal badass (all levels), L5 reskin/floral/rects, spawn prevention, sounds audit/fix (L2-4 + L5), etc.
 - Test/verify: load Leve5.html (no crash, platforms pink bubble + thicker + more movers + float up/down, Octopopp at start+mid with bubbles, approach door → pyramid + block + text, must ladder to finish, sounds trigger incl. fixed jump + goo on splats, no bad spawns near ladder, floral/pink theme, sun pink/purple 2x concentric, triangles pink + slow safe patrol, ceiling flowers appear/extend/deadly, slime pits ooze/flow pink + no orange, fireballs/slimeballs 2x bubbling purple from pits/enemies + ground splat to ~5s fading deadly puddles, L4 boss only crush death, etc.).
-- Other files: keep patterns consistent (sounds engine, ladder logic, NPC bubbles, portal in L1–6). L5/L6 features as of 2026-08-22 are in `main`. `index.html` is no longer standalone CSS — it requires `assets/`.
+- Other files: keep patterns consistent (sounds engine, ladder logic, NPC speech vs help UI, portal in L1–6, below-canvas nav). L5/L6 + Imagine overhaul as of 2026-08-22 are on `main`. `index.html` requires `assets/`; every level HTML requires `assets/neon/`.
 - Prompt builder polish (optional): export filename customization; prompt templates/presets; integrity threshold indicators per section; additional star-map vessels or sector labels. Mobile FAB stack and mask icons already landed.
 - Potential (Neon Dash): more polish (e.g. upper sky haze tint for sun, update remaining "acid vats" comments, full cross-level sound parity, perf if needed).
 - Test/verify prompt-builder: floating Copy/Preview/Download on scroll; preview modal + synced format toggle; char counts amber at 85% / red at cap; panel drag-reorder persists on reload; integrity starts 0% and climbs with weighted milestones + bar fill; readout order tokens→integrity→sections; star map fills sidebar height without stretch; star + vessel selection/reticule/readout; world labels + vessel names; download always `.txt`; format + fields + panel order persist.

@@ -4,84 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEON DASH - LEVEL 6 // DEEP WATER</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #0a1628;
-      color: #88bbdd;
-      font-family: "Segoe UI", "Arial", "Helvetica Neue", sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-    .header {
-      max-width: 960px;
-      margin: 14px auto 6px;
-      padding: 0 12px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .back-link {
-      color: #66aacc;
-      text-decoration: none;
-      font-size: 11px;
-      letter-spacing: 1.5px;
-      padding: 5px 13px;
-      border: 1px solid #1a4a6e;
-      border-radius: 2px;
-      transition: all 0.1s ease;
-      white-space: nowrap;
-    }
-    .back-link:hover {
-      background: #0d2840;
-      border-color: #33aacc;
-      color: #88eeff;
-    }
-    .page-title {
-      flex: 1;
-      text-align: center;
-      font-size: 11px;
-      letter-spacing: 4px;
-      color: #2277aa;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-    .page-title span {
-      color: #66ddff;
-      font-weight: 400;
-    }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      border: 1px solid #1a4a6e;
-      box-shadow: 0 0 40px rgba(10, 40, 80, 0.65);
-      background: #000;
-      image-rendering: pixelated;
-    }
-    .info {
-      max-width: 960px;
-      margin: 8px auto 18px;
-      text-align: center;
-      font-size: 10px;
-      color: #336688;
-      letter-spacing: 1px;
-    }
-    .info kbd {
-      font-family: "Consolas", monospace;
-      background: #0d2840;
-      padding: 1px 5px;
-      border-radius: 2px;
-      color: #66ddff;
-      border: 1px solid #1a4a6e;
-    }
-
-    #level3-link:hover {
-      background: rgba(13, 40, 64, 0.9);
-      border-color: #33aacc;
-      color: #88eeff;
-      transform: translateY(-1px);
-    }
-  </style>
+  <link rel="stylesheet" href="assets/neon/chrome.css">
 </head>
 <body>
   <div class="header">
@@ -89,28 +12,26 @@
     <div class="page-title">NEON DASH LEVEL 6 <span>DEEP WATER • SIDE-SCROLL SIM</span></div>
   </div>
 
-  <canvas id="game" width="960" height="520"></canvas>
+  <div class="game-stage">
+    <canvas id="game" width="960" height="520"></canvas>
+  </div>
+
+  <nav class="level-nav" aria-label="Level select">
+    <a class="level-nav-link" href="void-cube.html">L1 Void</a>
+    <a class="level-nav-link" href="level2.html">L2 Octo</a>
+    <a class="level-nav-link" href="Level3.html">L3 Forge</a>
+    <a class="level-nav-link" href="Level4.html">L4 Lava</a>
+    <a class="level-nav-link" href="Leve5.html">L5 Flora</a>
+    <a class="level-nav-link is-current" href="Level6.html">L6 Deep</a>
+  </nav>
 
   <div class="info">
     <kbd>←</kbd> <kbd>→</kbd> MOVE CUBE &nbsp;&nbsp; <kbd>SPACE</kbd> JUMP HAZARDS + WATER PITS &nbsp;&nbsp; <kbd>R</kbd> RESTART
   </div>
 
   <!-- Level 6 Replay Link - only visible on Level Complete screen -->
-  <div id="level3-link-container" style="display: none; text-align: center; margin-top: 12px;">
-    <a id="level3-link" href="Level6.html" 
-       style="display: inline-block; 
-              color: #66ddff; 
-              text-decoration: none; 
-              font-size: 15px; 
-              font-weight: 600;
-              letter-spacing: 1.5px;
-              padding: 8px 24px;
-              border: 1px solid #2277aa;
-              border-radius: 4px;
-              background: rgba(10, 40, 70, 0.75);
-              transition: all 0.15s ease;">
-      → REPLAY LEVEL 6
-    </a>
+  <div id="level3-link-container" class="chrome-complete" style="display: none;">
+    <a id="level3-link" class="chrome-cta" href="Level6.html">→ REPLAY LEVEL 6</a>
   </div>
 
   <script src="assets/neon/draw-sprites.js"></script>
@@ -127,12 +48,12 @@
     const OXYGEN_MAX = 100;
     const OXYGEN_DRAIN = 0.17;
     const OXYGEN_REFILL = 1.15;
-    // Air bubbles: spawn frequency −50% (intervals doubled); still playable oxygen
+    // Air bubbles: spawn frequency −20% (intervals ×1.25); still playable oxygen
     const MAX_AIR_BUBBLES = 8;
     const AIR_BUBBLE_R_MIN = 42;
     const AIR_BUBBLE_R_MAX = 78;
-    const AIR_BUBBLE_SPAWN_MIN = 34;
-    const AIR_BUBBLE_SPAWN_SPAN = 28;
+    const AIR_BUBBLE_SPAWN_MIN = 43;
+    const AIR_BUBBLE_SPAWN_SPAN = 35;
     // Underwater player physics (noticeably slower fall than other levels)
     const WATER_GRAVITY = 0.34;
     const WATER_GRAVITY_PIT = 0.16;
@@ -672,7 +593,7 @@
       specials.push({ wx: 680, y: GROUND_Y - 64, w: 30, h: 64, nextShot: frame + 55 + Math.random() * 40 });
       player.y = GROUND_Y - player.h;
 
-      // Seed 2–3 large air bubbles near the start (frequency −50%; oxygen still immediate)
+      // Seed 2–3 large air bubbles near the start (oxygen still immediate)
       const seedCount = 2 + Math.floor(Math.random() * 2);
       for (let i = 0; i < seedCount; i++) {
         airBubbles.push(makeAirBubble(
@@ -926,7 +847,7 @@
         }
       }
 
-      // Very frequent large bubble spawns ahead / around the player
+      // Large bubble spawns ahead / around the player (interval-gated; −20% vs prior rate)
       if (--nextAirBubbleSpawn <= 0 && airBubbles.length < MAX_AIR_BUBBLES) {
         const side = Math.random();
         let wx;
@@ -1073,6 +994,32 @@
       return false;
     }
 
+    // Ground spikes (obstacles) must never sit on trampolines (x overlap + small visual pad).
+    function spikeOverlapsAnyTrampoline(spikeWX, patrolAmp) {
+      const amp = patrolAmp || 0;
+      const pad = 10;
+      const sLeft = spikeWX - 14 - amp - pad;
+      const sRight = spikeWX + 14 + amp + pad;
+      for (let t of trampolines) {
+        const tLeft = t.wx;
+        const tRight = t.wx + (t.width || 40);
+        if (sRight > tLeft && sLeft < tRight) return true;
+      }
+      return false;
+    }
+    function trampolineOverlapsAnySpike(tWX, tW) {
+      const pad = 10;
+      const tLeft = tWX - pad;
+      const tRight = tWX + tW + pad;
+      for (let o of obstacles) {
+        const amp = o.patrolAmp || 0;
+        const oLeft = o.wx - 14 - amp;
+        const oRight = o.wx + 14 + amp;
+        if (tRight > oLeft && tLeft < oRight) return true;
+      }
+      return false;
+    }
+
     function getTriangleCurrentWX(o) {
       if (!o.patrolAmp || o.patrolAmp < 1) return o.wx;
       const rate = o.patrolRate || 0.006;
@@ -1108,8 +1055,14 @@
         if (wR < baseWX) leftBound = Math.max(leftBound, wR + 8);
       }
       for (let t of trampolines) {
+        const tL = t.wx;
         const tR = t.wx + (t.width || 40);
-        if (tR < baseWX) leftBound = Math.max(leftBound, tR + 8);
+        if (tR < baseWX) leftBound = Math.max(leftBound, tR + 8 + triHalf);
+        else if (tL > baseWX) rightBound = Math.min(rightBound, tL - 8 - triHalf);
+        else {
+          leftBound = Math.max(leftBound, baseWX);
+          rightBound = Math.min(rightBound, baseWX);
+        }
       }
       let amp = Math.min(baseWX - leftBound, rightBound - baseWX);
       amp = Math.min(Math.max(amp, 0), 13);
@@ -1592,7 +1545,9 @@
         let safe = !wouldBeTooCloseToHazards(triLeft, triRight, 60);
         if (safe) {
           const amp = computeSafeTrianglePatrolAmp(nextWX, 14, waterGaps, lowWalls, trampolines, obstacles);
-          obstacles.push({ wx: nextWX, h: oh, patrolAmp: amp, patrolPhase: Math.random()*Math.PI*2, patrolRate: 0.0065 });
+          if (!spikeOverlapsAnyTrampoline(nextWX, amp)) {
+            obstacles.push({ wx: nextWX, h: oh, patrolAmp: amp, patrolPhase: Math.random()*Math.PI*2, patrolRate: 0.0065 });
+          }
           lastSpawnWX = nextWX;
         } else {
           // advance anyway to not get stuck
@@ -1676,12 +1631,18 @@
 
             // Spawn oval trampoline just before the wall to give a big boost
             // (tramp intentionally close to its wall; helper ensures tramp not too close to other hazards)
-            let trampCanSpawn = true;
             const tWX = wallWX - 72 - Math.random() * 18;
             const tW = 36 + Math.random() * 8;
-            const tLeft = tWX;
-            const tRight = tWX + tW;
-            trampCanSpawn = !wouldBeTooCloseToHazards(tLeft, tRight, 60);
+            // Keep tramp beside its wall (skip 60px wall check). Never sit on spikes or pits.
+            let trampCanSpawn = !trampolineOverlapsAnySpike(tWX, tW);
+            if (trampCanSpawn) {
+              for (let g of waterGaps) {
+                if (tWX + tW > g.wx && tWX < g.wx + g.width) {
+                  trampCanSpawn = false;
+                  break;
+                }
+              }
+            }
             if (trampCanSpawn) {
               trampolines.push({
                 wx: tWX,
@@ -2730,27 +2691,19 @@
       const _now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       if (_now - lastFpsTime >= 500) { fps = Math.round(fpsFrameCount * 1000 / (_now - lastFpsTime)); fpsFrameCount = 0; lastFpsTime = _now; }
 
-      // === DEEP OCEAN WATER COLUMN (no surface sun — deep blue depth gradient) ===
-      // Near-black navy at top → deep blues mid → dark murk toward seabed
       ctx.fillStyle = '#030a14';
-      ctx.fillRect(0, 0, W, 120);
+      ctx.fillRect(0, 0, W, H);
       if (window.NeonDashSprites) NeonDashSprites.drawSky(ctx, W, H, GROUND_Y, scrollX, frame);
-      ctx.fillStyle = '#061428';
-      ctx.fillRect(0, 80, W, 140);
-      ctx.fillStyle = '#0a1e38';
-      ctx.fillRect(0, 160, W, 160);
-      ctx.fillStyle = '#0c2744';
-      ctx.fillRect(0, 240, W, 120);
-      // Soft depth bands / open-water haze
-      ctx.fillStyle = 'rgba(18, 55, 95, 0.20)';
-      ctx.fillRect(0, 0, W, 100);
-      ctx.fillStyle = 'rgba(12, 40, 75, 0.18)';
-      ctx.fillRect(0, 90, W, 110);
-      ctx.fillStyle = 'rgba(6, 22, 48, 0.32)';
-      ctx.fillRect(0, 200, W, 120);
-      // Near-seabed darkness (deep water pressure murk)
-      ctx.fillStyle = 'rgba(2, 10, 24, 0.55)';
-      ctx.fillRect(0, 280, W, 160);
+
+      if (player.wx < 680 && gameState === 'playing') {
+        const signX = 260 - scrollX * 0.08;
+        const signY = 92;
+        if (window.NeonDashSprites) NeonDashSprites.drawWorldSign(ctx, signX - 140, signY - 44, 280, 118);
+        ctx.fillStyle = '#e8fbff';
+        ctx.font = '700 22px Segoe UI, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('NEON DASH', signX, signY + 2);
+      }
 
       // Soft god-ray shafts from above (caustic-like light, NO sun disc / rings / core)
       const rayOriginX = 420 - ((scrollX * 0.012) % 180);
@@ -3205,9 +3158,11 @@
 
         const pitDepth = 135; // deep water pool visually
 
-        // Deep blue rock/seabed rim / upper edges of pit
         ctx.fillStyle = '#0a1e32';
         ctx.fillRect(sx - 1, floorTop - 1, gw + 2, 7);
+        if (window.NeonDashSprites && NeonDashSprites.drawFluid(ctx, sx + 1, floorTop + 5, gw - 2, pitDepth, frame)) {
+          continue;
+        }
         // Cracked rim texture
         ctx.fillStyle = '#061420';
         ctx.fillRect(sx + 3, floorTop, 2, 4);
@@ -3346,6 +3301,7 @@
         const dsx = dart.wx - scrollX;
         const dsy = dart.y;
         if (dsx < -14 || dsx > W + 14) continue;
+        if (window.NeonDashSprites && NeonDashSprites.drawShot(ctx, 'water', dsx, dsy, frame, 22, 22, dart.vx, dart.vy)) continue;
 
         const r = 9 + Math.sin(frame * 0.18 + dsx) * 1.2; // twice size, pulsing
 
@@ -3742,12 +3698,12 @@
         const npcX = friendlyNPC.wx - scrollX;
         const npcBaseY = friendlyNPC.y;
         const drawY = npcBaseY - bob;
-        const size = 34; // slightly larger than player (26)
+        const size = 44;
         const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
 
         if (isOnScreen) {
-          // Aqua octagon (8-sided)
+          if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'npc', npcX - r, drawY - r, size, size))) {
           ctx.fillStyle = '#33aacc';
           ctx.strokeStyle = '#1a6a88';
           ctx.lineWidth = 2;
@@ -3762,8 +3718,6 @@
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
-
-          // Cyan eyes
           ctx.fillStyle = '#88eeff';
           ctx.beginPath();
           ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
@@ -3771,6 +3725,7 @@
           ctx.beginPath();
           ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
           ctx.fill();
+          }
 
           // Speech bubble if approached (disappears when NPC off screen)
           if (friendlyNPC.approached) {
@@ -3779,24 +3734,16 @@
             const boxX = Math.max(20, Math.min(W - boxW - 20, npcX - boxW / 2));
             const boxY = Math.max(12, drawY - 52);
 
-            ctx.fillStyle = 'rgba(10, 30, 50, 0.92)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
-            ctx.strokeStyle = '#66ddff';
-            ctx.lineWidth = 1.6;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-            ctx.fillStyle = '#aaddff';
-            ctx.font = '11px Segoe UI, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('The neon is leaking! we have to stop it!', boxX + boxW / 2, boxY + 21);
-
-            // Pointer line from bubble to NPC
-            ctx.strokeStyle = '#66bbdd';
-            ctx.lineWidth = 1.3;
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW / 2, boxY + boxH);
-            ctx.lineTo(npcX, drawY - 2);
-            ctx.stroke();
+            if (!(window.NeonDashSprites && NeonDashSprites.drawSpeechBubble(ctx, boxX, boxY, boxW, boxH, npcX, drawY - 2, ['The neon is leaking! we have to stop it!']))) {
+              ctx.fillStyle = 'rgba(52, 8, 38, 0.94)';
+              ctx.fillRect(boxX, boxY, boxW, boxH);
+              ctx.strokeStyle = '#ff79d0';
+              ctx.strokeRect(boxX, boxY, boxW, boxH);
+              ctx.fillStyle = '#ffe6f5';
+              ctx.font = '11px Segoe UI, Arial';
+              ctx.textAlign = 'center';
+              ctx.fillText('The neon is leaking! we have to stop it!', boxX + boxW / 2, boxY + 21);
+            }
           }
         }
       }
@@ -4183,6 +4130,7 @@
         const sx = pr.wx - scrollX;
         const sy = pr.y;
         if (sx < -30 || sx > W + 30) continue;
+        if (window.NeonDashSprites && NeonDashSprites.drawShot(ctx, 'water', sx, sy, frame, 24, 24, pr.vx, pr.vy)) continue;
 
         const r = 8 + Math.sin(frame * 0.22 + sx) * 0.8; // twice size
 
@@ -4252,11 +4200,11 @@
 
         // Glowing pink-purple portal / rift at the top - BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed)
         const portalY = baseY - 305;
-        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'portal', lx - 18, portalY - 24, 36, 48))) {
+        if (!(window.NeonDashSprites && NeonDashSprites.drawPortal(ctx, lx, portalY, frame))) {
         const px = lx;
         const py = portalY;
-        const baseRx = 25;
-        const baseRy = 36;
+        const baseRx = 50;
+        const baseRy = 72;
         const pulse = Math.sin(frame * 0.27) * 2 + 3;
         // Outer pulsing fill glow (larger) — pink-ish purple
         ctx.save();
@@ -4349,6 +4297,14 @@
         const bw = HYDRO_BUILD_W;
         const bh = HYDRO_BUILD_H;
         const bPulse = Math.sin(frame * 0.22) * 1.8 + 1.2;
+        const usedBuildSprite = window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'build', bx - 12, by - bh - 16, bw + 24, bh + 18);
+        if (usedBuildSprite) {
+          ctx.fillStyle = '#88eeff';
+          ctx.font = 'bold 11px Segoe UI, Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('Hydro Control Zone', bx + bw * 0.5, by - bh - 20);
+        }
+        if (!usedBuildSprite) {
         // Wide aura glow (aqua)
         ctx.fillStyle = 'rgba(51, 170, 204, 0.18)';
         ctx.fillRect(bx - 12, by - bh - 22, bw + 24, bh + 18);
@@ -4489,13 +4445,14 @@
         ctx.fillStyle = '#66ffcc';
         ctx.font = 'bold 8px Consolas, monospace';
         ctx.fillText('NEON DEPOT', doorX + doorW * 0.5, by - doorH - 8);
+        }
 
         // Ice-blue floating pyramid NPC beside entrance (non-blocking)
         if (endPyramid) {
           const bob = Math.sin(endPyramid.phase || 0) * 5;
           const npcX = endPyramid.wx - scrollX;
           const drawY = endPyramid.y - bob;
-          // Ice-blue pyramid body
+          if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'pyramid', npcX - 26, drawY - 30, 52, 52))) {
           ctx.fillStyle = '#66ddff';
           ctx.strokeStyle = '#33aacc';
           ctx.lineWidth = 2;
@@ -4506,7 +4463,6 @@
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
-          // Wide white eyes (floating pyramid "face")
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
           ctx.ellipse(npcX - 7, drawY - 6, 6, 4.5, 0, 0, Math.PI * 2);
@@ -4514,14 +4470,7 @@
           ctx.beginPath();
           ctx.ellipse(npcX + 7, drawY - 6, 6, 4.5, 0, 0, Math.PI * 2);
           ctx.fill();
-          // Dark pupils (wide-eyed look)
-          ctx.fillStyle = '#0a1628';
-          ctx.beginPath();
-          ctx.arc(npcX - 7, drawY - 6, 2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(npcX + 7, drawY - 6, 2, 0, Math.PI * 2);
-          ctx.fill();
+          }
           // Speech bubble (approach mechanic — invite into plant)
           const onScreen = npcX > -50 && npcX < W + 50;
           if (endPyramid.approached && onScreen) {
@@ -4554,6 +4503,7 @@
         const sx = fb.wx - scrollX;
         const sy = fb.y;
         if (sx < -20 || sx > W + 40) continue;
+        if (window.NeonDashSprites && NeonDashSprites.drawShot(ctx, 'water', sx + 4, sy + 2, frame, 24, 24, fb.vx, fb.vy)) continue;
 
         const r = 9; // twice size base
 
@@ -4643,6 +4593,8 @@
       if (powerUp) {
         const pux = powerUp.wx - scrollX;
         const puy = powerUp.y;
+        if (window.NeonDashSprites && NeonDashSprites.drawPickup(ctx, pux, puy, 38, frame)) {
+        } else {
         const pulse = Math.sin(frame * 0.18) * 2.2;
 
         ctx.save();
@@ -4699,6 +4651,7 @@
         ctx.fillRect(pux - 1, puy - 6, 2, 5);
 
         ctx.restore();
+        }
       }
 
       // === ICE POWERUP (snowflake icon, rapid white/blue glow — visual only) ===
@@ -4793,8 +4746,12 @@
         const pulse = 0.92 + Math.sin(frame * 0.06 + b.bobPhase) * 0.06;
         const r = b.r * pulse;
 
-        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'bubble', bx - r, by - r, r * 2, r * 2)) {
-          continue;
+        if (window.NeonDashSprites) {
+          ctx.save();
+          ctx.globalAlpha = 0.82;
+          const drew = NeonDashSprites.drawSprite(ctx, 'bubble', bx - r, by - r, r * 2, r * 2);
+          ctx.restore();
+          if (drew) continue;
         }
 
         ctx.save();
@@ -4929,27 +4886,16 @@
       if (player.hasShield && !deathActive) {
         const cx = px + player.w / 2;
         const cy = py + player.h / 2 + 1;
-        const pulse = Math.sin(frame * 0.21) * 1.8;
-
-        ctx.save();
-        ctx.strokeStyle = '#66ddff';
-        ctx.lineWidth = 2.8;
-        ctx.shadowColor = '#4499ff';
-        ctx.shadowBlur = 13 + pulse * 0.8;
-
-        // Outer shield ellipse
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, player.w / 2 + 10 + pulse * 0.4, player.h / 2 + 13 + pulse * 0.5, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Inner highlight ring
-        ctx.strokeStyle = 'rgba(170, 230, 255, 0.55)';
-        ctx.lineWidth = 1.1;
-        ctx.shadowBlur = 4;
-        ctx.beginPath();
-        ctx.ellipse(cx - 1, cy - 2, player.w / 2 + 3 + pulse * 0.3, player.h / 2 + 5 + pulse * 0.4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+        if (!(window.NeonDashSprites && NeonDashSprites.drawShield(ctx, cx, cy, player.w, player.h, frame))) {
+          const pulse = Math.sin(frame * 0.21) * 1.8;
+          ctx.save();
+          ctx.strokeStyle = '#66ddff';
+          ctx.lineWidth = 2.8;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, player.w / 2 + 10 + pulse * 0.4, player.h / 2 + 13 + pulse * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
       // Subtle invulnerability afterglow (5 seconds after shield pops - no bubble, just faint protection indicator)
@@ -5127,8 +5073,10 @@
       }
 
       if (gameState === 'start') {
-        ctx.fillStyle = 'rgba(2, 7, 15, 0.72)';
-        ctx.fillRect(0, 0, W, H);
+        if (!(window.NeonDashSprites && NeonDashSprites.drawHudPlate(ctx, W, H))) {
+          ctx.fillStyle = 'rgba(2, 7, 15, 0.48)';
+          ctx.fillRect(W / 2 - 320, H / 2 - 150, 640, 300);
+        }
 
         ctx.font = '700 36px Segoe UI, Arial';
         ctx.textAlign = 'center';
@@ -5156,8 +5104,10 @@
         const uiAlpha = Math.min(1, Math.max(0, (dTimer - 28) / 36));
         ctx.save();
         ctx.globalAlpha = uiAlpha;
-        ctx.fillStyle = 'rgba(3, 6, 12, 0.65)';
-        ctx.fillRect(0, 0, W, H);
+        if (!(window.NeonDashSprites && NeonDashSprites.drawHudPlate(ctx, W, H))) {
+          ctx.fillStyle = 'rgba(3, 6, 12, 0.48)';
+          ctx.fillRect(W / 2 - 320, H / 2 - 150, 640, 300);
+        }
 
         ctx.font = '700 28px Segoe UI, Arial';
         ctx.textAlign = 'center';
@@ -5183,8 +5133,10 @@
       }
 
       if (gameState === 'complete') {
-        ctx.fillStyle = 'rgba(2, 6, 14, 0.72)';
-        ctx.fillRect(0, 0, W, H);
+        if (!(window.NeonDashSprites && NeonDashSprites.drawHudPlate(ctx, W, H))) {
+          ctx.fillStyle = 'rgba(2, 6, 14, 0.48)';
+          ctx.fillRect(W / 2 - 320, H / 2 - 150, 640, 300);
+        }
 
         ctx.font = '700 32px Segoe UI, Arial';
         ctx.textAlign = 'center';
