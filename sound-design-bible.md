@@ -16,7 +16,7 @@ The soundscape is the internal monologue of a nine-year-old's daydream: vast bla
 
 Envelopes are always soft attack + medium decay/release to avoid "clicky" or aggressive onsets; everything feels like it floats into existence and gently fades rather than punches. Durations are short (most <250ms) so they don't interrupt the dreamy flow or feel like "game feedback" — more like ambient magic responding to the child's imagination. Volumes are deliberately low and balanced (master 0.15-0.25) so the experience remains contemplative and vast rather than arcade-loud.
 
-Continuity is sacred: the same core "family" of timbres travels with the boy across daydream levels. Void (Level 1) is glassy and distant; Level 2 adds soft organic burbles for Octopoop friends; industrial Level 3 gets subtle metallic ring but keeps it warm and toy-like; lava Level 4 introduces warm low rumbles and soft crackles but never scary fire — always cozy "volcano in a snow globe." Slight filter/pitch shifts for theme only; base waveforms, envelopes, and call names identical.
+Continuity is sacred: the same core "family" of timbres travels with the boy across daydream levels. Void (Level 1) is glassy and distant; Level 2 adds soft organic burbles for Octopoop friends; industrial Level 3 gets subtle metallic ring but keeps it warm and toy-like; lava Level 4 introduces warm low rumbles and soft crackles but never scary fire — always cozy "volcano in a snow globe." Level 5 keeps the family with goo pops and pyramid/building hums. Level 6 (deep water) stays in-family: muffled, bubbly, slightly lower/warmer — `playBubbleChirp()` is a tiny high sine/triangle ping for air pockets, never a gasp or drowning panic. Slight filter/pitch shifts for theme only; base waveforms, envelopes, and call names identical.
 
 ---
 
@@ -70,6 +70,9 @@ All functions are zero-arg (or optional simple param like type), fire-and-forget
 14. **playLavaSizzle()** (themed death or ambient near pits, optional)  
     Very low soft rumble + intermittent gentle hiss (noise with slow envelope), 300ms+ but low vol 0.08. Only for lava-themed deaths or close calls; dreamy warmth.
 
+15. **playBubbleChirp()** (Level 6)  
+    Tiny rising sine ~880–1100Hz then a quieter triangle sparkle, ~55ms + 40ms, vol 0.05–0.08. Air-pocket refill, never a gasp. Same innocence as collect, wetter and smaller.
+
 **Additional guidelines for calls:**
 - Use the exact names above for cross-file paste consistency.
 - For collectibles/orbs/powerups: always call playCollect or playPowerup immediately before or after the splice/remove and particle spawn.
@@ -97,7 +100,7 @@ All functions are zero-arg (or optional simple param like type), fire-and-forget
 
 ## Recommended Function Names + Reusable Sound Engine Snippet
 
-**Exact function names** (use these verbatim in all 4 files for easy alignment/merge):
+**Exact function names** (use these verbatim in all six level files for easy alignment/merge):
 - playJump
 - playLand
 - playTrampoline
@@ -111,12 +114,14 @@ All functions are zero-arg (or optional simple param like type), fire-and-forget
 - playPteroSpit
 - playShieldPop (if used)
 - playBossStomp (if used)
+- playBubbleChirp (Level 6 air pockets only)
+- L5/L6 extras where themed: playPyramidEmerge, playPyramidChat, playBuildingHum, playGooPop, playLaser, playNPCApproach, playBlock
 
 **Small reusable sound engine** (paste-identical block in every file, after const keys = {} or near top of script, before resetGame. Also declare `let audioCtx; let muted = false; const masterVol = 0.22;` at top with other lets).
 
 ```js
 // === NEON DASH DREAMY SFX ENGINE (shared across all levels) ===
-// Paste this block identically into void-cube.html, level2.html, Level3.html, Level4.html
+// Paste this block identically into void-cube.html, level2.html, Level3.html, Level4.html, Leve5.html, Level6.html
 let audioCtx;
 let muted = false;
 const masterVol = 0.22;

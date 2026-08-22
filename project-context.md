@@ -1,13 +1,26 @@
 # Grok-to-Understand Project Context Summary (for Continuation)
 
-**Date/Context**: 2026-07-02. Workspace: C:\Users\antho\grok-to-understand. Two active tracks: (1) **Neon Dash** — single-file HTML5 Canvas side-scrolling platformer, especially Leve5.html (Level 5 "Pink alien biosphere" + floral theme); other levels: void-cube.html (entry/L1), level2.html (L2 with Mr Octopoop), Level3.html (L3), Level4.html (L4 lava + boss). (2) **POPCORN Prompt Synthesizer** — index.html (LCARS-themed POPCORN prompt builder; linked from right sidebar "VOID CUBE PROTOCOL" simulation area).
+**Date/Context**: 2026-08-22. Workspace: C:\Users\antho\grok-to-understand. Two active tracks: (1) **Neon Dash** — single-file HTML5 Canvas side-scrolling platformer, **six levels**: void-cube.html (L1), level2.html (L2 Mr Octopoop), Level3.html (L3), Level4.html (L4 lava + crush-only boss), Leve5.html (L5 pink alien biosphere; filename is historical), Level6.html (L6 deep water + oxygen + Hydro shop). (2) **POPCORN Prompt Synthesizer** — `index.html` + `assets/lcars.css` + Imagine stills in `assets/` (LCARS 4.7 TNG overhaul, 2026-08-22). VOID CUBE PROTOCOL on the right rail links to `void-cube.html`. Live: Vercel project `to-understand` from GitHub `apollo-n23/to-understand` `main`. Docs: `README.md`, this file, `sound-design-bible.md`.
+
+**Current snapshot (2026-08-22)**:
+- POPCORN UI is **not** a single self-contained HTML file anymore. Markup/JS stay in `index.html`; chrome is `assets/lcars.css` (Antonio + Share Tech Mono, TNG 2357 flats, elbows, 3-col `168px | 1fr | 188px`). Earth, pale-blue-dot, End Guardian, Enterprise, nebula, mode selector, console grain, and channel/FAB glyphs are files under `assets/` — not inline SVGs.
+- FAB Copy/Preview/Download: wide bottom rail (`min(720px, 100% - 32px)`), `::before` **mask** icons (`icon-copy.png` / `icon-preview.png` / `icon-download.png`, black knocked out). Do **not** put `<img>` inside the buttons — `flashButton()` replaces `innerHTML`. Mobile (≤640px): stack full-width, body `padding-bottom: 180px`, toast `bottom: 172px`.
+- JS contract unchanged: field ids, `data-panel-id`, `lcarsPromptData` / `lcarsPromptFormat` / `lcarsPanelOrder`, integrity bar `#integrity-bar-fill` width %, star-map group ids + nebula gradient defs, `.star-hit` immediately before `.star-point`. Star map also paints `assets/nebula-starfield.jpg` into `#star-map-bg`.
+- Level 6 is in the chain (L5 `next-level-link` → `Level6.html`). Hydro shop: buy shield 20 / ice 25 neon (carryover). **Leaving the shop must `gameState = 'playing'`** with the player parked beside the Hydro door — do **not** skip to `complete`. Finish by climbing the ladder. Air bubbles: `MAX_AIR_BUBBLES = 8`, spawn intervals doubled vs the earlier denser pass. Coral reef draw replaced the old blue crystal triangles (hitbox unchanged). Exit portal is pink-purple (not cyan). L6 extra SFX: `playBubbleChirp()`.
+- Git: `main` was force-with-lease pushed over 8 older GitHub-web commits (2026-08-22) so Vercel could take the local history. Do not force-push unless histories have diverged the same way again. Untracked `mcps/` is tool-schema dump, not site source — leave it out of commits unless asked.
+
+---
+
+# Historical notes (pre–L6 / pre–LCARS overhaul)
+
+The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-safety, and POPCORN JS behavior. Treat visual descriptions of Earth SVG / pill borders / “no external assets on index.html” as **superseded** by the snapshot above.
 
 **Core Gameplay (shared across levels)**:
 - Player: cube (w:26, h:26) with gravity, jumping, stomping enemies from above, collecting (neonOrbs), climbing ladders (UP key) to levelExit portal (triggers gameState='complete' at t>=1 with badass concentric swirls/glow/lightning particles).
 - Mechanics: physics (vx/vy, landing on ground/platforms/trampolines), AABB collisions (with shield/invuln handling), particles (explosions, dust, smoke, etc.), parallax drawing (wx - scrollX * factor), procedural spawns, Web Audio sounds.
 - Game loop: update() (gravity/landing/wasAirborne, input, overWaterGap, collisions/death, spawns with guards, AI/movement for enemies/projectiles, collect, climb logic, NPC approach, levelExit spawn at specific wx), draw() (layers: sky/bg, elements, ground/pits, platforms, enemies, NPCs, levelExit/building, particles, UI), gameLoop() with RAF, init/startPlaying with listeners (SPACE/click start + getAudioCtx, 'm' mute, 'r' reset, ArrowDown ice).
 - State: gameState ('start'/'playing'/'over'/'complete'), scrollX, score, frame, keys, arrays (obstacles/triangles, platforms, specials/blobs, neonOrbs, pteros/drones, waterGaps/slime pits, poisonDarts/slimeballs, projectiles, endFireballs, levelExit, powerUp/icePowerUp, endPyramid, friendlyNPC, octopoppStart/Mid, ceilingFlowers, slimePuddles, backgroundElements/floral, particles, etc.), player (wx, y, vx, vy, w, h, hasShield, hasIceBlast, isClimbing, invulnUntil, drowningStart, climbProgress etc.), sound state (audioCtx, muted, masterVol~0.25, wasAirborne).
-- End condition: levelExit spawn (L5 direct at ~6740 for ~10% length extension vs L4 6127; no boss in L5), climb to portal. L4 has next-link to Leve5 on complete + cumulative score via localStorage.
+- End condition: levelExit spawn (L5 direct at ~6740 for ~10% length extension vs L4 6127; no boss in L5), climb to portal. L4 → Leve5 → Level6 on complete + cumulative score via localStorage.
 - FPS counter, wouldBeTooCloseToHazards helper (60px edge sep for spawns), no external assets.
 
 **L5-Specific Theme/Reskin (Pink Alien Biosphere + Floral)**:
@@ -20,6 +33,13 @@
 - End building: "Neon Control Zone" (golden aura, panels, open door at lx+~55 + label text + glow); spawns endPyramid (golden pyramid, wide white eyes #ffffff + dark pupils; bob/float; approached=true on near door/ground/!isClimbing); bubble (dark box + pointer; exact 2-line text "There's so much chaos in here! I cant let you in right now, get to the next level!"; onscreen npcX guard); blocks player (clamp wx/vx past door unless isClimbing; allow ladder climb to finish). Use NPC style like Octopopp/friendly.
 - Octopopp NPCs: two (octopoppStart at wx~175 after player.wx>100; octopoppMid ~3200-3600); like L2's mrOctopoop (bouncePhase + approached on dx/dy<80/60; draw pink octagon #ff88dd + blue eyes + bob; bubbles with exact texts + onscreen guards + pointer; playNPCApproach).
 - Other: 3x ice spawns (adjusted targets, first-only no tutorial), friendlyNPC/Octopopp, cumulative score carry, FPS, particles on events.
+
+**L6-Specific (Deep Water + Hydro Shop)** — `Level6.html`:
+- Underwater gravity (`WATER_GRAVITY` 0.34, pit 0.16). Oxygen bar: `OXYGEN_MAX` 100, drain 0.17, refill 1.15 inside air bubbles.
+- Air bubbles: `MAX_AIR_BUBBLES = 8`, spawn min/span 34/28 (frequency −50% vs earlier denser pass); seed 2–3 near start. `playBubbleChirp()` on collect/refill.
+- Ground hazards drawn as **spiky coral reef** (teal/pink polyps, same ~27×h triangle hitbox + patrol/wiggle).
+- End portal: pink-purple concentric rift (not cyan). Hydro shop at the end building: fade → counter; shield 20 neon, ice 25; purchases persist (`saveOwnedPowerups`). **`exitShop` resumes `playing`** with player at `doorL - player.w - 8`, camera snap; `shopVisited` prevents re-entry. Ladder climb still the only complete path.
+- Next-level from L5: `Leve5.html` `#next-level-link` href `Level6.html`.
 
 **Sounds (Consistent Web Audio across all 5 levels; engine from prior + agents)**:
 - audioCtx, masterVol~0.25, muted + 'm' toggle, getAudioCtx on gestures/startPlaying/keydown.
@@ -35,28 +55,29 @@
 - Ladder climb with sounds/UP, portal badass concentric swirls/glow/lightning in all.
 - levelExit barrier, cumulative score via localStorage in some.
 - NPC bubbles with onscreen guards.
-- L4 → Leve5 on complete (visibility funcs, saveCumulativeForNextLevel).
+- L4 → Leve5 → Level6 on complete (visibility funcs, saveCumulativeForNextLevel).
 - FPS, particles, no external assets.
 
-**POPCORN Prompt Synthesizer (index.html)**:
-- Single-file LCARS 4.7 UI; 7 POPCORN channels: persona, objective, process, context, output, restrictions, nature.
+**POPCORN Prompt Synthesizer (`index.html` + `assets/lcars.css`)**:
+- LCARS 4.7 UI (visuals in CSS + `assets/` stills as of 2026-08-22); 7 POPCORN channels: persona, objective, process, context, output, restrictions, nature.
 - **Layout**: all 7 sections in a single-column `#panels-container`; **drag-reorderable** via `::` handles (`.drag-handle` only is `draggable="true"`; panels are not). Order persisted in `localStorage` key `lcarsPanelOrder`; `panelOrder` drives compile order in `buildPromptMarkdown()` / `buildPromptXml()`.
 - **Per-section char limits** (`CHAR_LIMITS` + `maxlength`): persona 300, objective 400, process 1500, context 1500, output **900**, restrictions 1500, nature 300. Header `.char-count` shows `entered / limit`; `.near-limit` amber at ≥85%, `.at-limit` red at cap. `enforceCharLimit()` on input + after `loadFromStorage()`.
 - **Top toolbar** (`.toolbar-menu`): CLEAR ALL + **COMPUTER** link (`https://grok.com/`, new tab); right side = BUFFER total compiled char count + Markdown/XML format slider (`#format-toggle`). Format persisted in `localStorage` key `lcarsPromptFormat`.
 - **Compile formats** (`buildPrompt()` dispatches on `promptFormat`):
   - **markdown** (default): `SECTION:\n{text}` blocks joined by `\n\n` (only non-empty sections, in `panelOrder`).
   - **xml**: `<prompt>` root with child tags; `escapeXml()` on content; only non-empty sections included.
-- **Floating action bar** (`.floating-actions`, fixed bottom): Copy, Preview, Download. Body `padding-bottom: 72px`; toast at `bottom: 72px`.
+- **Floating action bar** (`.floating-actions`, fixed bottom): Copy, Preview, Download. Desktop: wide rail + PNG mask icons, body `padding-bottom: 88px`, toast `bottom: 80px`. Mobile ≤640px: stacked buttons, body `padding-bottom: 180px`, toast `bottom: 172px`. Keep button text-only for `flashButton()`.
 - **Preview modal** (`#preview-modal`): read-only `<pre>`; synced Markdown/XML toggle in modal header; Copy + Return to Edit; dismiss via ×, backdrop, or Escape.
 - **Download**: always `popcorn-prompt-{timestamp}.txt` (content reflects active format; extension is always `.txt`).
 - **Clipboard**: `writeToClipboard()` with `execCommand` fallback; `showToast()`, `flashButton()`.
 - **Persistence**: field values → `lcarsPromptData`; format → `lcarsPromptFormat`; panel order → `lcarsPanelOrder`.
-- **Left sidebar**: 9 LCARS slice buttons (2/3 main + 1/3 cap); Earth-from-orbit SVG; **Pale Blue Dot** pane (Carl Sagan excerpt, `flex:1` to page bottom).
-- **Right sidebar** (top → bottom): **`.scan-readouts`** panel (prominent blue styling) → STATUS block → SIMULATIONS (VOID CUBE PROTOCOL link to `void-cube.html`) → LCARS control slices (SENSORS, PHASERS, WARP, etc.) → End Guardian thumb (Neon Dash boss SVG) → **Tactical Star Map** (`flex:1`) → U.S.S. Enterprise footer.
-- **Scan readouts** (reordered, enlarged typography):
-  1. **EST. TOKENS** (top) — rough `prompt.length / 3.8`
-  2. **PROMPT INTEGRITY** — starts **0%**; weighted milestone scoring + LCARS progress bar (`#integrity-bar-fill`)
-  3. **SECTIONS ACTIVE** (last) — non-empty section count `0 / 7`
+- **Left sidebar**: 9 LCARS slice buttons (main + cap); Earth-from-orbit still (`assets/earth-orbit.jpg`); Pale Blue Dot plate (`assets/pale-blue-dot.jpg`) + Carl Sagan excerpt.
+- **Right sidebar** (top → bottom): **`.scan-readouts`** → STATUS → SIMULATIONS (VOID CUBE PROTOCOL → `void-cube.html`, class `sim-link`) → LCARS control slices → End Guardian (`assets/end-guardian.jpg`) → **Tactical Star Map** → Enterprise plate (`assets/enterprise.jpg`).
+- **Scan readouts**:
+  1. **TOTAL CHARS** (`#char-count`) — compiled prompt length
+  2. **EST. TOKENS** — `prompt.length / 3.8`
+  3. **PROMPT INTEGRITY** — starts **0%**; weighted milestones + `#integrity-bar-fill`
+  4. **SECTIONS ACTIVE** — non-empty count `0 / 7`
 - **Prompt integrity** (`calculatePromptIntegrity()` + `INTEGRITY_WEIGHTS`): per section, award at each 25% char-quota milestone (4 steps); weights sum to 100% — persona **5**, objective **10**, process **15**, context **25**, output **20**, restrictions **20**, nature **5**. LCARS bar beneath percentage fills in sync (blue→orange gradient + orange endcap + blue rail).
 - **Tactical Star Map** (interactive SVG in right sidebar):
   - Dynamic `viewBox` via `resizeStarMap()` + `ResizeObserver` (`MAP_WIDTH=148`, height scales to container aspect).
@@ -67,7 +88,7 @@
   - `initStarMap()`, `buildStarMapContent()`, `lastMapSelection` restores selection after resize.
 - **Live stats**: `updateLiveStats()` — per-section counts, buffer length, token est, integrity %, integrity bar width, sections active. Ctrl/Cmd+Enter copies prompt.
 - **Key JS**: `ids`, `panelOrder`, `PANEL_ORDER_KEY`, `SECTION_META`, `CHAR_LIMITS`, `INTEGRITY_WEIGHTS`, `NEAR_LIMIT_THRESHOLD`, `initPanelDragDrop()`, `reorderPanel()`, `calculatePromptIntegrity()`, star-map symbols (`STAR_MAP_CATALOG`, `STAR_MAP_VESSELS`, `buildStarMapContent()`, `initStarMap()`), `buildPrompt()`, `init()`.
-- No external assets/deps beyond the `grok.com` link; all SVG/graphics inline.
+- Prompt UI now depends on `assets/lcars.css` and the Imagine stills listed in `README.md`. Game levels remain self-contained HTML (no shared asset folder) aside from localStorage score carry. COMPUTER still links to `https://grok.com/`.
 
 **Recent Agent-Driven Changes (Neon Dash; prior sessions; 1+ subagents per issue, parallel often with worktree isolation/read-write; reports with excerpts; safe merges via search_replace on main with unique anchors)**:
 - Sun (L5): orange → deep pink/purple (#ff88cc/#ff77cc/#cc66ee etc.), 2x size (radii scaled e.g. 15→30, 68→136), surrounded by beaming/shimmering concentric circles (6 stroked rings at [44,60,...148] with per-ring shimmer=sin(frame*0.027+phase)*2.4 radius offset + alpha flicker 0.13+sin*0.17 clamped + phases/lineWidth; + 6 thin radial beams with lenShimmer + slow rotation). Updated comments. (Subagent 1.)
@@ -86,7 +107,8 @@
 - **Phase 2 — sidebars & polish**: output limit 600→**900**; download always **`.txt`**; left sidebar LCARS slices + Earth SVG + enlarged Pale Blue Dot pane; right sidebar LCARS controls + End Guardian thumb; COMPUTER link to grok.com; preview modal format toggle synced with toolbar; near-limit amber warning at 85%.
 - **Phase 3 — layout & drag-drop**: replaced side-by-side persona/objective with single-column **drag-reorderable** panels; `lcarsPanelOrder` persistence; fixed broken DnD (draggable on handle only, not whole panel).
 - **Phase 4 — tactical star map**: interactive SVG below End Guardian; dynamic viewBox (no stretch); 28 stars + 2 red; curved pink vessel paths; world labels Earth/Vulcan/Andoria; selectable Starfleet vessels with Enterprise silhouettes + blue name beside reticule.
-- **Phase 5 — scan readouts & integrity**: reordered readouts (tokens → integrity → sections active); enlarged `.scan-readouts` styling; **prompt integrity** 0–100% with weighted 25% milestones (`INTEGRITY_WEIGHTS`: context 25%, process 15%, output/restrictions 20% each, objective 10%, persona/nature 5% each); LCARS integrity progress bar.
+- **Phase 5 — scan readouts & integrity**: reordered readouts (tokens → integrity → sections active); enlarged `.scan-readouts` styling; **prompt integrity** 0–100% with weighted 25% milestones (`INTEGRITY_WEIGHTS`: context 25%, process 15%, output/restrictions 20% each, objective 10%, persona/nature 5% each); LCARS integrity progress bar. (Later the live sidebar also shows TOTAL CHARS above tokens.)
+- **Phase 6 — 2026-08-22 visual overhaul**: extracted CSS to `assets/lcars.css`; Imagine stills for Earth, pale blue dot, End Guardian, Enterprise, nebula, mode selector, console grain, 7 channel icons, 3 FAB glyphs (JPGs plus transparent PNGs for FAB masks); authentic TNG flats/elbows/type; FAB overlap/black-square fix (masks + wider rail + mobile stack). JS ids/hooks preserved. Pushed `main` (force-with-lease) so Vercel production matches.
 
 **Key Decisions/Requirements**:
 - L5: no boss/tutorials (direct levelExit like L1-3; 3x ice even spawns no tutorial; keep climb hazards/endFireballs as non-active bg danger).
@@ -97,7 +119,7 @@
 - Slimeballs: 2x size bubbling purple; splat+puddle only on ground; preserve original spit/move/coll.
 - Boss L4: sole death = direct land/crush (suppress externals during fight; keep shots/AI/stomp-3x).
 - General: shared patterns (ladder/portal/NPC bubbles/onscreen guards); no external assets; perf (reduced polys, batch alpha, onscreen culls); recent subagents for parallel issues + safe merges.
-- Prompt builder: LCARS theme fidelity; copy/preview/download respect active format; floating bar always visible; per-field limits + near-limit warnings; panel drag order persisted; integrity scoring weights context/process heavily, persona/nature lightly; star map + vessels decorative but interactive (selection/reticule); download always `.txt`.
+- Prompt builder: LCARS theme fidelity via `assets/lcars.css` + stills; copy/preview/download respect active format; floating bar always visible (mask icons, no img children); per-field limits + near-limit warnings; panel drag order persisted; integrity scoring weights context/process heavily, persona/nature lightly; star map + vessels decorative but interactive (selection/reticule) with nebula still behind SVG; download always `.txt`.
 - Git/history: agents/merges/commits; branch may diverge; prefer relative paths; use todos for multi-step.
 
 **Code Structure (typical for Leve5.html; similar in others)**:
@@ -125,8 +147,8 @@
 - Git: commits for agents/merges (spawn/sound/optimize/fixes/sun/triangles/boss/slime/flower/slimeballs/puddles etc.); branch may be behind/ahead origin/main (per initial status; clean working tree often).
 - Future/agents pattern: continue using spawn_subagent (worktree for isolation) for parallel issues, then safe search_replace merges on main + commit. Third/optimize-style agent for cleanup post-changes. Recent diagnose (crash) + fix (pVar) + agents for ice (3x even spawns + first-only tutorial), NPC offscreen, pteros (drones), Octopoop in L2, portal badass (all levels), L5 reskin/floral/rects, spawn prevention, sounds audit/fix (L2-4 + L5), etc.
 - Test/verify: load Leve5.html (no crash, platforms pink bubble + thicker + more movers + float up/down, Octopopp at start+mid with bubbles, approach door → pyramid + block + text, must ladder to finish, sounds trigger incl. fixed jump + goo on splats, no bad spawns near ladder, floral/pink theme, sun pink/purple 2x concentric, triangles pink + slow safe patrol, ceiling flowers appear/extend/deadly, slime pits ooze/flow pink + no orange, fireballs/slimeballs 2x bubbling purple from pits/enemies + ground splat to ~5s fading deadly puddles, L4 boss only crush death, etc.).
-- Other files: keep patterns consistent (sounds engine, ladder logic, NPC bubbles, portal in L1-4). L5 now has full recent features intact (verified by agents + merges). index.html is standalone but cross-links to void-cube.html.
-- Prompt builder polish (optional): responsive/mobile tweaks for floating bar + star map; export filename customization; prompt templates/presets; integrity threshold indicators per section; additional star-map vessels or sector labels.
+- Other files: keep patterns consistent (sounds engine, ladder logic, NPC bubbles, portal in L1–6). L5/L6 features as of 2026-08-22 are in `main`. `index.html` is no longer standalone CSS — it requires `assets/`.
+- Prompt builder polish (optional): export filename customization; prompt templates/presets; integrity threshold indicators per section; additional star-map vessels or sector labels. Mobile FAB stack and mask icons already landed.
 - Potential (Neon Dash): more polish (e.g. upper sky haze tint for sun, update remaining "acid vats" comments, full cross-level sound parity, perf if needed).
 - Test/verify prompt-builder: floating Copy/Preview/Download on scroll; preview modal + synced format toggle; char counts amber at 85% / red at cap; panel drag-reorder persists on reload; integrity starts 0% and climbs with weighted milestones + bar fill; readout order tokens→integrity→sections; star map fills sidebar height without stretch; star + vessel selection/reticule/readout; world labels + vessel names; download always `.txt`; format + fields + panel order persist.
 
