@@ -113,7 +113,9 @@
     </a>
   </div>
 
+  <script src="assets/neon/draw-sprites.js"></script>
   <script>
+    if (window.NeonDashSprites) NeonDashSprites.theme('octo');
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d', { alpha: true });
 
@@ -2204,26 +2206,28 @@
         ctx.closePath();
         ctx.fill();
 
-        // main triangle (hazard)
-        ctx.fillStyle = '#e8553a';
-        ctx.beginPath();
-        ctx.moveTo(sx, GROUND_Y - th);
-        ctx.lineTo(sx - tw / 2, GROUND_Y + 0.5);
-        ctx.lineTo(sx + tw / 2, GROUND_Y + 0.5);
-        ctx.closePath();
-        ctx.fill();
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'hazard', sx - tw / 2, GROUND_Y - th, tw, th))) {
+          // main triangle (hazard)
+          ctx.fillStyle = '#e8553a';
+          ctx.beginPath();
+          ctx.moveTo(sx, GROUND_Y - th);
+          ctx.lineTo(sx - tw / 2, GROUND_Y + 0.5);
+          ctx.lineTo(sx + tw / 2, GROUND_Y + 0.5);
+          ctx.closePath();
+          ctx.fill();
 
-        // bright top edge
-        ctx.strokeStyle = '#ffaa77';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(sx, GROUND_Y - th);
-        ctx.lineTo(sx - tw / 2 + 2, GROUND_Y - 0.5);
-        ctx.stroke();
+          // bright top edge
+          ctx.strokeStyle = '#ffaa77';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(sx, GROUND_Y - th);
+          ctx.lineTo(sx - tw / 2 + 2, GROUND_Y - 0.5);
+          ctx.stroke();
 
-        // small danger accent
-        ctx.fillStyle = '#ffdd99';
-        ctx.fillRect(sx - 1.5, GROUND_Y - th + 5, 3, 1.5);
+          // small danger accent
+          ctx.fillStyle = '#ffdd99';
+          ctx.fillRect(sx - 1.5, GROUND_Y - th + 5, 3, 1.5);
+        }
       }
 
       // === SPECIAL RED MONSTERS (slow chasers) ===
@@ -2235,6 +2239,10 @@
         // soft shadow
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(sx + 4, GROUND_Y - 1, s.w - 5, 4);
+
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'enemy', sx, sy, s.w, s.h)) {
+          continue;
+        }
 
         // body (deep red)
         ctx.fillStyle = '#c83322';
@@ -2301,28 +2309,30 @@
         const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
         if (isOnScreen) {
-          // Pink octagon
-          ctx.fillStyle = '#ff88dd';
-          ctx.strokeStyle = '#cc5599';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          for (let i = 0; i < 8; i++) {
-            const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
-            const x = npcX + Math.cos(ang) * r;
-            const y = drawY + Math.sin(ang) * r;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'npc', npcX - r, drawY - r, size, size))) {
+            // Pink octagon
+            ctx.fillStyle = '#ff88dd';
+            ctx.strokeStyle = '#cc5599';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+              const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
+              const x = npcX + Math.cos(ang) * r;
+              const y = drawY + Math.sin(ang) * r;
+              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Blue eyes
+            ctx.fillStyle = '#4488ff';
+            ctx.beginPath();
+            ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
+            ctx.fill();
           }
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          // Blue eyes
-          ctx.fillStyle = '#4488ff';
-          ctx.beginPath();
-          ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
-          ctx.fill();
           // Speech bubble if approached (exact text)
           // Disappears when NPC off screen (npcX check)
           if (mrOctopoopStart.approached && npcX > -50 && npcX < W + 50) {
@@ -2359,28 +2369,30 @@
         const r = size / 2;
         const isOnScreen = npcX >= -50 && npcX <= W + 50;
         if (isOnScreen) {
-          // Pink octagon
-          ctx.fillStyle = '#ff88dd';
-          ctx.strokeStyle = '#cc5599';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          for (let i = 0; i < 8; i++) {
-            const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
-            const x = npcX + Math.cos(ang) * r;
-            const y = drawY + Math.sin(ang) * r;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'npc', npcX - r, drawY - r, size, size))) {
+            // Pink octagon
+            ctx.fillStyle = '#ff88dd';
+            ctx.strokeStyle = '#cc5599';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+              const ang = (i * Math.PI * 2 / 8) - Math.PI / 8;
+              const x = npcX + Math.cos(ang) * r;
+              const y = drawY + Math.sin(ang) * r;
+              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Blue eyes
+            ctx.fillStyle = '#4488ff';
+            ctx.beginPath();
+            ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
+            ctx.fill();
           }
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          // Blue eyes
-          ctx.fillStyle = '#4488ff';
-          ctx.beginPath();
-          ctx.arc(npcX - 5, drawY - 3, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(npcX + 5, drawY - 3, 3.5, 0, Math.PI * 2);
-          ctx.fill();
           // Speech bubble if approached (exact text)
           // Disappears when NPC off screen (npcX check)
           if (mrOctopoopEnd.approached && npcX > -50 && npcX < W + 50) {
@@ -2444,6 +2456,7 @@
 
         // Glowing cyan portal / rift at the top - now BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed). Adapted for level2 simpler style (no templates).
         const portalY = baseY - 305;
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'portal', lx - 18, portalY - 24, 36, 48))) {
         const px = lx;
         const py = portalY;
         const baseRx = 25;
@@ -2531,6 +2544,7 @@
             ctx.lineWidth = 0.9;
             ctx.stroke();
           }
+        }
         }
       }
 
@@ -2738,6 +2752,8 @@
 
         const isGreen = (orb.value === 5);
         const pulse = Math.sin(frame * 0.12 + orb.phase) * (isGreen ? 1.5 : 1.2);
+        const orbR = isGreen ? 12 : 11;
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, isGreen ? 'orbGreen' : 'orb', sx + 3 - orbR, sy - orbR, orbR * 2, orbR * 2)) { continue; }
 
         if (isGreen) {
           // Green glowing orb (faster, worth 5)
@@ -2844,30 +2860,32 @@
       ctx.fillStyle = 'rgba(0, 20, 40, 0.45)';
       ctx.fillRect(px + 5, GROUND_Y - 1, player.w - 3, 5);
 
-      // main cube body (bright cyan)
-      ctx.fillStyle = '#5fd0ff';
-      ctx.fillRect(px, py, player.w, player.h);
+      if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'player', px, py, player.w, player.h))) {
+        // main cube body (bright cyan)
+        ctx.fillStyle = '#5fd0ff';
+        ctx.fillRect(px, py, player.w, player.h);
 
-      // top face highlight (cube shading)
-      ctx.fillStyle = '#a8e8ff';
-      ctx.fillRect(px + 2, py + 2, player.w - 4, 5);
+        // top face highlight (cube shading)
+        ctx.fillStyle = '#a8e8ff';
+        ctx.fillRect(px + 2, py + 2, player.w - 4, 5);
 
-      // left face highlight
-      ctx.fillRect(px + 2, py + 2, 4, player.h - 4);
+        // left face highlight
+        ctx.fillRect(px + 2, py + 2, 4, player.h - 4);
 
-      // bottom-right bevel (shadow)
-      ctx.fillStyle = '#1a8fb8';
-      ctx.fillRect(px + player.w - 5, py + 5, 3, player.h - 6);
-      ctx.fillRect(px + 5, py + player.h - 5, player.w - 8, 3);
+        // bottom-right bevel (shadow)
+        ctx.fillStyle = '#1a8fb8';
+        ctx.fillRect(px + player.w - 5, py + 5, 3, player.h - 6);
+        ctx.fillRect(px + 5, py + player.h - 5, player.w - 8, 3);
 
-      // crisp outline
-      ctx.strokeStyle = '#0c3a4f';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(px + 0.75, py + 0.75, player.w - 1.5, player.h - 1.5);
+        // crisp outline
+        ctx.strokeStyle = '#0c3a4f';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(px + 0.75, py + 0.75, player.w - 1.5, player.h - 1.5);
 
-      // small "light" dot on cube
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.fillRect(px + 6, py + 5, 2, 2);
+        // small "light" dot on cube
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(px + 6, py + 5, 2, 2);
+      }
 
       // === VISIBLE ENERGY SHIELD (mario-style power-up - absorbs 1 hit, then grants 5s invulnerability) ===
       if (player.hasShield) {

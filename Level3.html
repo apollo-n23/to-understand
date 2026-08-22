@@ -131,7 +131,9 @@
     </a>
   </div>
 
+  <script src="assets/neon/draw-sprites.js"></script>
   <script>
+    if (window.NeonDashSprites) NeonDashSprites.theme('industrial');
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d', { alpha: true });
 
@@ -2527,26 +2529,28 @@
         ctx.closePath();
         ctx.fill();
 
-        // main triangle (hazard) - now dark grey industrial
-        ctx.fillStyle = '#3a4048';
-        ctx.beginPath();
-        ctx.moveTo(sx, GROUND_Y - th);
-        ctx.lineTo(sx - tw / 2, GROUND_Y + 0.5);
-        ctx.lineTo(sx + tw / 2, GROUND_Y + 0.5);
-        ctx.closePath();
-        ctx.fill();
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'hazard', sx - tw / 2, GROUND_Y - th, tw, th))) {
+          // main triangle (hazard) - now dark grey industrial
+          ctx.fillStyle = '#3a4048';
+          ctx.beginPath();
+          ctx.moveTo(sx, GROUND_Y - th);
+          ctx.lineTo(sx - tw / 2, GROUND_Y + 0.5);
+          ctx.lineTo(sx + tw / 2, GROUND_Y + 0.5);
+          ctx.closePath();
+          ctx.fill();
 
-        // top edge (dark steel)
-        ctx.strokeStyle = '#4a515c';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(sx, GROUND_Y - th);
-        ctx.lineTo(sx - tw / 2 + 2, GROUND_Y - 0.5);
-        ctx.stroke();
+          // top edge (dark steel)
+          ctx.strokeStyle = '#4a515c';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(sx, GROUND_Y - th);
+          ctx.lineTo(sx - tw / 2 + 2, GROUND_Y - 0.5);
+          ctx.stroke();
 
-        // small accent line
-        ctx.fillStyle = '#2f343c';
-        ctx.fillRect(sx - 1.5, GROUND_Y - th + 5, 3, 1.5);
+          // small accent line
+          ctx.fillStyle = '#2f343c';
+          ctx.fillRect(sx - 1.5, GROUND_Y - th + 5, 3, 1.5);
+        }
       }
 
       // === GREY INDUSTRIAL CHASERS (tall slow enforcers - fire blue lightning) ===
@@ -2560,6 +2564,10 @@
         // soft shadow
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(sx + 4, GROUND_Y - 1, s.w - 5, 4);
+
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'enemy', sx, sy, s.w, s.h)) {
+          continue;
+        }
 
         // main body (industrial grey)
         ctx.fillStyle = '#4f5662';
@@ -2721,6 +2729,7 @@
 
         // Glowing cyan portal / rift at the top - now BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed). Applied to all levels.
         const portalY = baseY - 305;
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'portal', lx - 18, portalY - 24, 36, 48))) {
         const px = lx;
         const py = portalY;
         const baseRx = 25;
@@ -2808,6 +2817,7 @@
             ctx.lineWidth = 0.9;
             ctx.stroke();
           }
+        }
         }
       }
 
@@ -3015,6 +3025,8 @@
 
         const isGreen = (orb.value === 5);
         const pulse = Math.sin(frame * 0.12 + orb.phase) * (isGreen ? 1.5 : 1.2);
+        const orbR = isGreen ? 12 : 11;
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, isGreen ? 'orbGreen' : 'orb', sx + 3 - orbR, sy - orbR, orbR * 2, orbR * 2)) { continue; }
 
         if (isGreen) {
           // Green glowing orb (faster, worth 5)
@@ -3121,30 +3133,32 @@
       ctx.fillStyle = 'rgba(0, 20, 40, 0.45)';
       ctx.fillRect(px + 5, GROUND_Y - 1, player.w - 3, 5);
 
-      // main cube body (bright cyan)
-      ctx.fillStyle = '#5fd0ff';
-      ctx.fillRect(px, py, player.w, player.h);
+      if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'player', px, py, player.w, player.h))) {
+        // main cube body (bright cyan)
+        ctx.fillStyle = '#5fd0ff';
+        ctx.fillRect(px, py, player.w, player.h);
 
-      // top face highlight (cube shading)
-      ctx.fillStyle = '#a8e8ff';
-      ctx.fillRect(px + 2, py + 2, player.w - 4, 5);
+        // top face highlight (cube shading)
+        ctx.fillStyle = '#a8e8ff';
+        ctx.fillRect(px + 2, py + 2, player.w - 4, 5);
 
-      // left face highlight
-      ctx.fillRect(px + 2, py + 2, 4, player.h - 4);
+        // left face highlight
+        ctx.fillRect(px + 2, py + 2, 4, player.h - 4);
 
-      // bottom-right bevel (shadow)
-      ctx.fillStyle = '#1a8fb8';
-      ctx.fillRect(px + player.w - 5, py + 5, 3, player.h - 6);
-      ctx.fillRect(px + 5, py + player.h - 5, player.w - 8, 3);
+        // bottom-right bevel (shadow)
+        ctx.fillStyle = '#1a8fb8';
+        ctx.fillRect(px + player.w - 5, py + 5, 3, player.h - 6);
+        ctx.fillRect(px + 5, py + player.h - 5, player.w - 8, 3);
 
-      // crisp outline
-      ctx.strokeStyle = '#0c3a4f';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(px + 0.75, py + 0.75, player.w - 1.5, player.h - 1.5);
+        // crisp outline
+        ctx.strokeStyle = '#0c3a4f';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(px + 0.75, py + 0.75, player.w - 1.5, player.h - 1.5);
 
-      // small "light" dot on cube
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.fillRect(px + 6, py + 5, 2, 2);
+        // small "light" dot on cube
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(px + 6, py + 5, 2, 2);
+      }
 
       // === VISIBLE ENERGY SHIELD (mario-style power-up - absorbs 1 hit, then grants 5s invulnerability) ===
       if (player.hasShield) {

@@ -24,7 +24,9 @@ Then open [http://127.0.0.1:5173/](http://127.0.0.1:5173/) (POPCORN) or a level 
 |---|---|
 | `index.html` | POPCORN synthesizer markup + JS |
 | `assets/lcars.css` | TNG LCARS visual system (Antonio + Share Tech Mono) |
-| `assets/*.jpg` / `*.png` | Imagine stills: Earth, pale blue dot, End Guardian, Enterprise, nebula, mode selector, console grain, channel + FAB glyphs |
+| `assets/*.jpg` / `*.png` | POPCORN LCARS stills (Earth, pale blue dot, End Guardian, Enterprise, nebula, mode selector, console grain, channel + FAB glyphs) |
+| `assets/neon/` | Neon Dash Imagine sprites (player/hazard/orb/portal/enemy per theme) + `draw-sprites.js` |
+| `tests/neon-mechanics.test.js` | Loads shipped `checkCollision`, collect loop, and L6 `leaveShop` from the HTML files |
 | `void-cube.html` | Neon Dash Level 1 (void) |
 | `level2.html` | Level 2 (Mr Octopoop) |
 | `Level3.html` | Level 3 |
@@ -69,6 +71,13 @@ Shared loop: gravity cube (26×26), stomp from above, collect neon orbs, climb t
 | 6 | `Level6.html` | Underwater: oxygen drain, air bubbles, spiky coral, pink-purple portal. Hydro shop at the end door sells shield (20 neon) / ice (25) with carryover. Leaving the shop returns to **play** beside the door — climb the ladder to complete. |
 
 Spawn-safety rule: nothing spawns on the end ladder (`safeMargin` ≈ 100). Sound wrappers must match `sound-design-bible.md` (`playJump`, `playLand`, `playDeath(cause)`, …). Level 6 also has `playBubbleChirp()`.
+
+**Sprites:** each level loads `assets/neon/draw-sprites.js` and calls `NeonDashSprites.theme(...)`. `drawSprite` uses `canvas.drawImage` scaled to the existing entity box (player stays 26×26). Primitive canvas drawing remains as a fallback if an image has not loaded.
+
+```bash
+node tests/neon-mechanics.test.js
+node tests/sprite-wiring-check.js
+```
 
 ## Deploy
 

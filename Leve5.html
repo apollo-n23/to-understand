@@ -137,7 +137,9 @@
     </a>
   </div>
 
+  <script src="assets/neon/draw-sprites.js"></script>
   <script>
+    if (window.NeonDashSprites) NeonDashSprites.theme('pink');
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d', { alpha: true });
 
@@ -2434,6 +2436,9 @@
         ctx.beginPath();
         ctx.ellipse(sx + 14, sy + 1, 22, 9 + flap * 0.5, 0, 0, Math.PI * 2);
         ctx.fill();
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'ptero', sx, sy - 6, 28, 20)) {
+          continue;
+        }
         // Main drone body (boxy saucer, deep purple tech)
         ctx.fillStyle = '#4a1a7a';
         ctx.fillRect(sx + 2, sy - 3, 24, 8);
@@ -3342,6 +3347,7 @@
         ctx.closePath();
         ctx.fill();
 
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'hazard', drawX - tw / 2, GROUND_Y - th, tw, th))) {
         // main triangle (hazard) - pink biosphere organic/crystal (reskinned; no lava)
         ctx.fillStyle = '#2a1f2b';
         ctx.beginPath();
@@ -3392,6 +3398,7 @@
         // small accent / ember line
         ctx.fillStyle = '#4a2233';
         ctx.fillRect(drawX - 1.5, GROUND_Y - th + 5, 3, 1.5);
+        }
       }
 
       // === GLOWING PURPLE BLOBS (biosphere melting chasers - slow, squashable from above, shoot projectiles) ===
@@ -3409,6 +3416,10 @@
         ctx.beginPath();
         ctx.ellipse(cx + 2, GROUND_Y + 2, radius * 0.9, 4, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'enemy', sx, sy, s.w, s.h)) {
+          continue;
+        }
 
         // Soft outer purple/magenta glow (pulsing - glowing alien biosphere effect)
         const pulse = 0.7 + Math.sin(frame * 0.12 + s.wx) * 0.35;
@@ -3552,6 +3563,7 @@
 
         // Glowing cyan portal / rift at the top - now BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed)
         const portalY = baseY - 305;
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'portal', lx - 18, portalY - 24, 36, 48))) {
         const px = lx;
         const py = portalY;
         const baseRx = 25;
@@ -3639,6 +3651,7 @@
             ctx.lineWidth = 0.9;
             ctx.stroke();
           }
+        }
         }
 
         // Glowing "Neon Control Zone" building (replaces usual background monster; golden glow, open door with light)
@@ -3781,6 +3794,8 @@
 
         const isGreen = (orb.value === 5);
         const pulse = Math.sin(frame * 0.12 + orb.phase) * (isGreen ? 1.5 : 1.2);
+        const orbR = isGreen ? 12 : 11;
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, isGreen ? 'orbGreen' : 'orb', sx + 3 - orbR, sy - orbR, orbR * 2, orbR * 2)) { continue; }
 
         if (isGreen) {
           // Green glowing tall neon bar (faster, worth 5; thin vertical rect + inner glow + top highlight; pulse on height)
@@ -3975,6 +3990,7 @@
       ctx.fillStyle = 'rgba(0, 20, 40, 0.45)';
       ctx.fillRect(px + 5, GROUND_Y - 1, player.w - 3, 5);
 
+      if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'player', px, py, player.w, player.h))) {
       // main cube body (bright cyan)
       ctx.fillStyle = '#5fd0ff';
       ctx.fillRect(px, py, player.w, player.h);
@@ -3999,6 +4015,7 @@
       // small "light" dot on cube
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.fillRect(px + 6, py + 5, 2, 2);
+      }
 
       // === VISIBLE ENERGY SHIELD (mario-style power-up - absorbs 1 hit, then grants 5s invulnerability) ===
       if (player.hasShield) {

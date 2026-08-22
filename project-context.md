@@ -8,6 +8,7 @@
 - JS contract unchanged: field ids, `data-panel-id`, `lcarsPromptData` / `lcarsPromptFormat` / `lcarsPanelOrder`, integrity bar `#integrity-bar-fill` width %, star-map group ids + nebula gradient defs, `.star-hit` immediately before `.star-point`. Star map also paints `assets/nebula-starfield.jpg` into `#star-map-bg`.
 - Level 6 is in the chain (L5 `next-level-link` → `Level6.html`). Hydro shop: buy shield 20 / ice 25 neon (carryover). **Leaving the shop must `gameState = 'playing'`** with the player parked beside the Hydro door — do **not** skip to `complete`. Finish by climbing the ladder. Air bubbles: `MAX_AIR_BUBBLES = 8`, spawn intervals doubled vs the earlier denser pass. Coral reef draw replaced the old blue crystal triangles (hitbox unchanged). Exit portal is pink-purple (not cyan). L6 extra SFX: `playBubbleChirp()`.
 - Git: `main` was force-with-lease pushed over 8 older GitHub-web commits (2026-08-22) so Vercel could take the local history. Do not force-push unless histories have diverged the same way again. `mcps/` is gitignored (local MCP schema dumps, not site source).
+- Neon Dash Imagine sprites (2026-08-22): `assets/neon/` + `draw-sprites.js`. Each level HTML calls `NeonDashSprites.theme(...)` and `drawSprite` in `draw()` for player, hazards, orbs, portal (plus NPC/ptero/boss/bubble where those exist). Hitboxes unchanged (player 26×26). Tests: `node tests/neon-mechanics.test.js` and `node tests/sprite-wiring-check.js`.
 
 ---
 

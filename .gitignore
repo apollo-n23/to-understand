@@ -1,2 +1,3 @@
 # Local MCP tool-schema dumps (not site source; go stale vs live servers)
 mcps/
+__pycache__/

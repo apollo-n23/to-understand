@@ -137,7 +137,9 @@
     </a>
   </div>
 
+  <script src="assets/neon/draw-sprites.js"></script>
   <script>
+    if (window.NeonDashSprites) NeonDashSprites.theme('lava');
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d', { alpha: true });
 
@@ -2405,6 +2407,9 @@
         if (sx < -80 || sx > W + 80) continue;
         const sy = p.y;
         const flap = Math.sin(frame * 0.18 + p.phase) * 0.75;
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'ptero', sx, sy, 28, 20)) {
+          continue;
+        }
         // Outer lava/orange aura glow
         ctx.fillStyle = 'rgba(255, 110, 35, 0.18)';
         ctx.beginPath();
@@ -2967,42 +2972,44 @@
         ctx.closePath();
         ctx.fill();
 
-        // main triangle (hazard) - lava themed charred rock
-        ctx.fillStyle = '#2c211b';
-        ctx.beginPath();
-        ctx.moveTo(drawX, GROUND_Y - th);
-        ctx.lineTo(drawX - tw / 2, GROUND_Y + 0.5);
-        ctx.lineTo(drawX + tw / 2, GROUND_Y + 0.5);
-        ctx.closePath();
-        ctx.fill();
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'hazard', drawX - tw / 2, GROUND_Y - th, tw, th))) {
+          // main triangle (hazard) - lava themed charred rock
+          ctx.fillStyle = '#2c211b';
+          ctx.beginPath();
+          ctx.moveTo(drawX, GROUND_Y - th);
+          ctx.lineTo(drawX - tw / 2, GROUND_Y + 0.5);
+          ctx.lineTo(drawX + tw / 2, GROUND_Y + 0.5);
+          ctx.closePath();
+          ctx.fill();
 
-        // pulsing lava glow top lip / edge (themed)
-        const lavaAlpha = 0.55 + 0.35 * Math.sin(frame * 0.1 + (o.wx || 0));
-        ctx.fillStyle = `rgba(255, 100, 30, ${lavaAlpha})`;
-        ctx.beginPath();
-        ctx.moveTo(drawX, GROUND_Y - th);
-        ctx.lineTo(drawX - tw / 2 + 1, GROUND_Y - 1);
-        ctx.lineTo(drawX + tw / 2 - 1, GROUND_Y - 1);
-        ctx.closePath();
-        ctx.fill();
+          // pulsing lava glow top lip / edge (themed)
+          const lavaAlpha = 0.55 + 0.35 * Math.sin(frame * 0.1 + (o.wx || 0));
+          ctx.fillStyle = `rgba(255, 100, 30, ${lavaAlpha})`;
+          ctx.beginPath();
+          ctx.moveTo(drawX, GROUND_Y - th);
+          ctx.lineTo(drawX - tw / 2 + 1, GROUND_Y - 1);
+          ctx.lineTo(drawX + tw / 2 - 1, GROUND_Y - 1);
+          ctx.closePath();
+          ctx.fill();
 
-        // lava cracks / small vents on the face (animated glow)
-        ctx.fillStyle = 'rgba(220, 65, 20, 0.65)';
-        const crackY = GROUND_Y - th * 0.55 + Math.sin(frame * 0.07 + o.wx) * 2;
-        ctx.fillRect(drawX - 4, crackY, 8, 1.5);
-        ctx.fillRect(drawX - 2, GROUND_Y - th * 0.3, 4, 1);
+          // lava cracks / small vents on the face (animated glow)
+          ctx.fillStyle = 'rgba(220, 65, 20, 0.65)';
+          const crackY = GROUND_Y - th * 0.55 + Math.sin(frame * 0.07 + o.wx) * 2;
+          ctx.fillRect(drawX - 4, crackY, 8, 1.5);
+          ctx.fillRect(drawX - 2, GROUND_Y - th * 0.3, 4, 1);
 
-        // top edge (cracked rock)
-        ctx.strokeStyle = '#4a3a30';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(drawX, GROUND_Y - th);
-        ctx.lineTo(drawX - tw / 2 + 2, GROUND_Y - 0.5);
-        ctx.stroke();
+          // top edge (cracked rock)
+          ctx.strokeStyle = '#4a3a30';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(drawX, GROUND_Y - th);
+          ctx.lineTo(drawX - tw / 2 + 2, GROUND_Y - 0.5);
+          ctx.stroke();
 
-        // small accent / ember line
-        ctx.fillStyle = '#3a2a22';
-        ctx.fillRect(drawX - 1.5, GROUND_Y - th + 5, 3, 1.5);
+          // small accent / ember line
+          ctx.fillStyle = '#3a2a22';
+          ctx.fillRect(drawX - 1.5, GROUND_Y - th + 5, 3, 1.5);
+        }
       }
 
       // === FIERY SPHERES (red lava orbs - slow chasers, squashable from above, shoot fireballs) ===
@@ -3020,6 +3027,10 @@
         ctx.beginPath();
         ctx.ellipse(cx + 2, GROUND_Y + 2, radius * 0.9, 4, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'enemy', sx, sy, s.w, s.h)) {
+          continue;
+        }
 
         // Outer fire aura / heat glow (pulsing)
         const pulse = 0.7 + Math.sin(frame * 0.12 + s.wx) * 0.35;
@@ -3128,6 +3139,7 @@
 
         // Glowing cyan portal / rift at the top - now BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed)
         const portalY = baseY - 305;
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'portal', lx - 18, portalY - 24, 36, 48))) {
         const px = lx;
         const py = portalY;
         const baseRx = 25;
@@ -3216,6 +3228,7 @@
             ctx.stroke();
           }
         }
+        }
       }
 
       // === ACTIVE END BOSS (foreground): repurposed LARGE POLYGONAL red/dark-red boss as bouncing active entity ===
@@ -3225,6 +3238,9 @@
       if (endBoss && !bossDefeated) {
         const bx = endBoss.wx - scrollX;
         const by = endBoss.y;
+        const bodyW = endBoss.w || 62;
+        const bodyH = endBoss.h || 72;
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'boss', bx - bodyW / 2, by - bodyH, bodyW, bodyH))) {
         // Dynamic stomp anim (stronger feel); use frame + slight vy influence
         const stomp = Math.sin(frame * 0.072) * 6.5 + (endBoss.vy > 0 ? 1.5 : 0);
         const stomp2 = Math.sin(frame * 0.072 + 1.75) * 5.8;
@@ -3318,6 +3334,7 @@
         ctx.fill();
 
         ctx.restore();
+        }
       }
 
       // (Orphaned duplicated background boss draw excised for startup fix.)
@@ -3357,6 +3374,8 @@
 
         const isGreen = (orb.value === 5);
         const pulse = Math.sin(frame * 0.12 + orb.phase) * (isGreen ? 1.5 : 1.2);
+        const orbR = isGreen ? 12 : 11;
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, isGreen ? 'orbGreen' : 'orb', sx + 3 - orbR, sy - orbR, orbR * 2, orbR * 2)) { continue; }
 
         if (isGreen) {
           // Green glowing orb (faster, worth 5)
@@ -3545,30 +3564,32 @@
       ctx.fillStyle = 'rgba(0, 20, 40, 0.45)';
       ctx.fillRect(px + 5, GROUND_Y - 1, player.w - 3, 5);
 
-      // main cube body (bright cyan)
-      ctx.fillStyle = '#5fd0ff';
-      ctx.fillRect(px, py, player.w, player.h);
+      if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'player', px, py, player.w, player.h))) {
+        // main cube body (bright cyan)
+        ctx.fillStyle = '#5fd0ff';
+        ctx.fillRect(px, py, player.w, player.h);
 
-      // top face highlight (cube shading)
-      ctx.fillStyle = '#a8e8ff';
-      ctx.fillRect(px + 2, py + 2, player.w - 4, 5);
+        // top face highlight (cube shading)
+        ctx.fillStyle = '#a8e8ff';
+        ctx.fillRect(px + 2, py + 2, player.w - 4, 5);
 
-      // left face highlight
-      ctx.fillRect(px + 2, py + 2, 4, player.h - 4);
+        // left face highlight
+        ctx.fillRect(px + 2, py + 2, 4, player.h - 4);
 
-      // bottom-right bevel (shadow)
-      ctx.fillStyle = '#1a8fb8';
-      ctx.fillRect(px + player.w - 5, py + 5, 3, player.h - 6);
-      ctx.fillRect(px + 5, py + player.h - 5, player.w - 8, 3);
+        // bottom-right bevel (shadow)
+        ctx.fillStyle = '#1a8fb8';
+        ctx.fillRect(px + player.w - 5, py + 5, 3, player.h - 6);
+        ctx.fillRect(px + 5, py + player.h - 5, player.w - 8, 3);
 
-      // crisp outline
-      ctx.strokeStyle = '#0c3a4f';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(px + 0.75, py + 0.75, player.w - 1.5, player.h - 1.5);
+        // crisp outline
+        ctx.strokeStyle = '#0c3a4f';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(px + 0.75, py + 0.75, player.w - 1.5, player.h - 1.5);
 
-      // small "light" dot on cube
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.fillRect(px + 6, py + 5, 2, 2);
+        // small "light" dot on cube
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(px + 6, py + 5, 2, 2);
+      }
 
       // === VISIBLE ENERGY SHIELD (mario-style power-up - absorbs 1 hit, then grants 5s invulnerability) ===
       if (player.hasShield) {

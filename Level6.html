@@ -113,7 +113,9 @@
     </a>
   </div>
 
+  <script src="assets/neon/draw-sprites.js"></script>
   <script>
+    if (window.NeonDashSprites) NeonDashSprites.theme('water');
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d', { alpha: true });
 
@@ -3874,6 +3876,7 @@
         ctx.ellipse(drawX, GROUND_Y + 2.5, tw * 0.62, 3.2, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'hazard', drawX - tw / 2, GROUND_Y - th, tw, th))) {
         // base mound (reef rock) — teal-dark
         ctx.fillStyle = '#0a2a38';
         ctx.beginPath();
@@ -4017,6 +4020,7 @@
         ctx.closePath();
         ctx.fill();
         ctx.restore();
+        }
       }
 
       // === AQUA BIO-SHOOTERS (fins + tentacles - slow, squashable from above, shoot ink/water orbs) ===
@@ -4038,6 +4042,10 @@
         ctx.beginPath();
         ctx.ellipse(cx + 2, GROUND_Y + 2, radius * 0.9, 4, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'enemy', sx, sy, s.w, s.h)) {
+          continue;
+        }
 
         // Soft outer aqua glow
         ctx.fillStyle = `rgba(51, 170, 204, ${0.18 * pulse})`;
@@ -4238,6 +4246,7 @@
 
         // Glowing pink-purple portal / rift at the top - BADASS enhanced: larger concentric swirling glowing segments, lightning bolts (harmless, frame-timed)
         const portalY = baseY - 305;
+        if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'portal', lx - 18, portalY - 24, 36, 48))) {
         const px = lx;
         const py = portalY;
         const baseRx = 25;
@@ -4325,6 +4334,7 @@
             ctx.lineWidth = 0.9;
             ctx.stroke();
           }
+        }
         }
 
         // Glowing "Hydro Control Zone" building — 3× original width (126px), watery blue theme
@@ -4579,6 +4589,8 @@
 
         const isGreen = (orb.value === 5);
         const pulse = Math.sin(frame * 0.12 + orb.phase) * (isGreen ? 1.5 : 1.2);
+        const orbR = isGreen ? 12 : 11;
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, isGreen ? 'orbGreen' : 'orb', sx + 3 - orbR, sy - orbR, orbR * 2, orbR * 2)) { continue; }
 
         if (isGreen) {
           // Green glowing tall neon bar (faster, worth 5; thin vertical rect + inner glow + top highlight; pulse on height)
@@ -4775,6 +4787,10 @@
         const pulse = 0.92 + Math.sin(frame * 0.06 + b.bobPhase) * 0.06;
         const r = b.r * pulse;
 
+        if (window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'bubble', bx - r, by - r, r * 2, r * 2)) {
+          continue;
+        }
+
         ctx.save();
         // Soft outer glow
         ctx.shadowColor = 'rgba(100, 220, 255, 0.55)';
@@ -4875,6 +4891,7 @@
         ctx.globalAlpha = Math.max(0.35, 1 - nearSurface * 0.45);
       }
 
+      if (!(window.NeonDashSprites && NeonDashSprites.drawSprite(ctx, 'player', px, py, player.w, player.h))) {
       // main cube body
       ctx.fillStyle = 'rgb(' + bodyR + ',' + bodyG + ',' + bodyB + ')';
       ctx.fillRect(px, py, player.w, player.h);
@@ -4899,6 +4916,7 @@
       // small "light" dot on cube (dims on death; brighter when boosted)
       ctx.fillStyle = 'rgba(255,255,255,' + ((neonBoostDraw ? 0.95 : 0.6) * (1 - greyT * 0.85)) + ')';
       ctx.fillRect(px + 6, py + 5, 2, 2);
+      }
       ctx.restore();
 
       // === VISIBLE ENERGY SHIELD (mario-style power-up - absorbs 1 hit, then grants 5s invulnerability) ===
