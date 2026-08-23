@@ -1,20 +1,20 @@
 # Grok-to-Understand Project Context Summary (for Continuation)
 
-**Date/Context**: 2026-08-22. Workspace: C:\Users\antho\grok-to-understand. Two active tracks: (1) **Neon Dash** — single-file HTML5 Canvas side-scrolling platformer, **six levels**: void-cube.html (L1), level2.html (L2 Mr Octopoop), Level3.html (L3), Level4.html (L4 lava + crush-only boss), Leve5.html (L5 pink alien biosphere; filename is historical), Level6.html (L6 deep water + oxygen + Hydro shop). (2) **POPCORN Prompt Synthesizer** — `index.html` + `assets/lcars.css` + Imagine stills in `assets/` (LCARS 4.7 TNG overhaul, 2026-08-22). VOID CUBE PROTOCOL on the right rail links to `void-cube.html`. Live: Vercel project `to-understand` from GitHub `apollo-n23/to-understand` `main`. Docs: `README.md`, this file, `sound-design-bible.md`.
+**Date/Context**: 2026-08-23. Workspace: C:\Users\antho\grok-to-understand. This repo is **prompt-builder only** — the **POPCORN Prompt Synthesizer** (`index.html` + `assets/lcars.css` + Imagine stills in `assets/`). Neon Dash / Void Cube **moved** to `C:\Users\antho\void-cube` / https://github.com/apollo-n23/void-cube / https://void-cube-seven.vercel.app. VOID CUBE PROTOCOL on the right rail links out to that live game (new tab). Live: Vercel project `to-understand` from GitHub `apollo-n23/to-understand` `main`. Docs: `README.md`, this file.
 
-**Current snapshot (2026-08-22, Imagine overhaul + spawn polish)**:
-- POPCORN UI is **not** a single self-contained HTML file anymore. Markup/JS stay in `index.html`; chrome is `assets/lcars.css` (Antonio + Share Tech Mono, TNG 2357 flats, elbows, 3-col `168px | 1fr | 188px`). Earth, pale-blue-dot, End Guardian, Enterprise, nebula, mode selector, console grain, and channel/FAB glyphs are files under `assets/` — not inline SVGs.
+**Current snapshot (2026-08-23, prompt-builder only)**:
+- This repo no longer ships Neon Dash levels, `assets/neon/`, game tests, or `sound-design-bible.md`. The game lives in the void-cube repo.
+- POPCORN UI: Markup/JS stay in `index.html`; chrome is `assets/lcars.css` (Antonio + Share Tech Mono, TNG 2357 flats, elbows, 3-col `168px | 1fr | 188px`). Earth, pale-blue-dot, End Guardian, Enterprise, nebula, mode selector, console grain, and channel/FAB glyphs are files under `assets/` — not inline SVGs.
 - FAB Copy/Preview/Download: wide bottom rail (`min(720px, 100% - 32px)`), `::before` **mask** icons (`icon-copy.png` / `icon-preview.png` / `icon-download.png`, black knocked out). Do **not** put `<img>` inside the buttons — `flashButton()` replaces `innerHTML`. Mobile (≤640px): stack full-width, body `padding-bottom: 180px`, toast `bottom: 172px`.
 - JS contract unchanged: field ids, `data-panel-id`, `lcarsPromptData` / `lcarsPromptFormat` / `lcarsPanelOrder`, integrity bar `#integrity-bar-fill` width %, star-map group ids + nebula gradient defs, `.star-hit` immediately before `.star-point`. Star map also paints `assets/nebula-starfield.jpg` into `#star-map-bg`.
-- Level 6 is in the chain (L5 `next-level-link` → `Level6.html`). Hydro shop: buy shield 20 / ice 25 neon (carryover). **Leaving the shop must `gameState = 'playing'`** with the player parked beside the Hydro door — do **not** skip to `complete`. Finish by climbing the ladder. Coral reef draw replaced the old blue crystal triangles (hitbox unchanged). Exit portal is pink-purple (not cyan). L6 extra SFX: `playBubbleChirp()`.
-- L6 air bubbles: translucent glass sprite (`bubble.png` interior knocked out) drawn at `globalAlpha` 0.82 so they do not obscure the water/sky. `MAX_AIR_BUBBLES = 8`, `AIR_BUBBLE_SPAWN_MIN = 43`, `AIR_BUBBLE_SPAWN_SPAN = 35` (−20% frequency vs the prior 34/28). Radii 42–78 and oxygen refill unchanged.
-- Git: prefer a normal `git push origin main`. `main` was force-with-lease pushed over 8 older GitHub-web commits (2026-08-22) so Vercel could take the local history — do **not** force-push unless histories have diverged the same way again. `mcps/` and `__pycache__/` and `assets/neon/boss-frames/` are gitignored.
-- Neon Dash Imagine sprites live in `assets/neon/` + `draw-sprites.js` + `chrome.css`. Each level HTML: `NeonDashSprites.theme(...)`, below-canvas `<nav class="level-nav">` with real hrefs, Imagine HUD plates. Hitboxes unchanged (player 26×26, canvas 960×520). Keep `Leve5.html` filename. Labels are HTML/CSS or `fillText`, not baked into sprites.
-- Shared draw API (see `draw-sprites.js`): `drawSprite`, `drawSky`, `drawGround`, `drawPlatform`, `drawBoss`, `drawHudPlate`, `drawWorldSign`, `drawShield`, `drawPickup`, `drawPortal` (72×96, 8-frame swirl, same climb Y), `drawShot` (bolt/fire/laser/slime/water/acid, 8-frame), `drawSpeechBubble` (magenta callout; Octopoop only — tutorials stay cyan HUD rects), `drawFluid`. Themes load octopoop on **all** levels that have that NPC. End buildings: `build-lava` / `build-neon` / `build-hydro`; pyramids `pyramid-gold` / `pyramid-ice`. L6 Hydro door offsets unchanged (`HYDRO_BUILD_OFF` 48, door 34×58).
-- Ground spikes vs trampolines: every level defines `spikeOverlapsAnyTrampoline` / `trampolineOverlapsAnySpike` and uses them on **both** spawn paths. L5/L6 `computeSafeTrianglePatrolAmp` treats trampolines as left **and** right bounds (plus `triHalf`) so patrol cannot walk onto a pad. Collision radii unchanged.
-- Tests: `node tests/neon-mechanics.test.js`, `node tests/sprite-wiring-check.js`, `node tests/nav-ui.test.js`, `node tests/speech-ui.test.js`.
+- VOID CUBE PROTOCOL (`a.sim-link`) points at `https://void-cube-seven.vercel.app` (`target="_blank"` `rel="noopener noreferrer"`).
+- Git: prefer a normal `git push origin main`. Do **not** force-push. `mcps/` and `__pycache__/` are gitignored.
 
 ---
+
+# Historical notes — Neon Dash (MOVED to apollo-n23/void-cube)
+
+The Neon Dash / Void Cube game no longer lives in this repo. Notes below are kept as historical reference for the **moved** project. Treat them as relocated, not as current site source for `to-understand`.
 
 # Historical notes (pre–L6 / pre–LCARS overhaul)
 
@@ -78,7 +78,7 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
 - **Clipboard**: `writeToClipboard()` with `execCommand` fallback; `showToast()`, `flashButton()`.
 - **Persistence**: field values → `lcarsPromptData`; format → `lcarsPromptFormat`; panel order → `lcarsPanelOrder`.
 - **Left sidebar**: 9 LCARS slice buttons (main + cap); Earth-from-orbit still (`assets/earth-orbit.jpg`); Pale Blue Dot plate (`assets/pale-blue-dot.jpg`) + Carl Sagan excerpt.
-- **Right sidebar** (top → bottom): **`.scan-readouts`** → STATUS → SIMULATIONS (VOID CUBE PROTOCOL → `void-cube.html`, class `sim-link`) → LCARS control slices → End Guardian (`assets/end-guardian.jpg`) → **Tactical Star Map** → Enterprise plate (`assets/enterprise.jpg`).
+- **Right sidebar** (top → bottom): **`.scan-readouts`** → STATUS → SIMULATIONS (VOID CUBE PROTOCOL → https://void-cube-seven.vercel.app, class `sim-link`) → LCARS control slices → End Guardian (`assets/end-guardian.jpg`) → **Tactical Star Map** → Enterprise plate (`assets/enterprise.jpg`).
 - **Scan readouts**:
   1. **TOTAL CHARS** (`#char-count`) — compiled prompt length
   2. **EST. TOKENS** — `prompt.length / 3.8`
@@ -94,7 +94,7 @@ The rest of this file is still useful for Neon Dash L1–L5 mechanics, spawn-saf
   - `initStarMap()`, `buildStarMapContent()`, `lastMapSelection` restores selection after resize.
 - **Live stats**: `updateLiveStats()` — per-section counts, buffer length, token est, integrity %, integrity bar width, sections active. Ctrl/Cmd+Enter copies prompt.
 - **Key JS**: `ids`, `panelOrder`, `PANEL_ORDER_KEY`, `SECTION_META`, `CHAR_LIMITS`, `INTEGRITY_WEIGHTS`, `NEAR_LIMIT_THRESHOLD`, `initPanelDragDrop()`, `reorderPanel()`, `calculatePromptIntegrity()`, star-map symbols (`STAR_MAP_CATALOG`, `STAR_MAP_VESSELS`, `buildStarMapContent()`, `initStarMap()`), `buildPrompt()`, `init()`.
-- Prompt UI now depends on `assets/lcars.css` and the Imagine stills listed in `README.md`. Neon Dash levels share `assets/neon/` (sprites + chrome) and still carry neon via localStorage. COMPUTER still links to `https://grok.com/`.
+- Prompt UI now depends on `assets/lcars.css` and the Imagine stills listed in `README.md`. Neon Dash moved to apollo-n23/void-cube. COMPUTER still links to `https://grok.com/`.
 
 **Recent Agent-Driven Changes (Neon Dash; prior sessions; 1+ subagents per issue, parallel often with worktree isolation/read-write; reports with excerpts; safe merges via search_replace on main with unique anchors)**:
 - Sun (L5): orange → deep pink/purple (#ff88cc/#ff77cc/#cc66ee etc.), 2x size (radii scaled e.g. 15→30, 68→136), surrounded by beaming/shimmering concentric circles (6 stroked rings at [44,60,...148] with per-ring shimmer=sin(frame*0.027+phase)*2.4 radius offset + alpha flicker 0.13+sin*0.17 clamped + phases/lineWidth; + 6 thin radial beams with lenShimmer + slow rotation). Updated comments. (Subagent 1.)
